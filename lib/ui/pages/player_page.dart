@@ -1351,27 +1351,39 @@ class _PosterPlayerPageState extends State<_PosterPlayerPage>
       builder: (context, constraints) {
         final compact = constraints.maxHeight < 620;
         final tiny = constraints.maxHeight < 180 || constraints.maxWidth < 160;
-        final artworkMaxWidth = compact ? 250.0 : 330.0;
+        final artworkMaxWidth = tiny ? 90.0 : (compact ? 250.0 : 330.0);
 
         return Padding(
           padding: EdgeInsets.fromLTRB(tiny ? 8 : 28, tiny ? 4 : 12, tiny ? 8 : 28, tiny ? 6 : 18),
           child: Column(
             children: [
               const Spacer(),
-              ConstrainedBox(
-                constraints: BoxConstraints(maxWidth: artworkMaxWidth),
-                child: AspectRatio(
-                  aspectRatio: 1,
-                  child: Hero(
-                    tag: 'player_cover',
-                    child: Artwork(
-                    url: widget.song.coverUrl,
-                    size: double.infinity,
-                    borderRadius: 8,
-                  ),
-                  ),
-                ),
-              ),
+              tiny
+                  ? SizedBox.square(
+                      dimension: artworkMaxWidth,
+                      child: Hero(
+                        tag: 'player_cover',
+                        child: Artwork(
+                          url: widget.song.coverUrl,
+                          size: artworkMaxWidth,
+                          borderRadius: 8,
+                        ),
+                      ),
+                    )
+                  : ConstrainedBox(
+                      constraints: BoxConstraints(maxWidth: artworkMaxWidth),
+                      child: AspectRatio(
+                        aspectRatio: 1,
+                        child: Hero(
+                          tag: 'player_cover',
+                          child: Artwork(
+                            url: widget.song.coverUrl,
+                            size: double.infinity,
+                            borderRadius: 8,
+                          ),
+                        ),
+                      ),
+                    ),
               SizedBox(height: tiny ? 4 : (compact ? 14 : 26)),
               _PosterLyricPreview(player: widget.player, tiny: tiny),
               if (!compact && !tiny) const SizedBox(height: 4),
