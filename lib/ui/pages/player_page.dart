@@ -1494,7 +1494,8 @@ class _PosterLyricPreviewState extends State<_PosterLyricPreview> {
     return ExcludeSemantics(
       child: SizedBox(
         height: widget.tiny ? 44 : 96,
-          duration: const Duration(milliseconds: 260),
+        child: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 260),
           switchInCurve: Curves.easeOutCubic,
           switchOutCurve: Curves.easeOutCubic,
           child: Column(
