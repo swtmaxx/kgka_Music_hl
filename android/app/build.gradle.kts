@@ -15,6 +15,10 @@ if (keystorePropertiesFile.exists()) {
     keystoreProperties.load(FileInputStream(keystorePropertiesFile))
 }
 
+// 固定调试签名：GitHub Actions 每次构建使用同一个 keystore，保证 APK 可覆盖安装。
+val fixedDebugKeystore = rootProject.file("android/keystore/fixed-debug.keystore")
+val useFixedDebugSigning = fixedDebugKeystore.exists()
+
 /** key.properties 是否已填好完整签名信息。 */
 fun hasReleaseSigning(): Boolean = keystorePropertiesFile.exists() &&
     !keystoreProperties.getProperty("storeFile").isNullOrBlank() &&
@@ -39,6 +43,19 @@ android {
                 storePassword = keystoreProperties.getProperty("storePassword")
                 keyAlias = keystoreProperties.getProperty("keyAlias")
                 keyPassword = keystoreProperties.getProperty("keyPassword")
+            } else if (useFixedDebugSigning) {
+                storeFile = fixedDebugKeystore
+                storePassword = "kkmusic123"
+                keyAlias = "kkmusic"
+                keyPassword = "kkmusic123"
+            }
+        }
+        create("fixedDebug") {
+            if (useFixedDebugSigning) {
+                storeFile = fixedDebugKeystore
+                storePassword = "kkmusic123"
+                keyAlias = "kkmusic"
+                keyPassword = "kkmusic123"
             }
         }
     }
@@ -70,6 +87,9 @@ android {
             // 未配置完整信息时回退 debug 签名，保证开发期构建不被阻塞。
             if (hasReleaseSigning()) {
                 signingConfig = signingConfigs.getByName("release")
+            } else if (useFixedDebugSigning) {
+                println("Using fixed debug signing for CI builds.")
+                signingConfig = signingConfigs.getByName("fixedDebug")
             } else {
                 println("Warning: android/key.properties 未配置完整签名信息，release 构建将回退使用 debug 签名。")
                 signingConfig = signingConfigs.getByName("debug")
