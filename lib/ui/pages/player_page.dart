@@ -1183,8 +1183,6 @@ class _TopBar extends StatelessWidget {
                   children: [
                     MarqueeText(
                       text: song.title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         color: Colors.white,
                         fontWeight: FontWeight.w800,
