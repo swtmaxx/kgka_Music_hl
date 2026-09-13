@@ -1155,21 +1155,23 @@ class _TopBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tiny = MediaQuery.sizeOf(context).shortestSide < 160;
     return AnimatedBuilder(
       animation: auth,
       builder: (context, _) {
         final liked = auth.isLiked(song);
         return Padding(
-          padding: const EdgeInsets.fromLTRB(8, 8, 16, 6),
+          padding: EdgeInsets.fromLTRB(8, tiny ? 2 : 8, 16, tiny ? 2 : 6),
           child: Row(
             children: [
               IconButton(
                 tooltip: '返回',
                 color: Colors.white,
+                visualDensity: tiny ? VisualDensity.compact : VisualDensity.standard,
                 onPressed: onClose,
                 icon: const Icon(Icons.keyboard_arrow_down_rounded),
               ),
-              const SizedBox(width: 4),
+              SizedBox(width: tiny ? 2 : 4),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1342,10 +1344,11 @@ class _PosterPlayerPageState extends State<_PosterPlayerPage>
     return LayoutBuilder(
       builder: (context, constraints) {
         final compact = constraints.maxHeight < 620;
+        final tiny = constraints.maxHeight < 180 || constraints.maxWidth < 160;
         final artworkMaxWidth = compact ? 250.0 : 330.0;
 
         return Padding(
-          padding: const EdgeInsets.fromLTRB(28, 12, 28, 18),
+          padding: EdgeInsets.fromLTRB(tiny ? 8 : 28, tiny ? 4 : 12, tiny ? 8 : 28, tiny ? 6 : 18),
           child: Column(
             children: [
               const Spacer(),
@@ -1363,17 +1366,18 @@ class _PosterPlayerPageState extends State<_PosterPlayerPage>
                   ),
                 ),
               ),
-              SizedBox(height: compact ? 14 : 26),
-              _PosterLyricPreview(player: widget.player),
-              if (!compact) const SizedBox(height: 4),
-              _CommentEntry(player: widget.player, song: widget.song),
+              SizedBox(height: tiny ? 4 : (compact ? 14 : 26)),
+              _PosterLyricPreview(player: widget.player, tiny: tiny),
+              if (!compact && !tiny) const SizedBox(height: 4),
+              if (!tiny) _CommentEntry(player: widget.player, song: widget.song),
               const Spacer(),
-              _Progress(player: widget.player, bright: true),
-              const SizedBox(height: 10),
+              _Progress(player: widget.player, bright: true, compact: tiny),
+              SizedBox(height: tiny ? 4 : 10),
               _Controls(
                 player: widget.player,
                 bright: true,
                 onQueue: widget.onQueue,
+                tinyOverride: tiny,
               ),
             ],
           ),
@@ -1397,9 +1401,10 @@ int _activeLyricIndexFor(List<LyricLine> lyrics, Duration position) {
 }
 
 class _PosterLyricPreview extends StatefulWidget {
-  const _PosterLyricPreview({required this.player});
+  const _PosterLyricPreview({required this.player, this.tiny = false});
 
   final PlayerController player;
+  final bool tiny;
 
   @override
   State<_PosterLyricPreview> createState() => _PosterLyricPreviewState();
@@ -1456,7 +1461,7 @@ class _PosterLyricPreviewState extends State<_PosterLyricPreview> {
     final lyrics = widget.player.lyrics;
     if (lyrics.isEmpty) {
       return SizedBox(
-        height: 104,
+        height: widget.tiny ? 40 : 104,
         child: Center(
           child: Text(
             widget.player.isPreparing ? '歌词加载中...' : '暂无歌词',
@@ -1488,8 +1493,7 @@ class _PosterLyricPreviewState extends State<_PosterLyricPreview> {
     // 歌词预览每帧更新位置，用 ExcludeSemantics 防止 Windows AXTree 竞态崩溃
     return ExcludeSemantics(
       child: SizedBox(
-        height: 96,
-        child: AnimatedSwitcher(
+        height: widget.tiny ? 44 : 96,
           duration: const Duration(milliseconds: 260),
           switchInCurve: Curves.easeOutCubic,
           switchOutCurve: Curves.easeOutCubic,
@@ -1498,7 +1502,7 @@ class _PosterLyricPreviewState extends State<_PosterLyricPreview> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               SizedBox(
-                height: 36,
+                height: widget.tiny ? 16 : 36,
                 child: _MarqueeSingleLine(
                   textKey: current.time.inMilliseconds,
                   child: _LyricText(
@@ -1511,9 +1515,9 @@ class _PosterLyricPreviewState extends State<_PosterLyricPreview> {
                   ),
                 ),
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: widget.tiny ? 4 : 8),
               SizedBox(
-                height: 25,
+                height: widget.tiny ? 14 : 25,
                 child: _MarqueeSingleLine(
                   textKey: current.translation != null && current.translation!.isNotEmpty
                       ? current.time.inMilliseconds
@@ -2284,6 +2288,7 @@ class _Controls extends StatelessWidget {
     this.bright = false,
     this.compactOverride = false,
     this.denseOverride = false,
+    this.tinyOverride = false,
   });
 
   final PlayerController player;
@@ -2291,6 +2296,7 @@ class _Controls extends StatelessWidget {
   final bool bright;
   final bool compactOverride;
   final bool denseOverride;
+  final bool tinyOverride;
 
   @override
   Widget build(BuildContext context) {
@@ -2304,15 +2310,16 @@ class _Controls extends StatelessWidget {
       builder: (context, constraints) {
         final compact = compactOverride || constraints.maxWidth < 360;
         final dense = denseOverride;
+        final tiny = tinyOverride;
         // 超大按钮仅在车机模式开启时使用，普通横屏用标准尺寸。
         final isCar = isLandscape && ThemeController.instance.carModeEnabled;
-        final edgeButtonSize = dense ? 34.0 : (isCar ? 56.0 : (compact ? 40.0 : 44.0));
-        final edgeIconSize = dense ? 21.0 : (isCar ? 34.0 : (compact ? 24.0 : 27.0));
-        final skipButtonSize = dense ? 42.0 : (isCar ? 72.0 : (compact ? 50.0 : 56.0));
-        final skipIconSize = dense ? 33.0 : (isCar ? 54.0 : (compact ? 40.0 : 46.0));
-        final playButtonSize = dense ? 58.0 : (isCar ? 96.0 : (compact ? 72.0 : 82.0));
-        final playIconSize = dense ? 46.0 : (isCar ? 72.0 : (compact ? 56.0 : 64.0));
-        final gap = dense ? 3.0 : (isCar ? 24.0 : (compact ? 5.0 : 9.0));
+        final edgeButtonSize = tiny ? 26.0 : (dense ? 34.0 : (isCar ? 56.0 : (compact ? 40.0 : 44.0)));
+        final edgeIconSize = tiny ? 16.0 : (dense ? 21.0 : (isCar ? 34.0 : (compact ? 24.0 : 27.0)));
+        final skipButtonSize = tiny ? 30.0 : (dense ? 42.0 : (isCar ? 72.0 : (compact ? 50.0 : 56.0)));
+        final skipIconSize = tiny ? 22.0 : (dense ? 33.0 : (isCar ? 54.0 : (compact ? 40.0 : 46.0)));
+        final playButtonSize = tiny ? 40.0 : (dense ? 58.0 : (isCar ? 96.0 : (compact ? 72.0 : 82.0)));
+        final playIconSize = tiny ? 30.0 : (dense ? 46.0 : (isCar ? 72.0 : (compact ? 56.0 : 64.0)));
+        final gap = tiny ? 2.0 : (dense ? 3.0 : (isCar ? 24.0 : (compact ? 5.0 : 9.0)));
 
         return Row(
           mainAxisAlignment: MainAxisAlignment.center,
