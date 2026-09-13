@@ -268,7 +268,9 @@ class _PlayerBodyState extends State<_PlayerBody> {
                             ),
                           ),
                   ),
-                  if (!isCarLayout) _PageDots(page: _page),
+                  if (!isCarLayout &&
+                      MediaQuery.sizeOf(context).height >= 250)
+                    _PageDots(page: _page),
                 ],
               ),
             ),
@@ -510,12 +512,13 @@ class _LandscapePlayerContent extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final compact = constraints.maxHeight < 350;
+        final tiny = constraints.maxHeight < 180 || constraints.maxWidth < 160;
         return Padding(
           padding: EdgeInsets.fromLTRB(
-            compact ? 14 : 24,
-            compact ? 4 : 10,
-            compact ? 16 : 30,
-            compact ? 24 : 36,
+            tiny ? 6 : (compact ? 14 : 24),
+            tiny ? 2 : (compact ? 4 : 10),
+            tiny ? 8 : (compact ? 16 : 30),
+            tiny ? 4 : (compact ? 24 : 36),
           ),
           child: Column(
             children: [
@@ -524,10 +527,10 @@ class _LandscapePlayerContent extends StatelessWidget {
                 auth: auth,
                 song: song,
                 onClose: onClose,
-                compact: compact,
+                compact: compact || tiny,
                 onArtistTap: onArtistTap,
               ),
-              SizedBox(height: compact ? 2 : 10),
+              SizedBox(height: tiny ? 2 : (compact ? 2 : 10)),
               Expanded(
                 child: Row(
                   children: [
@@ -539,7 +542,7 @@ class _LandscapePlayerContent extends StatelessWidget {
                         compact: compact,
                       ),
                     ),
-                    SizedBox(width: compact ? 18 : 34),
+                    SizedBox(width: tiny ? 8 : (compact ? 18 : 34)),
                     Expanded(
                       flex: 12,
                       child: _LandscapeRightPanel(
@@ -836,10 +839,11 @@ class _LandscapeArtworkShowcaseState extends State<_LandscapeArtworkShowcase>
       child: LayoutBuilder(
         builder: (context, constraints) {
           final available = math.min(constraints.maxWidth, constraints.maxHeight);
-          final discSize = (available * (widget.compact ? .84 : .9))
-              .clamp(150.0, 330.0)
+          final tiny = available < 140;
+          final discSize = (available * (tiny ? .68 : (widget.compact ? .84 : .9)))
+              .clamp(tiny ? 70.0 : 150.0, 330.0)
               .toDouble();
-          final coverSize = discSize * (widget.compact ? .58 : .70);
+          final coverSize = discSize * (tiny ? .50 : (widget.compact ? .58 : .70));
 
           return Center(
             // 旋转唱片是纯装饰动画，排除语义树防止 Windows AXTree 竞态崩溃
@@ -1179,23 +1183,27 @@ class _TopBar extends StatelessWidget {
                   children: [
                     MarqueeText(
                       text: song.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         color: Colors.white,
                         fontWeight: FontWeight.w800,
+                        fontSize: tiny ? 12 : null,
                       ),
                     ),
-                    ClickableArtistText(
-                      song: song,
-                      api: player.api,
-                      auth: auth,
-                      player: player,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Colors.white.withValues(alpha: .82),
-                        fontWeight: FontWeight.w600,
+                    if (!tiny)
+                      ClickableArtistText(
+                        song: song,
+                        api: player.api,
+                        auth: auth,
+                        player: player,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: Colors.white.withValues(alpha: .82),
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
-                    ),
                   ],
                 ),
               ),
