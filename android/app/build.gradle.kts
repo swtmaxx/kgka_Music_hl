@@ -16,7 +16,7 @@ if (keystorePropertiesFile.exists()) {
 }
 
 // 固定调试签名：GitHub Actions 每次构建使用同一个 keystore，保证 APK 可覆盖安装。
-val fixedDebugKeystore = rootProject.file("android/keystore/fixed-debug.keystore")
+val fixedDebugKeystore = rootProject.file("keystore/fixed-debug.keystore")
 val useFixedDebugSigning = fixedDebugKeystore.exists()
 
 /** key.properties 是否已填好完整签名信息。 */
