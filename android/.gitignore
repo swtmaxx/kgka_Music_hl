@@ -12,5 +12,4 @@ GeneratedPluginRegistrant.java
 key.properties
 keystore/*.jks
 keystore/store-*.keystore
-keystore/fixed-debug.keystore
 
