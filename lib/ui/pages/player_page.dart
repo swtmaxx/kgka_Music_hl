@@ -197,12 +197,6 @@ class _PlayerBodyState extends State<_PlayerBody> {
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.sizeOf(context);
-    if (size.height < 150 || size.width < 150) {
-      return const Scaffold(
-        backgroundColor: Colors.black,
-        body: SizedBox.shrink(),
-      );
-    }
     final landscape = size.width > size.height;
     _syncSystemUi(landscape);
     // 横屏分栏布局是车机专属，普通横屏仍用竖屏的翻页布局。
@@ -512,7 +506,7 @@ class _LandscapePlayerContent extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final compact = constraints.maxHeight < 350;
-        final tiny = constraints.maxHeight < 180 || constraints.maxWidth < 160;
+        final tiny = constraints.maxHeight < 320 || constraints.maxWidth < 320;
         return Padding(
           padding: EdgeInsets.fromLTRB(
             tiny ? 6 : (compact ? 14 : 24),
@@ -839,9 +833,9 @@ class _LandscapeArtworkShowcaseState extends State<_LandscapeArtworkShowcase>
       child: LayoutBuilder(
         builder: (context, constraints) {
           final available = math.min(constraints.maxWidth, constraints.maxHeight);
-          final tiny = available < 140;
+          final tiny = available < 280;
           final discSize = (available * (tiny ? .68 : (widget.compact ? .84 : .9)))
-              .clamp(tiny ? 70.0 : 150.0, 330.0)
+              .clamp(tiny ? 60.0 : 150.0, 330.0)
               .toDouble();
           final coverSize = discSize * (tiny ? .50 : (widget.compact ? .58 : .70));
 
@@ -1159,7 +1153,7 @@ class _TopBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tiny = MediaQuery.sizeOf(context).shortestSide < 160;
+    final tiny = MediaQuery.sizeOf(context).shortestSide < 300;
     return AnimatedBuilder(
       animation: auth,
       builder: (context, _) {
@@ -1350,8 +1344,10 @@ class _PosterPlayerPageState extends State<_PosterPlayerPage>
     return LayoutBuilder(
       builder: (context, constraints) {
         final compact = constraints.maxHeight < 620;
-        final tiny = constraints.maxHeight < 180 || constraints.maxWidth < 160;
-        final artworkMaxWidth = tiny ? 90.0 : (compact ? 250.0 : 330.0);
+        final tiny = constraints.maxHeight < 320 || constraints.maxWidth < 320;
+        final artworkMaxWidth = tiny
+            ? math.min(constraints.maxWidth * 0.38, constraints.maxHeight * 0.30).clamp(60.0, 120.0)
+            : (compact ? 250.0 : 330.0);
 
         return Padding(
           padding: EdgeInsets.fromLTRB(tiny ? 8 : 28, tiny ? 4 : 12, tiny ? 8 : 28, tiny ? 6 : 18),
