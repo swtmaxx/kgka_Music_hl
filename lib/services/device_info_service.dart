@@ -26,4 +26,16 @@ class DeviceInfoService {
     }
   }
 
+  /// 是否为小屏手表设备（如 S100 240x284 DPR 1.0）。
+  Future<bool> isSmallWatch() async {
+    if (!isSupportedPlatform) return false;
+    try {
+      return await _channel.invokeMethod<bool>('isSmallWatch') ?? false;
+    } on PlatformException {
+      return false;
+    } on MissingPluginException {
+      return false;
+    }
+  }
+
 }
