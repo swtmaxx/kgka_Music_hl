@@ -60,6 +60,9 @@ class ThemeController extends ChangeNotifier {
   // 车机检测结果缓存（设备不变，启动时检测一次）。
   bool _isAutomotiveDevice = false;
 
+  // 小屏手表检测结果缓存（设备不变，启动时检测一次）。
+  bool _isSmallWatchDevice = false;
+
   bool? _lastAppliedIsTablet;
   bool? _lastAppliedLandscapeEnabled;
   bool? _lastAppliedCarModeEnabled;
@@ -73,6 +76,7 @@ class ThemeController extends ChangeNotifier {
 
   double get fontScale => _fontScale;
   bool get isAutomotiveDevice => _isAutomotiveDevice;
+  bool get isSmallWatchDevice => _isSmallWatchDevice;
 
   /// 是否使用了非默认种子色。
   bool get hasCustomSeedColor => _seedColor != const Color(0xFF1478FF);
@@ -82,6 +86,11 @@ class ThemeController extends ChangeNotifier {
   /// 以便首次安装时据检测结果决定车机模式默认值。
   Future<void> detectAutomotive(DeviceInfoService deviceInfo) async {
     _isAutomotiveDevice = await deviceInfo.isAutomotive();
+  }
+
+  /// 检测是否为小屏手表设备并缓存结果。
+  Future<void> detectSmallWatch(DeviceInfoService deviceInfo) async {
+    _isSmallWatchDevice = await deviceInfo.isSmallWatch();
   }
 
   /// 加载持久化设置。

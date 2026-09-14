@@ -201,6 +201,8 @@ class _PlayerBodyState extends State<_PlayerBody> {
     _syncSystemUi(landscape);
     // 横屏分栏布局是车机专属，普通横屏仍用竖屏的翻页布局。
     final isCarLayout = landscape && ThemeController.instance.carModeEnabled;
+    // 小屏手表（如 S100 240x284 DPR 1.0）使用专属布局参数。
+    final isSmallWatch = ThemeController.instance.isSmallWatchDevice;
 
     return StatusBarOverlay(
       brightness: Brightness.dark,
@@ -1154,12 +1156,13 @@ class _TopBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tiny = MediaQuery.sizeOf(context).shortestSide < 300;
+    final smallWatch = ThemeController.instance.isSmallWatchDevice;
     return AnimatedBuilder(
       animation: auth,
       builder: (context, _) {
         final liked = auth.isLiked(song);
         return Padding(
-          padding: EdgeInsets.fromLTRB(8, tiny ? 2 : 8, 16, tiny ? 2 : 6),
+          padding: EdgeInsets.fromLTRB(smallWatch ? 4 : 8, tiny ? 2 : 8, smallWatch ? 8 : 16, tiny ? 2 : 6),
           child: Row(
             children: [
               IconButton(
@@ -1180,7 +1183,7 @@ class _TopBar extends StatelessWidget {
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         color: Colors.white,
                         fontWeight: FontWeight.w800,
-                        fontSize: tiny ? 12 : null,
+                        fontSize: tiny ? (smallWatch ? 11 : 12) : null,
                       ),
                     ),
                     if (!tiny)
@@ -1345,12 +1348,20 @@ class _PosterPlayerPageState extends State<_PosterPlayerPage>
       builder: (context, constraints) {
         final compact = constraints.maxHeight < 620;
         final tiny = constraints.maxHeight < 320 || constraints.maxWidth < 320;
-        final artworkMaxWidth = tiny
-            ? math.min(constraints.maxWidth * 0.38, constraints.maxHeight * 0.30).clamp(60.0, 120.0)
-            : (compact ? 250.0 : 330.0);
+        final smallWatch = ThemeController.instance.isSmallWatchDevice;
+        final artworkMaxWidth = smallWatch
+            ? 80.0
+            : tiny
+                ? math.min(constraints.maxWidth * 0.38, constraints.maxHeight * 0.30).clamp(60.0, 120.0)
+                : (compact ? 250.0 : 330.0);
 
         return Padding(
-          padding: EdgeInsets.fromLTRB(tiny ? 8 : 28, tiny ? 4 : 12, tiny ? 8 : 28, tiny ? 6 : 18),
+          padding: EdgeInsets.fromLTRB(
+            smallWatch ? 4 : (tiny ? 8 : 28),
+            smallWatch ? 2 : (tiny ? 4 : 12),
+            smallWatch ? 4 : (tiny ? 8 : 28),
+            smallWatch ? 2 : (tiny ? 6 : 18),
+          ),
           child: Column(
             children: [
               const Spacer(),
@@ -1380,18 +1391,18 @@ class _PosterPlayerPageState extends State<_PosterPlayerPage>
                         ),
                       ),
                     ),
-              SizedBox(height: tiny ? 4 : (compact ? 14 : 26)),
-              _PosterLyricPreview(player: widget.player, tiny: tiny),
+              SizedBox(height: smallWatch ? 2 : (tiny ? 4 : (compact ? 14 : 26))),
+              _PosterLyricPreview(player: widget.player, tiny: tiny || smallWatch),
               if (!compact && !tiny) const SizedBox(height: 4),
               if (!tiny) _CommentEntry(player: widget.player, song: widget.song),
               const Spacer(),
-              _Progress(player: widget.player, bright: true, compact: tiny),
-              SizedBox(height: tiny ? 4 : 10),
+              _Progress(player: widget.player, bright: true, compact: tiny || smallWatch),
+              SizedBox(height: smallWatch ? 2 : (tiny ? 4 : 10)),
               _Controls(
                 player: widget.player,
                 bright: true,
                 onQueue: widget.onQueue,
-                tinyOverride: tiny,
+                tinyOverride: tiny || smallWatch,
               ),
             ],
           ),
