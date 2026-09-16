@@ -19,8 +19,16 @@ class LocalMusicController extends ChangeNotifier {
   final Set<String> _excludedFolders = {};
   bool _isScanning = false;
 
-  /// 专辑封面缓存（albumId -> bytes）
+  /// 专辑封面缓存（albumId -> bytes），LRU 上限见 [_albumArtCacheMax]。
+  //
+  /// Dart 的 Map 保持插入顺序，利用这一点实现近似的 LRU：
+  /// 命中时把该 key 移到末尾，超限时移除最前面的（最久未用）项。
+  /// 封面字节占用常有几 MB/张，无上限缓存会在低内存手表上
+  /// 随曲库规模膨胀，最终触发 OOM。
   final Map<String, Uint8List> _albumArtCache = {};
+
+  /// 专辑封面缓存条目上限。
+  static const _albumArtCacheMax = 60;
 
   /// 规范化文件夹路径 -> 原始大小写路径（仅用于界面展示）。
   final Map<String, String> _folderDisplayNames = {};
@@ -195,7 +203,10 @@ class LocalMusicController extends ChangeNotifier {
   Future<Uint8List?> getAlbumArt(String albumId) async {
     if (!Platform.isAndroid) return null;
     if (_albumArtCache.containsKey(albumId)) {
-      return _albumArtCache[albumId];
+      // 命中：移到末尾，标记为最近使用。
+      final hit = _albumArtCache.remove(albumId);
+      _albumArtCache[albumId] = hit!;
+      return hit;
     }
     try {
       final bytes = await _channel.invokeMethod<Uint8List>(
@@ -204,6 +215,10 @@ class LocalMusicController extends ChangeNotifier {
       );
       if (bytes != null) {
         _albumArtCache[albumId] = bytes;
+        // 超限时淘汰最久未用的条目。
+        while (_albumArtCache.length > _albumArtCacheMax) {
+          _albumArtCache.remove(_albumArtCache.keys.first);
+        }
       }
       return bytes;
     } catch (e) {

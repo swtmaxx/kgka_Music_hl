@@ -1703,6 +1703,10 @@ class PlayerController extends ChangeNotifier {
 
   bool get isDesktopLyricsSupported => DesktopLyricsService.isSupportedPlatform;
 
+  /// 应用是否在前台。供播放页的动画/Ticker 门控使用——
+  /// 后台时停掉旋转动画与歌词 ticker，避免锁屏后持续耗 CPU 与电量。
+  bool get isAppForeground => _isAppForeground;
+
   void setAppForeground(bool isForeground) {
     if (_isAppForeground == isForeground) return;
     _isAppForeground = isForeground;

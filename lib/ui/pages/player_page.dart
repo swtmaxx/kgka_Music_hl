@@ -415,6 +415,7 @@ class _ArtworkBackground extends StatefulWidget {
 class _ArtworkBackgroundState extends State<_ArtworkBackground>
     with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   late final AnimationController _rotationController;
+  bool _appInBackground = false;
 
   @override
   void initState() {
@@ -424,30 +425,31 @@ class _ArtworkBackgroundState extends State<_ArtworkBackground>
       vsync: this,
       duration: const Duration(seconds: 40),
     );
-    if (!widget.isPaused) {
-      _rotationController.repeat();
-    }
+    // 仅当确有封面且应用在前台时才启动旋转动画。
+    // 无封面时空转会白耗 CPU/电量，是手表发热与掉电的主因之一。
+    _syncRotation();
   }
 
   @override
   void didUpdateWidget(covariant _ArtworkBackground oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.isPaused != widget.isPaused) {
-      if (widget.isPaused) {
-        if (_rotationController.isAnimating) _rotationController.stop();
-      } else {
-        if (!_rotationController.isAnimating) _rotationController.repeat();
-      }
-    }
+    _syncRotation();
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
-    if (state == AppLifecycleState.resumed) {
-      if (!widget.isPaused && !_rotationController.isAnimating) {
-        _rotationController.repeat();
-      }
+    _appInBackground = state != AppLifecycleState.resumed;
+    _syncRotation();
+  }
+
+  void _syncRotation() {
+    final shouldAnimate =
+        widget.song.coverUrl != null &&
+        !_appInBackground &&
+        !widget.isPaused;
+    if (shouldAnimate) {
+      if (!_rotationController.isAnimating) _rotationController.repeat();
     } else {
       if (_rotationController.isAnimating) _rotationController.stop();
     }
@@ -1116,6 +1118,13 @@ class _LandscapeLyricPanelState extends State<_LandscapeLyricPanel> {
     _syncTicker();
   }
 
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    // 前/后台切换时重同步 ticker：后台时停掉，避免锁屏后每帧 setState。
+    _syncTicker();
+  }
+
   void _syncLyrics() {
     final lyrics = widget.lyrics;
     if (lyrics.isNotEmpty) {
@@ -1125,11 +1134,14 @@ class _LandscapeLyricPanelState extends State<_LandscapeLyricPanel> {
   }
 
   void _syncTicker() {
+    // 仅在应用前台的监听时机才推进 ticker；页面不可见时不应
+    // 每帧触发 setState，否则会在锁屏/后台持续耗 CPU。
     final shouldTick =
         widget.player.isPlaying &&
         widget.lyrics.isNotEmpty &&
         !widget.player.isScrubbing &&
-        !_isUserSelecting;
+        !_isUserSelecting &&
+        widget.player.isAppForeground;
     if (shouldTick && !_ticker.isActive) {
       _ticker.start();
     } else if (!shouldTick && _ticker.isActive) {
@@ -1532,6 +1544,13 @@ class _PosterLyricPreviewState extends State<_PosterLyricPreview> {
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    // 前/后台切换时重同步 ticker：后台时停掉，避免锁屏后每帧 setState。
+    _syncTicker();
+  }
+
+  @override
   void dispose() {
     widget.player.removeListener(_syncTicker);
     _ticker.dispose();
@@ -1540,11 +1559,13 @@ class _PosterLyricPreviewState extends State<_PosterLyricPreview> {
   }
 
   void _syncTicker() {
+    // 同 [_LandscapeLyricPanelState._syncTicker]：后台时停 ticker。
     final shouldTick =
         widget.isPageVisible &&
         widget.player.isPlaying &&
         widget.player.lyrics.isNotEmpty &&
-        !widget.player.isScrubbing;
+        !widget.player.isScrubbing &&
+        widget.player.isAppForeground;
     if (shouldTick && !_ticker.isActive) {
       _ticker.start();
     } else if (!shouldTick && _ticker.isActive) {
