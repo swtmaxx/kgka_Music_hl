@@ -45,6 +45,7 @@ class PlayerController extends ChangeNotifier {
   static const _autoResumeAfterInterruptionSettingKey =
       'settings.auto_resume_after_interruption';
   static const _playbackSpeedSettingKey = 'settings.playback_speed';
+  static const _playbackVolumeSettingKey = 'settings.playback_volume';
   static const _desktopLyricsEnabledSettingKey =
       'settings.desktop_lyrics_enabled';
   static const _desktopLyricsSettingsKey = 'settings.desktop_lyrics_settings';
@@ -251,6 +252,12 @@ class PlayerController extends ChangeNotifier {
   bool autoPlayOnStartupEnabled = false;
   bool resumeLastPlaylistOnStartupEnabled = false;
   double playbackSpeed = 1.0;
+
+  /// 应用内播放音量（软件音量倍数，1.0 为原始音量）。
+  ///
+  /// 手表的实体音量键往往缺失或不方便操作，这个控件提供屏内音量调节。
+  /// 上限 1.0（不放大），避免削波失真；下限 0（静音）。
+  double playbackVolume = 1.0;
   bool equalizerEnabled = false;
   List<int> equalizerLevels = List<int>.of(_defaultEqualizerLevels);
   String equalizerPresetName = '平直';
@@ -290,6 +297,8 @@ class PlayerController extends ChangeNotifier {
     }
     return '关闭';
   }
+
+  String get playbackVolumeLabel => '${(playbackVolume * 100).round()}%';
 
   String get playbackSpeedLabel {
     if (playbackSpeed == playbackSpeed.roundToDouble()) {
@@ -811,6 +820,18 @@ class PlayerController extends ChangeNotifier {
     await audioPlayer.setSpeed(clamped);
     final prefs = await SharedPreferences.getInstance();
     await prefs.setDouble(_playbackSpeedSettingKey, clamped);
+    notifyListeners();
+  }
+
+  Future<void> setPlaybackVolume(double volume) async {
+    final clamped = volume.clamp(0.0, 1.0);
+    if ((playbackVolume - clamped).abs() < 0.001) {
+      return;
+    }
+    playbackVolume = clamped;
+    await audioPlayer.setVolume(clamped);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setDouble(_playbackVolumeSettingKey, clamped);
     notifyListeners();
   }
 
@@ -1864,6 +1885,7 @@ class PlayerController extends ChangeNotifier {
         prefs.getBool(_bluetoothLyricsEnabledSettingKey) ??
             bluetoothLyricsEnabled;
     playbackSpeed = prefs.getDouble(_playbackSpeedSettingKey) ?? playbackSpeed;
+    playbackVolume = prefs.getDouble(_playbackVolumeSettingKey) ?? playbackVolume;
     desktopLyricsEnabled =
         prefs.getBool(_desktopLyricsEnabledSettingKey) ?? desktopLyricsEnabled;
     final dlSettingsRaw = prefs.getString(_desktopLyricsSettingsKey);
@@ -1876,6 +1898,7 @@ class PlayerController extends ChangeNotifier {
       } catch (_) {}
     }
     unawaited(audioPlayer.setSpeed(playbackSpeed));
+    unawaited(audioPlayer.setVolume(playbackVolume));
     if (desktopLyricsEnabled) {
       unawaited(_desktopLyrics.updateSettings(desktopLyricsSettings));
     }

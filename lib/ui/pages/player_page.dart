@@ -22,6 +22,7 @@ import '../widgets/audio_quality_sheet.dart';
 import '../widgets/blurred_lyric_view.dart';
 import '../widgets/artwork.dart';
 import '../widgets/playback_speed_sheet.dart';
+import '../widgets/playback_volume_sheet.dart';
 import '../widgets/sleep_timer_sheet.dart';
 import '../widgets/song_action_sheets.dart';
 import '../widgets/toast.dart';
@@ -719,6 +720,12 @@ class _LandscapeHeader extends StatelessWidget {
           onTap: () => _showAudioQualityPicker(context, player),
         ),
         SongSheetAction(
+          icon: Icons.volume_up_rounded,
+          title: '音量：${player.playbackVolumeLabel}',
+          subtitle: '调整播放音量',
+          onTap: () => showPlaybackVolumeSheet(context: context, player: player),
+        ),
+        SongSheetAction(
           icon: Icons.auto_awesome_rounded,
           title: '试听高潮',
           subtitle: '播放歌曲高潮片段',
@@ -1321,6 +1328,13 @@ class _TopBar extends StatelessWidget {
           title: '音效',
           isGrid: true,
           onTap: () => showAudioEffectsSheet(context: context, player: player),
+        ),
+        SongSheetAction(
+          icon: Icons.volume_up_rounded,
+          title: '音量',
+          subtitle: player.playbackVolumeLabel,
+          isGrid: true,
+          onTap: () => showPlaybackVolumeSheet(context: context, player: player),
         ),
         SongSheetAction(
           icon: Icons.auto_awesome_rounded,
