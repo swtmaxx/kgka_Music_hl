@@ -1033,7 +1033,8 @@ class _LandscapeLyricPanel extends StatefulWidget {
   State<_LandscapeLyricPanel> createState() => _LandscapeLyricPanelState();
 }
 
-class _LandscapeLyricPanelState extends State<_LandscapeLyricPanel> {
+class _LandscapeLyricPanelState extends State<_LandscapeLyricPanel>
+    with WidgetsBindingObserver {
   late final LyricController _lyricController;
   late final Ticker _ticker;
   bool _isUserSelecting = false;
@@ -1041,6 +1042,7 @@ class _LandscapeLyricPanelState extends State<_LandscapeLyricPanel> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _lyricController = LyricController();
     _lyricController.setOnTapLineCallback((position) {
       widget.player.seek(position);
@@ -1063,6 +1065,7 @@ class _LandscapeLyricPanelState extends State<_LandscapeLyricPanel> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _lyricController.isSelectingNotifier.removeListener(_onSelectingChanged);
     _ticker.dispose();
     _lyricController.dispose();
@@ -1076,7 +1079,6 @@ class _LandscapeLyricPanelState extends State<_LandscapeLyricPanel> {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    super.didChangeAppLifecycleState(state);
     // 前/后台切换时重同步 ticker：后台时停掉，避免锁屏后每帧 setState。
     _syncTicker();
   }
@@ -1461,13 +1463,15 @@ class _PosterLyricPreview extends StatefulWidget {
   State<_PosterLyricPreview> createState() => _PosterLyricPreviewState();
 }
 
-class _PosterLyricPreviewState extends State<_PosterLyricPreview> {
+class _PosterLyricPreviewState extends State<_PosterLyricPreview>
+    with WidgetsBindingObserver {
   late final Ticker _ticker;
   Duration _position = Duration.zero;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _position = widget.player.smoothPosition;
     _ticker = Ticker(_onTick);
     _syncTicker();
@@ -1484,13 +1488,13 @@ class _PosterLyricPreviewState extends State<_PosterLyricPreview> {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    super.didChangeAppLifecycleState(state);
     // 前/后台切换时重同步 ticker：后台时停掉，避免锁屏后每帧 setState。
     _syncTicker();
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _ticker.dispose();
     super.dispose();
   }
