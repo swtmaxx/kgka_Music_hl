@@ -48,8 +48,8 @@ class Artwork extends StatelessWidget {
             : Image.network(
                 imageUrl,
                 fit: BoxFit.cover,
-                cacheWidth: _effectiveCacheSize,
-                cacheHeight: _effectiveCacheSize,
+                cacheWidth: _effectiveCacheSize.round(),
+                cacheHeight: _effectiveCacheSize.round(),
                 errorBuilder: (context, error, stackTrace) =>
                     _Fallback(icon: icon),
                 loadingBuilder: (context, child, progress) {
@@ -152,8 +152,8 @@ class _ContentUriImageState extends State<_ContentUriImage> {
     return Image.memory(
       _bytes!,
       fit: BoxFit.cover,
-      cacheWidth: cache,
-      cacheHeight: cache,
+      cacheWidth: cache.round(),
+      cacheHeight: cache.round(),
     );
   }
 }
