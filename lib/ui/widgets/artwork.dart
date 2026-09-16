@@ -8,12 +8,30 @@ class Artwork extends StatelessWidget {
     required this.size,
     this.borderRadius = 8,
     this.icon = Icons.music_note_rounded,
+    this.cacheSize,
   });
 
   final String? url;
   final double size;
   final double borderRadius;
   final IconData icon;
+
+  /// 解码缓存的目标边长（逻辑像素）。
+  //
+  /// 用于限制封面图的解码分辨率——即使显示尺寸很小，若不限制
+  /// 解码尺寸，1024x1024 的原图会全分辨率解码进内存，在低内存
+  /// 手表上极易触发 OOM。
+  //
+  /// 传 null 时自动按显示尺寸推导：`size * 3`（3 倍像素密度余量），
+  /// 并 clamp 到 [64, 480]。这样列表缩略图（44/48/50dp）只会解码
+  /// 约 132-150px，不会把大图全量驻留内存。
+  final double? cacheSize;
+
+  double get _effectiveCacheSize {
+    if (cacheSize != null) return cacheSize!;
+    if (!size.isFinite) return 480;
+    return (size * 3).clamp(64.0, 480.0).toDouble();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -30,6 +48,8 @@ class Artwork extends StatelessWidget {
             : Image.network(
                 imageUrl,
                 fit: BoxFit.cover,
+                cacheWidth: _effectiveCacheSize,
+                cacheHeight: _effectiveCacheSize,
                 errorBuilder: (context, error, stackTrace) =>
                     _Fallback(icon: icon),
                 loadingBuilder: (context, child, progress) {
@@ -125,7 +145,16 @@ class _ContentUriImageState extends State<_ContentUriImage> {
     if (_bytes == null) {
       return _Fallback(icon: widget.icon);
     }
-    return Image.memory(_bytes!, fit: BoxFit.cover);
+    // 本地专辑封面同样限制解码分辨率，避免大图全分辨率驻留内存。
+    final cache = widget.size.isFinite
+        ? widget.size.clamp(64.0, 480.0).toDouble()
+        : 480.0;
+    return Image.memory(
+      _bytes!,
+      fit: BoxFit.cover,
+      cacheWidth: cache,
+      cacheHeight: cache,
+    );
   }
 }
 
