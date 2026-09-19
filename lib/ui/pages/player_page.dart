@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:math' as math;
 import 'dart:ui';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../design_tokens.dart';
 import '../widgets/status_bar_overlay.dart';
@@ -49,11 +50,18 @@ class PlayerPage extends StatefulWidget {
 
 class _PlayerPageState extends State<PlayerPage> {
   static const _screenChannel = MethodChannel('kgka_music_hl/screen');
+  Song? _currentSong;
+  bool _isScreenOn = false;
 
   @override
   void initState() {
     super.initState();
-    unawaited(_setKeepScreenOn(true));
+    _currentSong = widget.player.currentSong;
+    widget.player.addListener(_onPlayerStateChanged);
+    if (widget.player.keepScreenOnEnabled) {
+      unawaited(_setKeepScreenOn(true));
+      _isScreenOn = true;
+    }
     // 不在此处调用 setPreferredOrientations：方向策略由 ThemeController 全局管理。
     // 如果这里解锁方向，即使用户在设置里没开横屏模式，旋转手机时播放页也会
     // 跟着旋转，影响竖屏体验。
@@ -61,8 +69,28 @@ class _PlayerPageState extends State<PlayerPage> {
 
   @override
   void dispose() {
-    unawaited(_setKeepScreenOn(false));
+    widget.player.removeListener(_onPlayerStateChanged);
+    if (_isScreenOn) {
+      unawaited(_setKeepScreenOn(false));
+      _isScreenOn = false;
+    }
     super.dispose();
+  }
+
+  void _onPlayerStateChanged() {
+    final newSong = widget.player.currentSong;
+    final keepScreenOn = widget.player.keepScreenOnEnabled;
+    if (_isScreenOn != keepScreenOn) {
+      _isScreenOn = keepScreenOn;
+      unawaited(_setKeepScreenOn(keepScreenOn));
+    }
+    if (_currentSong?.hash != newSong?.hash ||
+        _currentSong?.id != newSong?.id ||
+        (_currentSong == null) != (newSong == null)) {
+      setState(() {
+        _currentSong = newSong;
+      });
+    }
   }
 
   Future<void> _setKeepScreenOn(bool enabled) async {
@@ -77,22 +105,17 @@ class _PlayerPageState extends State<PlayerPage> {
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: widget.player,
-      builder: (context, _) {
-        final song = widget.player.currentSong;
-        if (song == null) {
-          return const Scaffold(body: SizedBox.shrink());
-        }
+    final song = _currentSong;
+    if (song == null) {
+      return const Scaffold(body: SizedBox.shrink());
+    }
 
-        return _PlayerBody(
-          player: widget.player,
-          auth: widget.auth,
-          song: song,
-          onClose: widget.onClose ?? () => Navigator.of(context).pop(),
-          onQueue: () => _showQueue(context),
-        );
-      },
+    return _PlayerBody(
+      player: widget.player,
+      auth: widget.auth,
+      song: song,
+      onClose: widget.onClose ?? () => Navigator.of(context).pop(),
+      onQueue: () => _showQueue(context),
     );
   }
 
@@ -211,7 +234,10 @@ class _PlayerBodyState extends State<_PlayerBody> {
           backgroundColor: Colors.black,
           body: Stack(
             children: [
-              _ArtworkBackground(song: widget.song),
+              _ArtworkBackground(
+                song: widget.song,
+                isPaused: _page == 1 && !_pageScrolling,
+              ),
             SafeArea(
               // 横屏时同样需要处理顶部状态栏和底部系统导航栏（如车机空调控制栏）的遮挡。
               // 竖屏已由外层 Scaffold 处理，这里对所有方向统一保留 SafeArea。
@@ -252,6 +278,7 @@ class _PlayerBodyState extends State<_PlayerBody> {
                                   player: widget.player,
                                   song: widget.song,
                                   onQueue: widget.onQueue,
+                                  isPageVisible: _page == 0 || _pageScrolling,
                                 ),
                                 _LyricPlayerPage(
                                   key: const PageStorageKey(
@@ -374,9 +401,13 @@ String _lyricDisplayModeLabel(_LyricDisplayMode mode) {
 }
 
 class _ArtworkBackground extends StatefulWidget {
-  const _ArtworkBackground({required this.song});
+  const _ArtworkBackground({
+    required this.song,
+    this.isPaused = false,
+  });
 
   final Song song;
+  final bool isPaused;
 
   @override
   State<_ArtworkBackground> createState() => _ArtworkBackgroundState();
@@ -414,7 +445,10 @@ class _ArtworkBackgroundState extends State<_ArtworkBackground>
   }
 
   void _syncRotation() {
-    final shouldAnimate = widget.song.coverUrl != null && !_appInBackground;
+    final shouldAnimate =
+        widget.song.coverUrl != null &&
+        !_appInBackground &&
+        !widget.isPaused;
     if (shouldAnimate) {
       if (!_rotationController.isAnimating) _rotationController.repeat();
     } else {
@@ -436,51 +470,53 @@ class _ArtworkBackgroundState extends State<_ArtworkBackground>
     final maxDim = math.max(size.width, size.height);
     final bgDim = maxDim.clamp(300.0, 900.0);
 
-    // 旋转动画背景是纯装饰性的，排除语义树防止 Windows AXTree 竞态崩溃
-    return ExcludeSemantics(
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          // 始终显示渐变兜底背景，避免封面加载期间出现纯黑背景
-          const _FallbackBackground(),
-          if (coverUrl != null)
-            Center(
-              child: SizedBox(
-                width: bgDim,
-                height: bgDim,
-                child: RotationTransition(
-                  turns: _rotationController,
-                  child: RepaintBoundary(
-                    child: ImageFiltered(
-                      imageFilter: ImageFilter.blur(sigmaX: 28, sigmaY: 28),
-                      child: Image.network(
-                        coverUrl,
-                        fit: BoxFit.cover,
-                        cacheWidth: 360,
-                        cacheHeight: 360,
-                        errorBuilder: (context, error, stackTrace) =>
-                            const SizedBox.shrink(),
+    // 旋转动画背景是纯装饰性的，排除语义树防止 Windows AXTree 竞态崩溃，并用 RepaintBoundary 彻底隔离图层
+    return RepaintBoundary(
+      child: ExcludeSemantics(
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            // 始终显示渐变兜底背景，避免封面加载期间出现纯黑背景
+            const _FallbackBackground(),
+            if (coverUrl != null)
+              Center(
+                child: SizedBox(
+                  width: bgDim,
+                  height: bgDim,
+                  child: RotationTransition(
+                    turns: _rotationController,
+                    child: RepaintBoundary(
+                      child: ImageFiltered(
+                        imageFilter: ImageFilter.blur(sigmaX: 28, sigmaY: 28),
+                        child: Image.network(
+                          coverUrl,
+                          fit: BoxFit.cover,
+                          cacheWidth: 360,
+                          cacheHeight: 360,
+                          errorBuilder: (context, error, stackTrace) =>
+                              const SizedBox.shrink(),
+                        ),
                       ),
                     ),
                   ),
                 ),
               ),
-            ),
-          DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  Colors.black.withValues(alpha: .32),
-                  Colors.black.withValues(alpha: .56),
-                  Colors.black.withValues(alpha: .82),
-                ],
+            DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.black.withValues(alpha: .32),
+                    Colors.black.withValues(alpha: .56),
+                    Colors.black.withValues(alpha: .82),
+                  ],
+                ),
               ),
             ),
-          ),
-          ColoredBox(color: Colors.black.withValues(alpha: .12)),
-        ],
+            ColoredBox(color: Colors.black.withValues(alpha: .12)),
+          ],
+        ),
       ),
     );
   }
@@ -815,12 +851,17 @@ class _LandscapeArtworkShowcaseState extends State<_LandscapeArtworkShowcase>
       vsync: this,
       duration: const Duration(seconds: 32),
     );
+    widget.player.addListener(_syncRotation);
     _syncRotation();
   }
 
   @override
   void didUpdateWidget(covariant _LandscapeArtworkShowcase oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.player != widget.player) {
+      oldWidget.player.removeListener(_syncRotation);
+      widget.player.addListener(_syncRotation);
+    }
     if (oldWidget.song.hash != widget.song.hash) {
       _rotationController.value = 0;
     }
@@ -829,6 +870,7 @@ class _LandscapeArtworkShowcaseState extends State<_LandscapeArtworkShowcase>
 
   @override
   void dispose() {
+    widget.player.removeListener(_syncRotation);
     _rotationController.dispose();
     super.dispose();
   }
@@ -865,9 +907,10 @@ class _LandscapeArtworkShowcaseState extends State<_LandscapeArtworkShowcase>
           final coverSize = discSize * (tiny ? .50 : (widget.compact ? .58 : .70));
 
           return Center(
-            // 旋转唱片是纯装饰动画，排除语义树防止 Windows AXTree 竞态崩溃
-            child: ExcludeSemantics(
-              child: SizedBox.square(
+            // 旋转唱片是纯装饰动画，排除语义树防止 Windows AXTree 竞态崩溃，并外包 RepaintBoundary 隔离图层
+            child: RepaintBoundary(
+              child: ExcludeSemantics(
+                child: SizedBox.square(
                 dimension: discSize,
                 child: AnimatedBuilder(
                   animation: _rotationController,
@@ -934,7 +977,8 @@ class _LandscapeArtworkShowcaseState extends State<_LandscapeArtworkShowcase>
                 ),
               ),
             ),
-          );
+          ),
+        );
         },
       ),
     );
@@ -1368,11 +1412,13 @@ class _PosterPlayerPage extends StatefulWidget {
     required this.player,
     required this.song,
     required this.onQueue,
+    this.isPageVisible = true,
   });
 
   final PlayerController player;
   final Song song;
   final VoidCallback onQueue;
+  final bool isPageVisible;
 
   @override
   State<_PosterPlayerPage> createState() => _PosterPlayerPageState();
@@ -1434,7 +1480,11 @@ class _PosterPlayerPageState extends State<_PosterPlayerPage>
                       ),
                     ),
               SizedBox(height: smallWatch ? 2 : (tiny ? 4 : (compact ? 14 : 26))),
-              _PosterLyricPreview(player: widget.player, tiny: tiny || smallWatch),
+              _PosterLyricPreview(
+                player: widget.player,
+                isPageVisible: widget.isPageVisible,
+                tiny: tiny || smallWatch,
+              ),
               if (!compact && !tiny) const SizedBox(height: 4),
               if (!tiny) _CommentEntry(player: widget.player, song: widget.song),
               const Spacer(),
@@ -1468,9 +1518,14 @@ int _activeLyricIndexFor(List<LyricLine> lyrics, Duration position) {
 }
 
 class _PosterLyricPreview extends StatefulWidget {
-  const _PosterLyricPreview({required this.player, this.tiny = false});
+  const _PosterLyricPreview({
+    required this.player,
+    this.isPageVisible = true,
+    this.tiny = false,
+  });
 
   final PlayerController player;
+  final bool isPageVisible;
   final bool tiny;
 
   @override
@@ -1480,22 +1535,28 @@ class _PosterLyricPreview extends StatefulWidget {
 class _PosterLyricPreviewState extends State<_PosterLyricPreview>
     with WidgetsBindingObserver {
   late final Ticker _ticker;
-  Duration _position = Duration.zero;
+  final _positionNotifier = ValueNotifier<Duration>(Duration.zero);
+  int _currentIndex = -1;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _position = widget.player.smoothPosition;
+    _positionNotifier.value = widget.player.smoothPosition;
     _ticker = Ticker(_onTick);
+    widget.player.addListener(_syncTicker);
     _syncTicker();
   }
 
   @override
   void didUpdateWidget(covariant _PosterLyricPreview oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.player != widget.player) {
+      oldWidget.player.removeListener(_syncTicker);
+      widget.player.addListener(_syncTicker);
+    }
     if (!widget.player.isScrubbing) {
-      _position = widget.player.smoothPosition;
+      _positionNotifier.value = widget.player.smoothPosition;
     }
     _syncTicker();
   }
@@ -1508,14 +1569,17 @@ class _PosterLyricPreviewState extends State<_PosterLyricPreview>
 
   @override
   void dispose() {
+    widget.player.removeListener(_syncTicker);
     WidgetsBinding.instance.removeObserver(this);
     _ticker.dispose();
+    _positionNotifier.dispose();
     super.dispose();
   }
 
   void _syncTicker() {
     // 同 [_LandscapeLyricPanelState._syncTicker]：后台时停 ticker。
     final shouldTick =
+        widget.isPageVisible &&
         widget.player.isPlaying &&
         widget.player.lyrics.isNotEmpty &&
         !widget.player.isScrubbing &&
@@ -1531,7 +1595,17 @@ class _PosterLyricPreviewState extends State<_PosterLyricPreview>
     if (!mounted || widget.player.isScrubbing) {
       return;
     }
-    setState(() => _position = widget.player.smoothPosition);
+    final lyrics = widget.player.lyrics;
+    if (lyrics.isEmpty) return;
+    final newPos = widget.player.smoothPosition;
+    _positionNotifier.value = newPos;
+    final newIndex = _activeLyricIndexFor(lyrics, newPos);
+    // 只有换行时才调用 setState 重建组件树，避免卡拉OK逐字进度每帧全量 rebuild
+    if (newIndex != _currentIndex) {
+      setState(() {
+        _currentIndex = newIndex;
+      });
+    }
   }
 
   @override
@@ -1553,7 +1627,9 @@ class _PosterLyricPreviewState extends State<_PosterLyricPreview>
       );
     }
 
-    final index = _activeLyricIndexFor(lyrics, _position);
+    final index = _currentIndex >= 0 && _currentIndex < lyrics.length
+        ? _currentIndex
+        : _activeLyricIndexFor(lyrics, _positionNotifier.value);
     final current = lyrics[index];
     final next = index + 1 < lyrics.length ? lyrics[index + 1] : null;
     final currentStyle = Theme.of(context).textTheme.titleLarge!.copyWith(
@@ -1587,7 +1663,7 @@ class _PosterLyricPreviewState extends State<_PosterLyricPreview>
                   child: _LyricText(
                     line: current,
                     active: true,
-                    position: _position,
+                    positionListenable: _positionNotifier,
                     styleOverride: currentStyle,
                     textAlign: TextAlign.center,
                     singleLine: true,
@@ -1653,8 +1729,6 @@ class _MarqueeSingleLineState extends State<_MarqueeSingleLine>
         ..stop()
         ..reset();
       _overflow = 0;
-      WidgetsBinding.instance.addPostFrameCallback((_) => _measure());
-    } else {
       WidgetsBinding.instance.addPostFrameCallback((_) => _measure());
     }
   }
@@ -1744,16 +1818,42 @@ class _LyricPlayerPage extends StatefulWidget {
 class _LyricPlayerPageState extends State<_LyricPlayerPage>
     with AutomaticKeepAliveClientMixin {
   late _LyricDisplayMode _displayMode;
+  List<LyricLine> _lastLyrics = const [];
 
   /// 歌词字体缩放倍率（持久化）。
   static const _lyricScaleKey = 'settings.lyric_scale';
   double _lyricScale = 1.0;
 
+  bool _lastLyricBlurEnabled = false;
+
   @override
   void initState() {
     super.initState();
-    _displayMode = _initialLyricDisplayMode(widget.player.lyrics);
+    _lastLyrics = widget.player.lyrics;
+    _lastLyricBlurEnabled = widget.player.lyricBlurEnabled;
+    _displayMode = _initialLyricDisplayMode(_lastLyrics);
     _loadLyricScale();
+    widget.player.addListener(_onPlayerLyricsChanged);
+  }
+
+  @override
+  void dispose() {
+    widget.player.removeListener(_onPlayerLyricsChanged);
+    super.dispose();
+  }
+
+  void _onPlayerLyricsChanged() {
+    final blurChanged = widget.player.lyricBlurEnabled != _lastLyricBlurEnabled;
+    if (widget.player.lyrics != _lastLyrics || blurChanged) {
+      _lastLyrics = widget.player.lyrics;
+      _lastLyricBlurEnabled = widget.player.lyricBlurEnabled;
+      setState(() {
+        _displayMode = _normalizeLyricDisplayMode(
+          _lastLyrics,
+          _displayMode,
+        );
+      });
+    }
   }
 
   Future<void> _loadLyricScale() async {
@@ -1776,6 +1876,10 @@ class _LyricPlayerPageState extends State<_LyricPlayerPage>
   @override
   void didUpdateWidget(covariant _LyricPlayerPage oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.player != widget.player) {
+      oldWidget.player.removeListener(_onPlayerLyricsChanged);
+      widget.player.addListener(_onPlayerLyricsChanged);
+    }
     if (oldWidget.song.hash != widget.song.hash ||
         oldWidget.player.lyrics != widget.player.lyrics) {
       _displayMode = _normalizeLyricDisplayMode(
@@ -1840,11 +1944,9 @@ class _LyricPlayerPageState extends State<_LyricPlayerPage>
             isPageVisible: widget.isPageVisible,
             lyricScale: _lyricScale,
           ),
-          // 字体大小调节按钮（左侧底部）
-          // left:64 避开 AppShell 覆盖层的左缘 60px opaque 手势条，
-          // 否则"缩小歌词"按钮会被手势条拦截（无法点击）。
+          // 字体大小调节按钮（左侧底部，左对齐）
           Positioned(
-            left: 64,
+            left: 0,
             bottom: 16,
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -1925,12 +2027,17 @@ class _LyricViewportState extends State<_LyricViewport> {
     _lyricController.isSelectingNotifier.addListener(_onSelectingChanged);
     _syncLyrics();
     _ticker = Ticker(_onTick);
+    widget.player.addListener(_syncTicker);
     _syncTicker();
   }
 
   @override
   void didUpdateWidget(covariant _LyricViewport oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.player != widget.player) {
+      oldWidget.player.removeListener(_syncTicker);
+      widget.player.addListener(_syncTicker);
+    }
     if (oldWidget.lyrics != widget.lyrics ||
         oldWidget.displayMode != widget.displayMode) {
       _syncLyrics();
@@ -1940,6 +2047,7 @@ class _LyricViewportState extends State<_LyricViewport> {
 
   @override
   void dispose() {
+    widget.player.removeListener(_syncTicker);
     _lyricController.isSelectingNotifier.removeListener(_onSelectingChanged);
     _ticker.dispose();
     _lyricController.dispose();
@@ -2046,13 +2154,17 @@ class _LyricViewportState extends State<_LyricViewport> {
       scrollCurve: const Cubic(0.16, 1.0, 0.3, 1.0),
     );
 
+    final blurEnabled = widget.player.lyricBlurEnabled;
+    final maxBlurSigma = blurEnabled ? _lyricBlurSigma : 0.0;
+    final blurStep = blurEnabled ? _lyricBlurStep : 0.0;
+
     return ExcludeSemantics(
       // 歌词视图高频更新会触发 Windows AXTree 竞态崩溃，排除语义树
       child: BlurredLyricView(
         controller: _lyricController,
         style: lyricStyle,
-        maxBlurSigma: _lyricBlurSigma,
-        blurStep: _lyricBlurStep,
+        maxBlurSigma: maxBlurSigma,
+        blurStep: blurStep,
       ),
     );
   }
@@ -2062,7 +2174,7 @@ class _LyricText extends StatelessWidget {
   const _LyricText({
     required this.line,
     required this.active,
-    required this.position,
+    this.positionListenable,
     this.styleOverride,
     this.textAlign = TextAlign.start,
     this.singleLine = false,
@@ -2070,7 +2182,7 @@ class _LyricText extends StatelessWidget {
 
   final LyricLine line;
   final bool active;
-  final Duration position;
+  final ValueListenable<Duration>? positionListenable;
   final TextStyle? styleOverride;
   final TextAlign textAlign;
   final bool singleLine;
@@ -2103,7 +2215,7 @@ class _LyricText extends StatelessWidget {
     if (singleLine) {
       final painter = _KaraokeLinePainter(
         line: line,
-        position: position,
+        positionListenable: positionListenable,
         style: style,
         baseColor: Colors.white.withValues(alpha: .34),
         activeColor: Colors.white,
@@ -2122,7 +2234,7 @@ class _LyricText extends StatelessWidget {
       builder: (context, constraints) {
         final painter = _KaraokeLinePainter(
           line: line,
-          position: position,
+          positionListenable: positionListenable,
           style: style,
           baseColor: Colors.white.withValues(alpha: .34),
           activeColor: Colors.white,
@@ -2143,7 +2255,7 @@ class _LyricText extends StatelessWidget {
 class _KaraokeLinePainter extends CustomPainter {
   _KaraokeLinePainter({
     required this.line,
-    required this.position,
+    this.positionListenable,
     required this.style,
     required this.baseColor,
     required this.activeColor,
@@ -2151,7 +2263,7 @@ class _KaraokeLinePainter extends CustomPainter {
     required this.textAlign,
     required this.maxLines,
     required this.maxWidth,
-  }) {
+  }) : super(repaint: positionListenable) {
     _textPainter = TextPainter(
       text: TextSpan(
         text: line.text,
@@ -2161,51 +2273,9 @@ class _KaraokeLinePainter extends CustomPainter {
       textAlign: textAlign,
       maxLines: maxLines,
     )..layout(maxWidth: maxLines == 1 ? double.infinity : maxWidth);
-  }
 
-  final LyricLine line;
-  final Duration position;
-  final TextStyle style;
-  final Color baseColor;
-  final Color activeColor;
-  final TextDirection textDirection;
-  final TextAlign textAlign;
-  final int? maxLines;
-  final double maxWidth;
-  late final TextPainter _textPainter;
-
-  double get width => _textPainter.width;
-  double get height => _textPainter.height;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    _textPainter.paint(canvas, Offset.zero);
-
-    var start = 0;
-    for (final word in line.words) {
-      final end = start + word.text.length;
-      final progress = _wordProgress(word);
-      if (progress > 0) {
-        _paintWordProgress(canvas, start, end, progress);
-      }
-      start = end;
-    }
-  }
-
-  double _wordProgress(LyricWord word) {
-    if (position < word.time) return 0;
-    final durationMs = word.duration.inMilliseconds;
-    if (durationMs <= 0) return 1;
-    final elapsed = position.inMilliseconds - word.time.inMilliseconds;
-    return (elapsed / durationMs).clamp(0, 1).toDouble();
-  }
-
-  void _paintWordProgress(Canvas canvas, int start, int end, double progress) {
-    final selection = TextSelection(baseOffset: start, extentOffset: end);
-    final boxes = _textPainter.getBoxesForSelection(selection);
-    if (boxes.isEmpty) return;
-
-    final highlightPainter = TextPainter(
+    // 预先排版高亮文本画笔，避免在 paint() 循环中每帧重复 new TextPainter()..layout()
+    _highlightPainter = TextPainter(
       text: TextSpan(
         text: line.text,
         style: style.copyWith(color: activeColor),
@@ -2214,6 +2284,52 @@ class _KaraokeLinePainter extends CustomPainter {
       textAlign: textAlign,
       maxLines: maxLines,
     )..layout(maxWidth: maxLines == 1 ? double.infinity : maxWidth);
+  }
+
+  final LyricLine line;
+  final ValueListenable<Duration>? positionListenable;
+  final TextStyle style;
+  final Color baseColor;
+  final Color activeColor;
+  final TextDirection textDirection;
+  final TextAlign textAlign;
+  final int? maxLines;
+  final double maxWidth;
+  late final TextPainter _textPainter;
+  late final TextPainter _highlightPainter;
+
+  Duration get _currentPosition => positionListenable?.value ?? Duration.zero;
+  double get width => _textPainter.width;
+  double get height => _textPainter.height;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    _textPainter.paint(canvas, Offset.zero);
+
+    final currentPos = _currentPosition;
+    var start = 0;
+    for (final word in line.words) {
+      final end = start + word.text.length;
+      final progress = _wordProgress(word, currentPos);
+      if (progress > 0) {
+        _paintWordProgress(canvas, start, end, progress);
+      }
+      start = end;
+    }
+  }
+
+  double _wordProgress(LyricWord word, Duration currentPos) {
+    if (currentPos < word.time) return 0;
+    final durationMs = word.duration.inMilliseconds;
+    if (durationMs <= 0) return 1;
+    final elapsed = currentPos.inMilliseconds - word.time.inMilliseconds;
+    return (elapsed / durationMs).clamp(0, 1).toDouble();
+  }
+
+  void _paintWordProgress(Canvas canvas, int start, int end, double progress) {
+    final selection = TextSelection(baseOffset: start, extentOffset: end);
+    final boxes = _textPainter.getBoxesForSelection(selection);
+    if (boxes.isEmpty) return;
 
     for (final box in boxes) {
       final rect = box.toRect();
@@ -2222,14 +2338,14 @@ class _KaraokeLinePainter extends CustomPainter {
 
       canvas.save();
       canvas.clipRect(Rect.fromLTWH(rect.left, rect.top, clipWidth, rect.height));
-      highlightPainter.paint(canvas, Offset.zero);
+      _highlightPainter.paint(canvas, Offset.zero);
       canvas.restore();
     }
   }
 
   @override
   bool shouldRepaint(covariant _KaraokeLinePainter oldDelegate) {
-    return oldDelegate.position != position ||
+    return oldDelegate.positionListenable != positionListenable ||
         oldDelegate.line != line ||
         oldDelegate.style != style ||
         oldDelegate.maxWidth != maxWidth;
@@ -2249,118 +2365,123 @@ class _Progress extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final max = player.duration.inMilliseconds <= 0
-        ? 1.0
-        : player.duration.inMilliseconds.toDouble();
-    final value = player.smoothPosition.inMilliseconds
-        .clamp(0, max.toInt())
-        .toDouble();
-    final textColor = bright
-        ? Colors.white.withValues(alpha: .64)
-        : Theme.of(context).colorScheme.onSurfaceVariant;
-    // 高潮片段时间点（进度条小圆点），无高潮或无效时为空。
-    final climax = player.climax;
-    final climaxFraction = climax != null &&
-            climax.isValid &&
-            max > 0 &&
-            climax.startTime.inMilliseconds <= max.toInt()
-        ? climax.startTime.inMilliseconds / max
-        : null;
+    return AnimatedBuilder(
+      animation: player,
+      builder: (context, _) {
+        final max = player.duration.inMilliseconds <= 0
+            ? 1.0
+            : player.duration.inMilliseconds.toDouble();
+        final value = player.smoothPosition.inMilliseconds
+            .clamp(0, max.toInt())
+            .toDouble();
+        final textColor = bright
+            ? Colors.white.withValues(alpha: .64)
+            : Theme.of(context).colorScheme.onSurfaceVariant;
+        // 高潮片段时间点（进度条小圆点），无高潮或无效时为空。
+        final climax = player.climax;
+        final climaxFraction = climax != null &&
+                climax.isValid &&
+                max > 0 &&
+                climax.startTime.inMilliseconds <= max.toInt()
+            ? climax.startTime.inMilliseconds / max
+            : null;
 
-    return Column(
-      children: [
-        LayoutBuilder(
-          builder: (context, constraints) {
-            final width = constraints.maxWidth;
-            final thumbRadius = compact ? 4.0 : 5.0;
-            final dotSize = compact ? 7.0 : 8.0;
-            return Stack(
-              alignment: Alignment.centerLeft,
-              children: [
-                SliderTheme(
-                  data: SliderTheme.of(context).copyWith(
-                    trackHeight: compact ? 3 : 5,
-                    thumbShape: RoundSliderThumbShape(
-                      enabledThumbRadius: compact ? 4 : 5,
+        return Column(
+          children: [
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final width = constraints.maxWidth;
+                final thumbRadius = compact ? 4.0 : 5.0;
+                final dotSize = compact ? 7.0 : 8.0;
+                return Stack(
+                  alignment: Alignment.centerLeft,
+                  children: [
+                    SliderTheme(
+                      data: SliderTheme.of(context).copyWith(
+                        trackHeight: compact ? 3 : 5,
+                        thumbShape: RoundSliderThumbShape(
+                          enabledThumbRadius: compact ? 4 : 5,
+                        ),
+                        overlayShape: RoundSliderOverlayShape(
+                          overlayRadius: compact ? 10 : 14,
+                        ),
+                        activeTrackColor: bright
+                            ? Colors.white.withValues(alpha: .86)
+                            : Theme.of(context).colorScheme.primary,
+                        inactiveTrackColor: bright
+                            ? Colors.white.withValues(alpha: .25)
+                            : Theme.of(context).colorScheme.surfaceContainerHighest,
+                        thumbColor: Colors.white,
+                      ),
+                      child: Slider(
+                        value: value,
+                        max: max,
+                        onChanged: (value) =>
+                            player.previewSeek(
+                                Duration(milliseconds: value.round())),
+                        onChangeEnd: (value) =>
+                            player.seek(Duration(milliseconds: value.round())),
+                      ),
                     ),
-                    overlayShape: RoundSliderOverlayShape(
-                      overlayRadius: compact ? 10 : 14,
-                    ),
-                    activeTrackColor: bright
-                        ? Colors.white.withValues(alpha: .86)
-                        : Theme.of(context).colorScheme.primary,
-                    inactiveTrackColor: bright
-                        ? Colors.white.withValues(alpha: .25)
-                        : Theme.of(context).colorScheme.surfaceContainerHighest,
-                    thumbColor: Colors.white,
-                  ),
-                  child: Slider(
-                    value: value,
-                    max: max,
-                    onChanged: (value) =>
-                        player.previewSeek(
-                            Duration(milliseconds: value.round())),
-                    onChangeEnd: (value) =>
-                        player.seek(Duration(milliseconds: value.round())),
-                  ),
-                ),
-                if (climaxFraction != null)
-                  Positioned(
-                    left: thumbRadius +
-                        climaxFraction * (width - 2 * thumbRadius) -
-                        dotSize / 2,
-                    top: 24 - dotSize / 2,
-                    child: IgnorePointer(
-                      child: Container(
-                        width: dotSize,
-                        height: dotSize,
-                        decoration: BoxDecoration(
-                          color: bright
-                              ? Colors.white
-                              : Theme.of(context).colorScheme.primary,
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: bright
-                                ? Colors.black.withValues(alpha: .4)
-                                : Colors.white,
-                            width: 1.2,
+                    if (climaxFraction != null)
+                      Positioned(
+                        left: thumbRadius +
+                            climaxFraction * (width - 2 * thumbRadius) -
+                            dotSize / 2,
+                        top: 24 - dotSize / 2,
+                        child: IgnorePointer(
+                          child: Container(
+                            width: dotSize,
+                            height: dotSize,
+                            decoration: BoxDecoration(
+                              color: bright
+                                  ? Colors.white
+                                  : Theme.of(context).colorScheme.primary,
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: bright
+                                    ? Colors.black.withValues(alpha: .4)
+                                    : Colors.white,
+                                width: 1.2,
+                              ),
+                            ),
                           ),
                         ),
                       ),
+                  ],
+                );
+              },
+            ),
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: compact ? 2 : 4),
+              child: Row(
+                children: [
+                  Text(
+                    formatDuration(player.smoothPosition),
+                    style: TextStyle(
+                      color: textColor,
+                      fontSize: compact ? 12 : null,
                     ),
                   ),
-              ],
-            );
-          },
-        ),
-        Padding(
-          padding: EdgeInsets.symmetric(horizontal: compact ? 2 : 4),
-          child: Row(
-            children: [
-              Text(
-                formatDuration(player.smoothPosition),
-                style: TextStyle(
-                  color: textColor,
-                  fontSize: compact ? 12 : null,
-                ),
+                  const Spacer(),
+                  Text(
+                    formatDuration(player.duration),
+                    style: TextStyle(
+                      color: textColor,
+                      fontSize: compact ? 12 : null,
+                    ),
+                  ),
+                ],
               ),
-              const Spacer(),
-              Text(
-                formatDuration(player.duration),
-                style: TextStyle(
-                  color: textColor,
-                  fontSize: compact ? 12 : null,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
+            ),
+          ],
+        );
+      },
     );
   }
 }
 
-class _Controls extends StatelessWidget {
+class _Controls extends StatefulWidget {
   const _Controls({
     required this.player,
     required this.onQueue,
@@ -2378,8 +2499,60 @@ class _Controls extends StatelessWidget {
   final bool tinyOverride;
 
   @override
+  State<_Controls> createState() => _ControlsState();
+}
+
+class _ControlsState extends State<_Controls> {
+  late bool _isPlaying;
+  late PlaybackMode _playbackMode;
+  late bool _isBuffering;
+
+  @override
+  void initState() {
+    super.initState();
+    _isPlaying = widget.player.isPlaying;
+    _playbackMode = widget.player.playbackMode;
+    _isBuffering = widget.player.isBuffering;
+    widget.player.addListener(_onPlayerChanged);
+  }
+
+  @override
+  void didUpdateWidget(covariant _Controls oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.player != widget.player) {
+      oldWidget.player.removeListener(_onPlayerChanged);
+      _isPlaying = widget.player.isPlaying;
+      _playbackMode = widget.player.playbackMode;
+      _isBuffering = widget.player.isBuffering;
+      widget.player.addListener(_onPlayerChanged);
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.player.removeListener(_onPlayerChanged);
+    super.dispose();
+  }
+
+  void _onPlayerChanged() {
+    final newIsPlaying = widget.player.isPlaying;
+    final newPlaybackMode = widget.player.playbackMode;
+    final newIsBuffering = widget.player.isBuffering;
+
+    if (newIsPlaying != _isPlaying ||
+        newPlaybackMode != _playbackMode ||
+        newIsBuffering != _isBuffering) {
+      setState(() {
+        _isPlaying = newIsPlaying;
+        _playbackMode = newPlaybackMode;
+        _isBuffering = newIsBuffering;
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final color = bright
+    final color = widget.bright
         ? Colors.white
         : Theme.of(context).colorScheme.onSurface;
     final size = MediaQuery.sizeOf(context);
@@ -2387,9 +2560,9 @@ class _Controls extends StatelessWidget {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final compact = compactOverride || constraints.maxWidth < 360;
-        final dense = denseOverride;
-        final tiny = tinyOverride;
+        final compact = widget.compactOverride || constraints.maxWidth < 360;
+        final dense = widget.denseOverride;
+        final tiny = widget.tinyOverride;
         // 超大按钮仅在车机模式开启时使用，普通横屏用标准尺寸。
         final isCar = isLandscape && ThemeController.instance.carModeEnabled;
         final edgeButtonSize = tiny ? 26.0 : (dense ? 34.0 : (isCar ? 56.0 : (compact ? 40.0 : 44.0)));
@@ -2406,18 +2579,18 @@ class _Controls extends StatelessWidget {
             SizedBox.square(
               dimension: edgeButtonSize,
               child: IconButton(
-                tooltip: player.playbackModeLabel,
+                tooltip: widget.player.playbackModeLabel,
                 color: color,
                 iconSize: edgeIconSize,
                 padding: EdgeInsets.zero,
                 onPressed: () {
-                  player.cyclePlaybackMode();
+                  widget.player.cyclePlaybackMode();
                   Toast.show(
-                    '已切换到${player.playbackModeLabel}',
+                    '已切换到${widget.player.playbackModeLabel}',
                     duration: const Duration(milliseconds: 1100),
                   );
                 },
-                icon: Icon(_playbackModeIcon(player.playbackMode)),
+                icon: Icon(_playbackModeIcon(_playbackMode)),
               ),
             ),
             SizedBox(width: gap),
@@ -2428,32 +2601,38 @@ class _Controls extends StatelessWidget {
                 color: color,
                 iconSize: skipIconSize,
                 padding: EdgeInsets.zero,
-                onPressed: player.previous,
+                onPressed: widget.player.previous,
                 icon: const Icon(Icons.skip_previous_rounded),
               ),
             ),
             SizedBox(width: gap),
             SizedBox.square(
               dimension: playButtonSize,
-              child: IconButton(
-                tooltip: player.isPlaying ? '暂停' : '播放',
-                color: color,
-                padding: EdgeInsets.zero,
-                onPressed: player.isPreparing ? null : player.togglePlay,
-                iconSize: playIconSize,
-                icon: player.isPreparing
-                    ? SizedBox.square(
-                        dimension: isCar ? 36 : (compact ? 24 : 28),
-                        child: const CircularProgressIndicator(
-                          strokeWidth: 3,
-                          color: Colors.white,
+              child: Material(
+                color: widget.bright
+                    ? Colors.white.withValues(alpha: .18)
+                    : Theme.of(context).colorScheme.primaryContainer,
+                shape: const CircleBorder(),
+                child: IconButton(
+                  tooltip: _isPlaying ? '暂停' : '播放',
+                  color: color,
+                  iconSize: playIconSize,
+                  padding: EdgeInsets.zero,
+                  onPressed: widget.player.togglePlay,
+                  icon: _isBuffering
+                      ? SizedBox.square(
+                          dimension: playIconSize * .58,
+                          child: const CircularProgressIndicator(
+                            strokeWidth: 2.6,
+                            color: Colors.white,
+                          ),
+                        )
+                      : Icon(
+                          _isPlaying
+                              ? Icons.pause_rounded
+                              : Icons.play_arrow_rounded,
                         ),
-                      )
-                    : Icon(
-                        player.isPlaying
-                            ? Icons.pause_rounded
-                            : Icons.play_arrow_rounded,
-                      ),
+                ),
               ),
             ),
             SizedBox(width: gap),
@@ -2464,7 +2643,7 @@ class _Controls extends StatelessWidget {
                 color: color,
                 iconSize: skipIconSize,
                 padding: EdgeInsets.zero,
-                onPressed: player.next,
+                onPressed: widget.player.next,
                 icon: const Icon(Icons.skip_next_rounded),
               ),
             ),
@@ -2476,7 +2655,7 @@ class _Controls extends StatelessWidget {
                 color: color,
                 iconSize: edgeIconSize,
                 padding: EdgeInsets.zero,
-                onPressed: onQueue,
+                onPressed: widget.onQueue,
                 icon: const Icon(Icons.queue_music_rounded),
               ),
             ),
