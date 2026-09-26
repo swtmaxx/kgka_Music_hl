@@ -722,7 +722,7 @@ class _LandscapeHeader extends StatelessWidget {
         SongSheetAction(
           icon: Icons.volume_up_rounded,
           title: '音量：${player.playbackVolumeLabel}',
-          subtitle: '调整播放音量',
+          subtitle: player.playbackVolumeDescription,
           onTap: () => showPlaybackVolumeSheet(context: context, player: player),
         ),
         SongSheetAction(
@@ -2806,4 +2806,3 @@ class _PageDots extends StatelessWidget {
     );
   }
 }
-

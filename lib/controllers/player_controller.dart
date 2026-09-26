@@ -19,6 +19,7 @@ import '../services/music_audio_handler.dart';
 import '../services/bluetooth_lyrics_service.dart';
 import '../services/playback_history_service.dart';
 import '../services/playback_stats_service.dart';
+import '../services/system_volume_service.dart';
 import '../services/super_lyric_service.dart';
 import 'download_controller.dart';
 import 'local_music_controller.dart';
@@ -181,6 +182,7 @@ class PlayerController extends ChangeNotifier {
   /// 设置（含开机自启开关）从本地恢复完成的 Future。
   Future<void> get settingsRestored => _settingsRestored.future;
   final AudioEffectsService _audioEffects = AudioEffectsService();
+  final SystemVolumeService _systemVolume = SystemVolumeService();
   final DesktopLyricsService _desktopLyrics = DesktopLyricsService();
   final PlaybackHistoryService _historyService = PlaybackHistoryService();
   final PlaybackStatsService _statsService = PlaybackStatsService();
@@ -282,6 +284,9 @@ class PlayerController extends ChangeNotifier {
   String? errorMessage;
   int seekRevision = 0;
   int? _androidAudioSessionId;
+  bool get usesSystemVolumeControl => _systemVolume.isSupported;
+  String get playbackVolumeDescription =>
+      usesSystemVolumeControl ? '调整系统媒体音量' : '调整播放音量';
   bool get isScrubbing => _isScrubbing;
   bool get isAudioEffectsSupported => _audioEffects.isAudioEffectsSupported;
   bool get isBassBoostSupported => _audioEffects.isBassBoostSupported;
@@ -824,14 +829,34 @@ class PlayerController extends ChangeNotifier {
   }
 
   Future<void> setPlaybackVolume(double volume) async {
-    final clamped = volume.clamp(0.0, 1.0);
+    final clamped = volume.clamp(0.0, 1.0).toDouble();
     if ((playbackVolume - clamped).abs() < 0.001) {
       return;
     }
+
+    if (usesSystemVolumeControl) {
+      final actualVolume = await _systemVolume.setVolume(clamped);
+      if (actualVolume != null) {
+        playbackVolume = actualVolume;
+        notifyListeners();
+        return;
+      }
+    }
+
     playbackVolume = clamped;
     await audioPlayer.setVolume(clamped);
     final prefs = await SharedPreferences.getInstance();
     await prefs.setDouble(_playbackVolumeSettingKey, clamped);
+    notifyListeners();
+  }
+
+  Future<void> refreshPlaybackVolume() async {
+    final systemVolume = await _systemVolume.getVolume();
+    if (systemVolume == null ||
+        (playbackVolume - systemVolume).abs() < 0.001) {
+      return;
+    }
+    playbackVolume = systemVolume;
     notifyListeners();
   }
 
@@ -1886,6 +1911,10 @@ class PlayerController extends ChangeNotifier {
             bluetoothLyricsEnabled;
     playbackSpeed = prefs.getDouble(_playbackSpeedSettingKey) ?? playbackSpeed;
     playbackVolume = prefs.getDouble(_playbackVolumeSettingKey) ?? playbackVolume;
+    final systemVolume = await _systemVolume.getVolume();
+    if (systemVolume != null) {
+      playbackVolume = systemVolume;
+    }
     desktopLyricsEnabled =
         prefs.getBool(_desktopLyricsEnabledSettingKey) ?? desktopLyricsEnabled;
     final dlSettingsRaw = prefs.getString(_desktopLyricsSettingsKey);
@@ -1898,7 +1927,9 @@ class PlayerController extends ChangeNotifier {
       } catch (_) {}
     }
     unawaited(audioPlayer.setSpeed(playbackSpeed));
-    unawaited(audioPlayer.setVolume(playbackVolume));
+    if (systemVolume == null) {
+      unawaited(audioPlayer.setVolume(playbackVolume));
+    }
     if (desktopLyricsEnabled) {
       unawaited(_desktopLyrics.updateSettings(desktopLyricsSettings));
     }
