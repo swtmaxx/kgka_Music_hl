@@ -59,6 +59,8 @@ class PlayerController extends ChangeNotifier {
       'settings.volume_normalization_enabled';
   static const _bluetoothLyricsEnabledSettingKey =
       'settings.bluetooth_lyrics_enabled';
+  static const _keepScreenOnSettingKey = 'settings.keep_screen_on';
+  static const _lyricBlurSettingKey = 'settings.lyric_blur_enabled';
   static const _queueKey = 'playback.queue';
   static const _currentSongKey = 'playback.current_song';
   static const _currentPositionKey = 'playback.current_position';
@@ -237,6 +239,8 @@ class PlayerController extends ChangeNotifier {
   bool isPreparing = false;
   bool _isChangingSource = false;
   bool addListeningTimeEnabled = true;
+  bool keepScreenOnEnabled = false;
+  bool lyricBlurEnabled = false;
   AudioQuality audioQuality = AudioQuality.standard;
 
   bool get isPersonalFmActive => _isPersonalFmActive;
@@ -387,6 +391,26 @@ class PlayerController extends ChangeNotifier {
     } else {
       _syncListeningTimeTracker();
     }
+    notifyListeners();
+  }
+
+  Future<void> setKeepScreenOnEnabled(bool enabled) async {
+    if (keepScreenOnEnabled == enabled) {
+      return;
+    }
+    keepScreenOnEnabled = enabled;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keepScreenOnSettingKey, enabled);
+    notifyListeners();
+  }
+
+  Future<void> setLyricBlurEnabled(bool enabled) async {
+    if (lyricBlurEnabled == enabled) {
+      return;
+    }
+    lyricBlurEnabled = enabled;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_lyricBlurSettingKey, enabled);
     notifyListeners();
   }
 
@@ -1819,6 +1843,10 @@ class PlayerController extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     addListeningTimeEnabled =
         prefs.getBool(_listenTimeSettingKey) ?? addListeningTimeEnabled;
+    keepScreenOnEnabled =
+        prefs.getBool(_keepScreenOnSettingKey) ?? keepScreenOnEnabled;
+    lyricBlurEnabled =
+        prefs.getBool(_lyricBlurSettingKey) ?? lyricBlurEnabled;
     audioQuality = AudioQuality.fromApiValue(
       prefs.getString(_audioQualitySettingKey),
     );

@@ -173,12 +173,17 @@ class _BlurredLyricPainter extends LyricPainter {
   ) {
     final distance = (index - playIndex).abs();
     final shouldStaySharp = distance == 0 || (isSelecting && isInAnchorArea);
-    if (shouldStaySharp) {
+    if (shouldStaySharp || maxBlurSigma <= 0) {
       super.drawLine(canvas, metric, size, index, isInAnchorArea);
       return;
     }
 
     final sigma = math.min(maxBlurSigma, blurStep * distance).toDouble();
+    if (sigma <= 0) {
+      super.drawLine(canvas, metric, size, index, isInAnchorArea);
+      return;
+    }
+
     final blurPaint = Paint()
       ..imageFilter = ImageFilter.blur(sigmaX: sigma, sigmaY: sigma);
     canvas.saveLayer(null, blurPaint);
