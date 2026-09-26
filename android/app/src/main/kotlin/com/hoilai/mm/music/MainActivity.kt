@@ -9,6 +9,7 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.database.Cursor
+import android.media.AudioManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -130,6 +131,34 @@ class MainActivity : AudioServiceActivity() {
                             result.success(null)
                         }.onFailure { error ->
                             result.error("download_failed", error.message, null)
+                        }
+                    }
+                    else -> result.notImplemented()
+                }
+            }
+
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "kgka_music_hl/volume")
+            .setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "getVolume" -> runCatching {
+                        currentMusicVolumePercent()
+                    }.onSuccess { volume ->
+                        result.success(volume)
+                    }.onFailure { error ->
+                        result.error("volume_read_failed", error.message, null)
+                    }
+                    "setVolume" -> {
+                        val value = call.argument<Int>("value")
+                        if (value == null) {
+                            result.error("invalid_volume", "Volume is missing", null)
+                            return@setMethodCallHandler
+                        }
+                        runCatching {
+                            setMusicVolumePercent(value)
+                        }.onSuccess { volume ->
+                            result.success(volume)
+                        }.onFailure { error ->
+                            result.error("volume_write_failed", error.message, null)
                         }
                     }
                     else -> result.notImplemented()
@@ -1041,6 +1070,24 @@ class MainActivity : AudioServiceActivity() {
         return metrics.widthPixels <= 300
             && metrics.heightPixels <= 320
             && metrics.heightPixels > metrics.widthPixels
+    }
+
+    private fun currentMusicVolumePercent(): Int {
+        val audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
+        val maxVolume = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
+        if (maxVolume <= 0) return 100
+        val currentVolume = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC)
+        return (currentVolume * 100.0 / maxVolume).toInt().coerceIn(0, 100)
+    }
+
+    private fun setMusicVolumePercent(percent: Int): Int {
+        val audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
+        val maxVolume = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
+        if (maxVolume <= 0) return 100
+
+        val targetVolume = ((percent.coerceIn(0, 100) * maxVolume + 50) / 100)
+        audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, targetVolume, 0)
+        return currentMusicVolumePercent()
     }
 
     private fun getAlbumArtBytes(albumId: Long): ByteArray? {

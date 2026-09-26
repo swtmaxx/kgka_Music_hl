@@ -40,6 +40,10 @@ class _PlaybackVolumeSheetState extends State<_PlaybackVolumeSheet> {
   void initState() {
     super.initState();
     _volume = widget.player.playbackVolume;
+    widget.player.refreshPlaybackVolume().then((_) {
+      if (!mounted) return;
+      setState(() => _volume = widget.player.playbackVolume);
+    });
   }
 
   double _snapToNearest(double value) {
@@ -76,7 +80,7 @@ class _PlaybackVolumeSheetState extends State<_PlaybackVolumeSheet> {
             ),
             const SizedBox(height: 4),
             Text(
-              '调整播放音量',
+              widget.player.playbackVolumeDescription,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                 color: colorScheme.onSurfaceVariant,
               ),
@@ -137,7 +141,9 @@ class _PlaybackVolumeSheetState extends State<_PlaybackVolumeSheet> {
                         widget.player.setPlaybackVolume(1.0);
                       },
                 icon: const Icon(Icons.restart_alt_rounded, size: 18),
-                label: const Text('恢复默认'),
+                label: Text(
+                  widget.player.usesSystemVolumeControl ? '设为最大' : '恢复默认',
+                ),
               ),
             ),
           ],
