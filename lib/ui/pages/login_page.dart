@@ -581,7 +581,7 @@ class _LoginForm extends StatelessWidget {
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: .06),
-            blurRadius: 24,
+            blurRadius: 8,
             offset: const Offset(0, 14),
           ),
         ],
@@ -982,7 +982,7 @@ class _PrimaryLoginButton extends StatelessWidget {
           boxShadow: [
             BoxShadow(
               color: colorScheme.primary.withValues(alpha: .24),
-              blurRadius: 18,
+              blurRadius: 6,
               offset: const Offset(0, 10),
             ),
           ],
@@ -1110,7 +1110,7 @@ class _QrLoginForm extends StatelessWidget {
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: .06),
-            blurRadius: 24,
+            blurRadius: 8,
             offset: const Offset(0, 14),
           ),
         ],
@@ -1268,6 +1268,7 @@ class _QrImage extends StatelessWidget {
         width: size,
         height: size,
         fit: BoxFit.contain,
+        cacheWidth: 240,
         errorBuilder: (_, _, _) => fallback(),
       ),
     );

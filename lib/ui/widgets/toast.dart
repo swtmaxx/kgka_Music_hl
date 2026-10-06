@@ -184,7 +184,7 @@ class _ToastViewState extends State<_ToastView>
                       boxShadow: [
                         BoxShadow(
                           color: Colors.black.withValues(alpha: isDark ? .45 : .14),
-                          blurRadius: 22,
+                          blurRadius: 8,
                           offset: const Offset(0, 8),
                         ),
                       ],

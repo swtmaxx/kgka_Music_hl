@@ -562,6 +562,8 @@ class _UserProfileHeader extends StatelessWidget {
                           width: 54,
                           height: 54,
                           fit: BoxFit.cover,
+                          cacheWidth: 108,
+                          cacheHeight: 108,
                           errorBuilder: (_, _, _) => Center(
                             child: Icon(
                               Icons.person_rounded,

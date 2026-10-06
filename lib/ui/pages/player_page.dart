@@ -860,7 +860,7 @@ class _LandscapeArtworkShowcaseState extends State<_LandscapeArtworkShowcase>
                           boxShadow: [
                             BoxShadow(
                               color: Colors.black.withValues(alpha: .26),
-                              blurRadius: 30,
+                              blurRadius: 10,
                               offset: const Offset(0, 18),
                             ),
                           ],

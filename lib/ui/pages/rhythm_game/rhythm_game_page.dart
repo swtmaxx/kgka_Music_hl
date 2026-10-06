@@ -669,9 +669,9 @@ class _RhythmGamePageState extends State<RhythmGamePage>
                           shadows: [
                             Shadow(
                               color: _isFeverActive ? const Color(0xFFFF007F) : const Color(0xFF00FFCC),
-                              blurRadius: 20,
+                              blurRadius: 8,
                             ),
-                            const Shadow(color: Color(0xFFFF007F), blurRadius: 40),
+                            const Shadow(color: Color(0xFFFF007F), blurRadius: 12),
                           ],
                         ),
                       ),
@@ -707,7 +707,7 @@ class _RhythmGamePageState extends State<RhythmGamePage>
                           fontWeight: FontWeight.w900,
                           color: _lastJudgmentColor,
                           shadows: [
-                            Shadow(color: _lastJudgmentColor, blurRadius: 24),
+                            Shadow(color: _lastJudgmentColor, blurRadius: 8),
                             const Shadow(color: Colors.black, blurRadius: 6),
                           ],
                         ),
@@ -746,7 +746,7 @@ class _RhythmGamePageState extends State<RhythmGamePage>
                         borderRadius: BorderRadius.circular(AppRadius.xxl),
                         border: Border.all(color: const Color(0xFF00FFCC), width: 1.2),
                         boxShadow: const [
-                          BoxShadow(color: Color(0xFF00FFCC), blurRadius: 24, spreadRadius: -4),
+                          BoxShadow(color: Color(0xFF00FFCC), blurRadius: 8, spreadRadius: -4),
                         ],
                       ),
                       child: Column(
@@ -762,7 +762,7 @@ class _RhythmGamePageState extends State<RhythmGamePage>
                               shadows: [
                                 Shadow(
                                   color: _isGameOver ? const Color(0xFF00FFCC) : Colors.cyanAccent,
-                                  blurRadius: 16,
+                                  blurRadius: 6,
                                 )
                               ],
                             ),
@@ -782,7 +782,7 @@ class _RhythmGamePageState extends State<RhythmGamePage>
                                     color: _grade == 'S'
                                         ? const Color(0xFFFFD700)
                                         : const Color(0xFF00FFCC),
-                                    blurRadius: 30,
+                                    blurRadius: 10,
                                   ),
                                 ],
                               ),

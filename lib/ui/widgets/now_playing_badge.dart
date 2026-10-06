@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-class NowPlayingBadge extends StatefulWidget {
+class NowPlayingBadge extends StatelessWidget {
   const NowPlayingBadge({
     super.key,
     required this.active,
@@ -15,63 +15,15 @@ class NowPlayingBadge extends StatefulWidget {
   final double size;
 
   @override
-  State<NowPlayingBadge> createState() => _NowPlayingBadgeState();
-}
-
-class _NowPlayingBadgeState extends State<NowPlayingBadge>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 820),
-    );
-    _syncAnimation();
-  }
-
-  @override
-  void didUpdateWidget(covariant NowPlayingBadge oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    _syncAnimation();
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  void _syncAnimation() {
-    if (widget.active && widget.playing) {
-      if (!_controller.isAnimating) {
-        _controller.repeat(reverse: true);
-      }
-    } else if (_controller.isAnimating) {
-      _controller.stop(canceled: false);
-    }
-  }
-
-  @override
   Widget build(BuildContext context) {
-    if (!widget.active) {
-      return SizedBox.square(dimension: widget.size);
+    if (!active) {
+      return SizedBox.square(dimension: size);
     }
-
+    // 手表专用：静态均衡器图标，不做动画（省 GPU/电量）。
     return SizedBox.square(
-      dimension: widget.size,
-      child: AnimatedBuilder(
-        animation: _controller,
-        builder: (context, _) {
-          return CustomPaint(
-            painter: _NowPlayingPainter(
-              progress: widget.playing ? _controller.value : .42,
-              color: widget.color,
-            ),
-          );
-        },
+      dimension: size,
+      child: CustomPaint(
+        painter: _NowPlayingPainter(progress: .42, color: color),
       ),
     );
   }

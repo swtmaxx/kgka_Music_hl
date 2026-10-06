@@ -219,7 +219,7 @@ class _AppLogo extends StatelessWidget {
         boxShadow: [
           BoxShadow(
             color: colorScheme.primary.withValues(alpha: .22),
-            blurRadius: 24,
+            blurRadius: 8,
             offset: const Offset(0, 8),
           ),
         ],

@@ -1078,6 +1078,7 @@ class _FeatureCard extends StatelessWidget {
                   child: Image.network(
                     imageUrl!,
                     fit: BoxFit.cover,
+                    cacheWidth: 160,
                     errorBuilder: (_, _, _) => const SizedBox.shrink(),
                   ),
                 ),
@@ -2182,6 +2183,7 @@ class _RadioHeroCard extends StatelessWidget {
                 Image.network(
                   url,
                   fit: BoxFit.cover,
+                  cacheWidth: 240,
                   errorBuilder: (_, _, _) => const SizedBox.shrink(),
                 ),
               DecoratedBox(

@@ -183,39 +183,15 @@ class _Fallback extends StatelessWidget {
   }
 }
 
-/// 图片加载时的 Shimmer 占位效果。
-class _ShimmerBox extends StatefulWidget {
+/// 图片加载时的占位块。
+///
+/// 手表专用：已移除 shimmer 动画（持续 ticker + 渐变重绘），
+/// 改为静态色块，图片加载期间不再产生任何 GPU 动画开销。
+class _ShimmerBox extends StatelessWidget {
   const _ShimmerBox({required this.size, required this.borderRadius});
 
   final double size;
   final double borderRadius;
-
-  @override
-  State<_ShimmerBox> createState() => _ShimmerBoxState();
-}
-
-class _ShimmerBoxState extends State<_ShimmerBox>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
-  late final Animation<double> _animation;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1200),
-    )..repeat();
-    _animation = Tween(begin: -1.0, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOutSine),
-    );
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -224,31 +200,12 @@ class _ShimmerBoxState extends State<_ShimmerBox>
     final baseColor = isDark
         ? colorScheme.surfaceContainerHighest
         : colorScheme.surfaceContainer;
-    final highlightColor = isDark
-        ? colorScheme.surfaceContainerHighest.withValues(alpha: .4)
-        : Colors.white.withValues(alpha: .6);
-
-    return AnimatedBuilder(
-      animation: _animation,
-      builder: (context, child) {
-        return ClipRRect(
-          borderRadius: BorderRadius.circular(widget.borderRadius),
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment(_animation.value - 0.5, 0),
-                end: Alignment(_animation.value + 0.5, 0),
-                colors: [baseColor, highlightColor, baseColor],
-                stops: const [0, 0.5, 1],
-              ),
-            ),
-            child: child,
-          ),
-        );
-      },
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(borderRadius),
       child: SizedBox(
-        width: widget.size.isFinite ? widget.size : null,
-        height: widget.size.isFinite ? widget.size : null,
+        width: size.isFinite ? size : null,
+        height: size.isFinite ? size : null,
+        child: ColoredBox(color: baseColor),
       ),
     );
   }

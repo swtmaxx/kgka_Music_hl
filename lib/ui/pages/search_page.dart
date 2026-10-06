@@ -867,7 +867,7 @@ class _HotSearchSkeleton extends StatelessWidget {
   }
 }
 
-class _SkeletonBlock extends StatefulWidget {
+class _SkeletonBlock extends StatelessWidget {
   const _SkeletonBlock({this.height = 16, this.width, this.radius = 4});
 
   final double height;
@@ -875,52 +875,17 @@ class _SkeletonBlock extends StatefulWidget {
   final double radius;
 
   @override
-  State<_SkeletonBlock> createState() => _SkeletonBlockState();
-}
-
-class _SkeletonBlockState extends State<_SkeletonBlock>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
-  late final Animation<double> _animation;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1200),
-    )..repeat(reverse: true);
-    _animation = Tween(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOutSine),
-    );
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
+    // 手表专用：骨架屏改为静态色块，移除 shimmer 动画（省 GPU/电量）。
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    return AnimatedBuilder(
-      animation: _animation,
-      builder: (context, _) {
-        final alpha = isDark
-            ? .06 + _animation.value * .08
-            : .08 + _animation.value * .10;
-        return Container(
-          height: widget.height,
-          width: widget.width,
-          decoration: BoxDecoration(
-            color: Theme.of(
-              context,
-            ).colorScheme.onSurface.withValues(alpha: alpha),
-            borderRadius: BorderRadius.circular(widget.radius),
-          ),
-        );
-      },
+    final alpha = isDark ? .10 : .12;
+    return Container(
+      height: height,
+      width: width,
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: alpha),
+        borderRadius: BorderRadius.circular(radius),
+      ),
     );
   }
 }
