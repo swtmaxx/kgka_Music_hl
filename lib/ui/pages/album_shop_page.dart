@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../../controllers/auth_controller.dart';
 import '../../controllers/player_controller.dart';
-import '../../controllers/theme_controller.dart';
 import '../../models/music_models.dart';
 import '../../services/music_api.dart';
 import '../widgets/artwork.dart';
@@ -97,7 +96,7 @@ class _AlbumShopPageState extends State<AlbumShopPage> {
     final size = MediaQuery.sizeOf(context);
     // 多列自适应是车机横屏专属；普通横屏/竖屏保持原项目固定 2 列。
     final isCarLandscape =
-        size.width > size.height && ThemeController.instance.carModeEnabled;
+        size.width > size.height && false;
     final crossAxisCount = isCarLandscape
         ? (size.width / 180).floor().clamp(2, 5)
         : 2;

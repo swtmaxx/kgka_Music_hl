@@ -1,5 +1,3 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -134,36 +132,17 @@ class _ScrollToTopButtonState extends State<ScrollToTopButton> {
                 height: widget.size,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: isDark
-                          ? Colors.black.withValues(alpha: .38)
-                          : const Color(0x18000000),
-                      blurRadius: 16,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
+                  color: effectiveBgColor,
+                  border: Border.all(
+                    color: effectiveBorderColor,
+                    width: 1.0,
+                  ),
                 ),
-                child: ClipOval(
-                  child: BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: effectiveBgColor,
-                        border: Border.all(
-                          color: effectiveBorderColor,
-                          width: 1.0,
-                        ),
-                      ),
-                      child: Center(
-                        child: Icon(
-                          Icons.keyboard_arrow_up_rounded,
-                          size: 26,
-                          color: colorScheme.primary,
-                        ),
-                      ),
-                    ),
+                child: Center(
+                  child: Icon(
+                    Icons.keyboard_arrow_up_rounded,
+                    size: 22,
+                    color: colorScheme.primary,
                   ),
                 ),
               ),

@@ -543,7 +543,7 @@ class _HomePageState extends State<HomePage> {
     final size = MediaQuery.sizeOf(context);
     final bottomInset = MediaQuery.paddingOf(context).bottom;
     final isLandscape = size.width > size.height;
-    final isCarMode = isLandscape && ThemeController.instance.carModeEnabled;
+    final isCarMode = isLandscape && false;
     final useNavRail = size.width >= 720;
     final hasBottomBar = !isCarMode && !useNavRail;
     final buttonBottom = bottomInset + (hasBottomBar ? 84.0 : 20.0);
@@ -726,7 +726,7 @@ class _RecommendHeader extends StatelessWidget {
     final size = MediaQuery.sizeOf(context);
     final isLandscape = size.width > size.height;
     // 车机模式专属样式仅在开启时生效，普通横屏不受影响。
-    final isCarMode = isLandscape && ThemeController.instance.carModeEnabled;
+    final isCarMode = isLandscape && false;
     // 车机宽屏：三个快捷入口在卡片右侧；车机非宽屏：入口在卡片下方。
     final isUltraWide =
         isCarMode &&
@@ -1979,7 +1979,7 @@ class _RadioSectionState extends State<_RadioSection> {
     final screenSize = MediaQuery.sizeOf(context);
     final isLandscape = screenSize.width > screenSize.height;
     // 电台双卡+网格布局是车机专属，普通横屏用原布局。
-    final isCarMode = isLandscape && ThemeController.instance.carModeEnabled;
+    final isCarMode = isLandscape && false;
 
     return FutureBuilder<_RadioData>(
       future: _future,

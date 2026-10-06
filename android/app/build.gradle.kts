@@ -77,7 +77,9 @@ android {
         versionName = flutter.versionName
         ndk {
             abiFilters.clear()
-            abiFilters.add("arm64-v8a")
+            // 32 位手表（S100，armeabi-v7a）必须保留，否则安装时报
+            // INSTALL_FAILED_NO_MATCHING_ABIS。
+            abiFilters.addAll(listOf("arm64-v8a", "armeabi-v7a"))
         }
     }
 
@@ -96,7 +98,9 @@ android {
             }
             ndk {
                 abiFilters.clear()
-                abiFilters.add("arm64-v8a")
+                // 32 位手表（S100，armeabi-v7a）必须保留，否则安装时报
+                // INSTALL_FAILED_NO_MATCHING_ABIS。
+                abiFilters.addAll(listOf("arm64-v8a", "armeabi-v7a"))
             }
             isMinifyEnabled = false
             // Flutter Gradle 插件在 apply 阶段（早于本脚本体执行）会默认打开

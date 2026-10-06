@@ -312,7 +312,7 @@ class _LibraryPageState extends State<LibraryPage> {
                             onPressed: _showCreatePlaylistDialog,
                             icon: const Icon(Icons.add_rounded),
                           ),
-                          if (!(_isLandscape(context) && widget.theme.carModeEnabled))
+                          if (!(_isLandscape(context) && false))
                             IconButton(
                               tooltip: '设置',
                               onPressed: _openSettings,

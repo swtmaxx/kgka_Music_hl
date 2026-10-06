@@ -5,7 +5,6 @@ import '../design_tokens.dart';
 
 import '../../controllers/auth_controller.dart';
 import '../../controllers/player_controller.dart';
-import '../../controllers/theme_controller.dart';
 import '../../models/music_models.dart';
 import 'artwork.dart';
 import 'toast.dart';
@@ -35,7 +34,7 @@ Future<void> showSongActionSheet({
 }) {
   final isLandscape = MediaQuery.sizeOf(context).width > MediaQuery.sizeOf(context).height;
   // 左侧滑入弹窗是车机专属交互，普通横屏用标准底部弹窗。
-  final isCarMode = isLandscape && ThemeController.instance.carModeEnabled;
+  final isCarMode = isLandscape && false;
 
   if (isCarMode) {
     return showGeneralDialog<void>(

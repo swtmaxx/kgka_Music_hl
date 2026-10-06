@@ -6,7 +6,6 @@ import '../design_tokens.dart';
 
 import '../../controllers/auth_controller.dart';
 import '../../controllers/player_controller.dart';
-import '../../controllers/theme_controller.dart';
 import '../../models/music_models.dart';
 import '../../services/music_api.dart';
 import '../../services/search_history_service.dart';
@@ -375,7 +374,7 @@ class _SearchPageState extends State<SearchPage> {
     final isLandscape = size.width > size.height;
     final colorScheme = Theme.of(context).colorScheme;
     // 车机式搜索栏仅在车机模式开启时使用，普通横屏用标准布局。
-    final isCarMode = isLandscape && ThemeController.instance.carModeEnabled;
+    final isCarMode = isLandscape && false;
 
     if (isCarMode) {
       return Scaffold(
@@ -595,7 +594,7 @@ class _SearchPageState extends State<SearchPage> {
       final size = MediaQuery.sizeOf(context);
       final isLandscape = size.width > size.height;
       // 三列热搜布局是车机专属，普通横屏走下面的标准布局。
-      final isCarMode = isLandscape && ThemeController.instance.carModeEnabled;
+      final isCarMode = isLandscape && false;
 
       if (isCarMode) {
         return ListView(

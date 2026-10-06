@@ -52,23 +52,32 @@ class AppTheme {
     return ThemeData(
       useMaterial3: true,
       colorScheme: scheme,
+      // 手表专用：全局紧凑密度，减小控件高度与内边距。
+      visualDensity: VisualDensity.compact,
       scaffoldBackgroundColor: transparentBackground
           ? Colors.transparent
           : (isDark ? const Color(0xFF06070A) : Colors.white),
       textTheme: const TextTheme(
-        labelSmall: TextStyle(fontSize: 10, height: 1.2),
-        bodySmall: TextStyle(fontSize: 12, height: 1.3),
-        labelMedium: TextStyle(fontSize: 12, height: 1.3),
-        bodyMedium: TextStyle(fontSize: 14, height: 1.4),
-        labelLarge: TextStyle(fontSize: 14, height: 1.4),
-        bodyLarge: TextStyle(fontSize: 16, height: 1.4),
-        titleSmall: TextStyle(fontSize: 16, height: 1.4, fontWeight: FontWeight.w600),
-        titleMedium: TextStyle(fontSize: 18, height: 1.4, fontWeight: FontWeight.w600),
-        titleLarge: TextStyle(fontSize: 20, height: 1.4, fontWeight: FontWeight.w700),
-        headlineSmall: TextStyle(fontSize: 20, height: 1.4, fontWeight: FontWeight.w700),
-        headlineMedium: TextStyle(fontSize: 22, height: 1.4, fontWeight: FontWeight.w700),
-        displaySmall: TextStyle(fontSize: 22, height: 1.4, fontWeight: FontWeight.w700),
+        labelSmall: TextStyle(fontSize: 9, height: 1.2),
+        bodySmall: TextStyle(fontSize: 10, height: 1.25),
+        labelMedium: TextStyle(fontSize: 10, height: 1.25),
+        bodyMedium: TextStyle(fontSize: 11, height: 1.3),
+        labelLarge: TextStyle(fontSize: 11, height: 1.3),
+        bodyLarge: TextStyle(fontSize: 12, height: 1.3),
+        titleSmall: TextStyle(fontSize: 12, height: 1.3, fontWeight: FontWeight.w600),
+        titleMedium: TextStyle(fontSize: 13, height: 1.3, fontWeight: FontWeight.w600),
+        titleLarge: TextStyle(fontSize: 14, height: 1.3, fontWeight: FontWeight.w700),
+        headlineSmall: TextStyle(fontSize: 14, height: 1.3, fontWeight: FontWeight.w700),
+        headlineMedium: TextStyle(fontSize: 16, height: 1.3, fontWeight: FontWeight.w700),
+        displaySmall: TextStyle(fontSize: 16, height: 1.3, fontWeight: FontWeight.w700),
       ),
+      iconTheme: const IconThemeData(size: 18),
+      listTileTheme: const ListTileThemeData(
+        dense: true,
+        minVerticalPadding: 4,
+        contentPadding: EdgeInsets.symmetric(horizontal: 8),
+      ),
+      dividerTheme: const DividerThemeData(thickness: 0.6, space: 1),
       fontFamilyFallback: const [
         'SF Pro Display',
         'SF Pro Text',
@@ -78,6 +87,12 @@ class AppTheme {
       appBarTheme: AppBarTheme(
         centerTitle: false,
         elevation: 0,
+        toolbarHeight: 40,
+        titleTextStyle: TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w700,
+          color: scheme.onSurface,
+        ),
         backgroundColor: transparentBackground
             ? Colors.transparent
             : Colors.transparent,
@@ -111,8 +126,8 @@ class AppTheme {
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
-          minimumSize: const Size(48, 44),
-          textStyle: const TextStyle(fontWeight: FontWeight.w800),
+          minimumSize: const Size(44, 34),
+          textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800),
           shape: const StadiumBorder(),
         ),
       ),

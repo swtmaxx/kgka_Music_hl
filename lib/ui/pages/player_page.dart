@@ -224,7 +224,7 @@ class _PlayerBodyState extends State<_PlayerBody> {
     final landscape = size.width > size.height;
     _syncSystemUi(landscape);
     // 横屏分栏布局是车机专属，普通横屏仍用竖屏的翻页布局。
-    final isCarLayout = landscape && ThemeController.instance.carModeEnabled;
+    final isCarLayout = landscape && false;
     // 小屏手表（如 S100 240x284 DPR 1.0）使用专属布局参数。
     final isSmallWatch = ThemeController.instance.isSmallWatchDevice;
 
@@ -2564,7 +2564,7 @@ class _ControlsState extends State<_Controls> {
         final dense = widget.denseOverride;
         final tiny = widget.tinyOverride;
         // 超大按钮仅在车机模式开启时使用，普通横屏用标准尺寸。
-        final isCar = isLandscape && ThemeController.instance.carModeEnabled;
+        final isCar = isLandscape && false;
         final edgeButtonSize = tiny ? 26.0 : (dense ? 34.0 : (isCar ? 56.0 : (compact ? 40.0 : 44.0)));
         final edgeIconSize = tiny ? 16.0 : (dense ? 21.0 : (isCar ? 34.0 : (compact ? 24.0 : 27.0)));
         final skipButtonSize = tiny ? 30.0 : (dense ? 42.0 : (isCar ? 72.0 : (compact ? 50.0 : 56.0)));

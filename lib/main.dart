@@ -17,9 +17,8 @@ import 'services/device_info_service.dart';
 import 'services/download_service.dart';
 import 'services/music_audio_handler.dart';
 import 'services/music_api.dart';
-import 'ui/adaptive_layout.dart';
 import 'ui/app_theme.dart';
-import 'ui/pages/app_shell.dart';
+import 'ui/watch/watch_shell.dart';
 import 'ui/pages/login_page.dart';
 import 'ui/widgets/toast.dart';
 
@@ -173,7 +172,7 @@ class _KaMusicAppState extends State<KaMusicApp> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
-    _theme.applyOrientations(AdaptiveLayout.isTablet(context));
+    _theme.applyOrientations(false);
     return AnimatedBuilder(
       animation: _theme,
       builder: (context, _) {
@@ -209,7 +208,7 @@ class _KaMusicAppState extends State<KaMusicApp> with WidgetsBindingObserver {
                 return LoginPage(auth: _auth, api: _api);
               }
 
-              return AppShell(
+              return WatchShell(
                 api: _api,
                 auth: _auth,
                 player: _player,

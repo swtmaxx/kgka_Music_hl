@@ -22,7 +22,6 @@ import 'personalization_settings_page.dart';
 import 'vip_info_page.dart';
 import 'playback_history_page.dart';
 import 'playback_stats_page.dart';
-import '../adaptive_layout.dart';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({
@@ -475,30 +474,9 @@ class SettingsPage extends StatelessWidget {
                       subtitle: _fontScaleLabel(theme.fontScale),
                       onTap: () => _selectFontScale(context, theme),
                     ),
-                    _SettingsDivider(),
-                    _SettingsSwitchTile(
-                      icon: Icons.screen_rotation_rounded,
-                      iconColor: colorScheme.primary,
-                      title: '横屏模式',
-                      subtitle: '允许手机横屏时自动旋转（平板默认开启）',
-                      value: theme.landscapeEnabled,
-                      onChanged: (value) {
-                        theme.setLandscapeEnabled(value, AdaptiveLayout.isTablet(context));
-                      },
-                    ),
-                    _SettingsDivider(),
-                    _SettingsSwitchTile(
-                      icon: Icons.directions_car_rounded,
-                      iconColor: colorScheme.primary,
-                      title: '车机模式',
-                      subtitle: '横屏时使用左侧播放面板布局并放大文字',
-                      value: theme.carModeEnabled,
-                      onChanged: (value) => theme.setCarModeEnabled(value),
-                    ),
                   ],
                 ),
                 const SizedBox(height: 24),
-                // App section
                 _SectionHeader(title: '应用'),
                 const SizedBox(height: 8),
                 _SettingsCard(

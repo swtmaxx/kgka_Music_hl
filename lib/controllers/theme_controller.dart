@@ -29,15 +29,11 @@ class ThemeController extends ChangeNotifier {
   static const _bgImagePathKey = 'theme.bg_image_path';
   static const _bgOpacityKey = 'theme.bg_opacity';
   static const _landscapeEnabledKey = 'theme.landscape_enabled';
-  static const _carModeEnabledKey = 'theme.car_mode_enabled';
   static const _fontScaleKey = 'theme.font_scale';
   static const _themeModeKey = 'theme.mode';
 
   /// 全局字体大小档位（1.0 = 标准，1.1 = 大，1.2 = 特大）。
   static const fontScaleOptions = [1.0, 1.1, 1.2];
-
-  /// 车机模式下文字放大倍数（远距离观看更清晰）。
-  static const double carModeFontScaleFactor = 1.12;
 
   /// 预设种子色列表。
   static const presetColors = <_PresetColor>[
@@ -57,17 +53,13 @@ class ThemeController extends ChangeNotifier {
   String? _backgroundImagePath;
   double _backgroundOpacity = 0.15;
   bool _landscapeEnabled = false;
-  bool _carModeEnabled = false;
   double _fontScale = 1.0;
   // 车机检测结果缓存（设备不变，启动时检测一次）。
   bool _isAutomotiveDevice = false;
 
-  // 小屏手表检测结果缓存（设备不变，启动时检测一次）。
-  bool _isSmallWatchDevice = false;
+  // 小屏手表：手表专用版恒为真（见 isSmallWatchDevice）。
 
   bool? _lastAppliedIsTablet;
-  bool? _lastAppliedLandscapeEnabled;
-  bool? _lastAppliedCarModeEnabled;
 
   Color get seedColor => _seedColor;
   ThemeMode get themeMode => _themeMode;
@@ -80,11 +72,12 @@ class ThemeController extends ChangeNotifier {
   String? get backgroundImagePath => _backgroundImagePath;
   double get backgroundOpacity => _backgroundOpacity;
   bool get landscapeEnabled => _landscapeEnabled;
-  bool get carModeEnabled => _carModeEnabled;
 
   double get fontScale => _fontScale;
   bool get isAutomotiveDevice => _isAutomotiveDevice;
-  bool get isSmallWatchDevice => _isSmallWatchDevice;
+
+  /// 手表专用版：所有设备都按手表密度渲染。
+  bool get isSmallWatchDevice => true;
 
   /// 是否使用了非默认种子色。
   bool get hasCustomSeedColor => _seedColor != const Color(0xFF1478FF);
@@ -96,9 +89,9 @@ class ThemeController extends ChangeNotifier {
     _isAutomotiveDevice = await deviceInfo.isAutomotive();
   }
 
-  /// 检测是否为小屏手表设备并缓存结果。
+  /// 检测是否为小屏手表设备（手表专用版恒为真）。
   Future<void> detectSmallWatch(DeviceInfoService deviceInfo) async {
-    _isSmallWatchDevice = await deviceInfo.isSmallWatch();
+    // 保留调用点以兼容启动流程；结果不再使用。
   }
 
   /// 加载持久化设置。
@@ -111,14 +104,7 @@ class ThemeController extends ChangeNotifier {
     _backgroundEnabled = prefs.getBool(_bgEnabledKey) ?? false;
     _backgroundImagePath = prefs.getString(_bgImagePathKey);
     _landscapeEnabled = prefs.getBool(_landscapeEnabledKey) ?? false;
-    // 首次安装（键不存在）：检测到车机则默认开启车机模式；
-    // 否则默认关闭。用户手动开关过后键一定存在，永不覆盖用户选择。
-    if (prefs.containsKey(_carModeEnabledKey)) {
-      _carModeEnabled = prefs.getBool(_carModeEnabledKey) ?? false;
-      _fontScale = prefs.getDouble(_fontScaleKey) ?? 1.0;
-    } else {
-      _carModeEnabled = _isAutomotiveDevice;
-    }
+    _fontScale = prefs.getDouble(_fontScaleKey) ?? 1.0;
     final opacity = prefs.getDouble(_bgOpacityKey);
     if (opacity != null) {
       _backgroundOpacity = opacity.clamp(0.0, 0.8);
@@ -189,38 +175,13 @@ class ThemeController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> setCarModeEnabled(bool enabled) async {
-    if (_carModeEnabled == enabled) return;
-    _carModeEnabled = enabled;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_carModeEnabledKey, enabled);
-    applyOrientations(AdaptiveLayout.isTabletByPlatform());
-    notifyListeners();
-  }
-
-  /// 动态应用屏幕方向锁定/解锁。
+  /// 手表专用版：强制竖屏锁定。
   void applyOrientations(bool isTablet) {
-    if (_lastAppliedIsTablet == isTablet &&
-        _lastAppliedLandscapeEnabled == _landscapeEnabled &&
-        _lastAppliedCarModeEnabled == _carModeEnabled) {
-      return;
-    }
-    _lastAppliedIsTablet = isTablet;
-    _lastAppliedLandscapeEnabled = _landscapeEnabled;
-    _lastAppliedCarModeEnabled = _carModeEnabled;
-
-    if (isTablet || _landscapeEnabled || _carModeEnabled) {
-      SystemChrome.setPreferredOrientations(const [
-        DeviceOrientation.portraitUp,
-        DeviceOrientation.portraitDown,
-        DeviceOrientation.landscapeLeft,
-        DeviceOrientation.landscapeRight,
-      ]);
-    } else {
-      SystemChrome.setPreferredOrientations(const [
-        DeviceOrientation.portraitUp,
-      ]);
-    }
+    if (_lastAppliedIsTablet == true) return;
+    _lastAppliedIsTablet = true;
+    SystemChrome.setPreferredOrientations(const [
+      DeviceOrientation.portraitUp,
+    ]);
   }
 
   /// 设置背景图路径（null 表示清除）。
