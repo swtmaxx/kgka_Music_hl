@@ -38,6 +38,9 @@ class KugouRequest {
       'Android15-1070-11083-46-0-DiscoveryDRADProtocol-wifi';
 
   /// 发送请求并返回解析后的 JSON（Map 或 List）。
+  ///
+  /// [rawResponse] 为 true 时返回原始字节（`Uint8List`），用于返回体是二进制
+  /// 或加密内容的接口（如设备注册）。
   Future<Object?> send({
     required String method,
     required String url,
@@ -50,6 +53,8 @@ class KugouRequest {
     bool notSignature = false,
     bool clearDefaultParams = false,
     bool clearDefaultHeaders = false,
+    bool rawResponse = false,
+    bool sortQuery = false,
   }) async {
     final device = KugouDevice.instance;
     await device.ensureLoaded();
@@ -134,8 +139,19 @@ class KugouRequest {
       query[entry.key] = value is String ? value : jsonEncode(value);
     }
 
+    // 部分 CDN 接口要求 query 参数按 key 升序，否则报 "cdn paramters must be sorted"。
+    final orderedQuery = <String, String>{};
+    if (sortQuery) {
+      final keys = query.keys.toList()..sort();
+      for (final key in keys) {
+        orderedQuery[key] = query[key]!;
+      }
+    } else {
+      orderedQuery.addAll(query);
+    }
+
     final uri = Uri.parse(baseURL ?? KugouConfig.gateway)
-        .replace(path: url, queryParameters: query);
+        .replace(path: url, queryParameters: orderedQuery);
 
     final requestHeaders = <String, String>{
       if (!clearDefaultHeaders) 'User-Agent': _userAgent,
@@ -175,6 +191,16 @@ class KugouRequest {
     }
 
     // ===== 解析响应 =====
+    if (rawResponse) {
+      if (response.statusCode >= 400) {
+        throw KugouApiException(
+          '请求失败（HTTP ${response.statusCode}）',
+          statusCode: response.statusCode,
+        );
+      }
+      return response.bodyBytes;
+    }
+
     final text = utf8.decode(response.bodyBytes, allowMalformed: true);
     Object? parsed;
     if (text.trim().isEmpty) {

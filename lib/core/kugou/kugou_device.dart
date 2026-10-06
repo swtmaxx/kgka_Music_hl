@@ -34,6 +34,12 @@ class KugouDevice {
   String get serverDev => _serverDev ?? '-';
   String get mac => _mac ?? '02:00:00:00:00:00';
 
+  /// 是否已完成设备注册（拿到有效 dfid）。
+  bool get hasDfid {
+    final value = _dfid;
+    return value != null && value.isNotEmpty && value != '-';
+  }
+
   Map<String, String> toMap() => {
         'dfid': dfid,
         'mid': mid,

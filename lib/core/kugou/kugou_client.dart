@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'kugou_device.dart';
+import 'kugou_register.dart';
 import 'kugou_request.dart';
 import 'kugou_signature.dart';
 
@@ -14,6 +16,22 @@ class KugouClient {
   final KugouRequest _request;
 
   KugouRequest get request => _request;
+
+  bool _registerAttempted = false;
+
+  /// 首次使用前完成设备注册（拿到 dfid），否则播放地址等接口会被上游要求安全验证。
+  Future<void> _ensureRegistered() async {
+    if (_registerAttempted) return;
+    _registerAttempted = true;
+    final device = KugouDevice.instance;
+    await device.ensureLoaded();
+    if (device.hasDfid) return;
+    try {
+      await KugouRegister.register(_request);
+    } catch (_) {
+      // 注册失败不阻塞；后续请求会以未注册身份发出，必要时回退外部服务器。
+    }
+  }
 
   /// 与 `MusicApi.setSession` 同步登录态。
   void setSession({String? token, String? t1, String? userId}) {
@@ -30,6 +48,7 @@ class KugouClient {
     String path, [
     Map<String, Object?> query = const {},
   ]) async {
+    await _ensureRegistered();
     final route = path.startsWith('/') ? path : '/$path';
     switch (route) {
       case '/search':
@@ -86,21 +105,18 @@ class KugouClient {
 
     final raw = await _request.send(
       method: 'GET',
-      url: '/v2/search/song',
+      url: '/song_search_v2',
       baseURL: KugouConfig.gateway,
       params: {
         'keyword': keyword,
         'page': page,
         'pagesize': pageSize,
-        'platform': 'AndroidFilter',
-        'iscorrection': q['iscorrection'] ?? 1,
-        'privilegefilter': q['privilegefilter'] ?? 0,
-        'area_code': q['area_code'] ?? 1,
-        'dopicfull': 1,
-        // 概念版(Young) versionCode 为 201
-        'clientver': 201,
+        'platform': 'WebFilter',
+        'iscorrection': 1,
+        'albumhide': 0,
+        'nocollect': 0,
       },
-      headers: const {'x-router': 'complexsearch.kugou.com'},
+      headers: const {'x-router': 'songsearch.kugou.com'},
     );
     return _flattenList(raw, const ['songs', 'song', 'lists']);
   }
@@ -153,23 +169,26 @@ class KugouClient {
   // ===== /search/lyric =====
 
   /// 歌词候选搜索（`module/search_lyric.js`）。
+  ///
+  /// 上游实际端点为 `krcs.kugou.com/search`（`/v1/search` 已失效），
+  /// 参数必须**按 key 排序**，否则 CDN 报 `cdn paramters must be sorted`。
   Future<Object?> _searchLyric(Map<String, Object?> q) async {
     final raw = await _request.send(
       method: 'GET',
-      url: '/v1/search',
-      baseURL: 'https://lyrics.kugou.com',
+      url: '/search',
+      baseURL: 'https://krcs.kugou.com',
       params: {
-        'album_audio_id': _int(q['album_audio_id']),
-        'appid': KugouConfig.appId,
-        'clientver': KugouConfig.clientVer,
-        'duration': _int(q['duration']),
-        'hash': q['hash'] ?? '',
+        'ver': 1,
+        'man': q['man'] ?? 'yes',
+        'client': q['client'] ?? 'mobi',
         'keyword': q['keywords'] ?? '',
-        'lrctxt': 1,
-        'man': q['man'] ?? 'no',
+        'hash': q['hash'] ?? '',
+        'album_audio_id': _int(q['album_audio_id']),
+        'duration': _int(q['duration']),
       },
       clearDefaultParams: true,
       notSignature: true,
+      sortQuery: true,
     );
     return raw;
   }
