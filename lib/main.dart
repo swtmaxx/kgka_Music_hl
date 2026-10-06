@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/painting.dart';
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/services.dart';
 
@@ -24,6 +25,10 @@ import 'ui/widgets/toast.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // 手表专用：收紧全局图片缓存。
+  // Flutter 默认缓存 1000 张 / 100MB，在 1GB RAM 设备上会挤爆内存。
+  PaintingBinding.instance.imageCache.maximumSize = 80;
+  PaintingBinding.instance.imageCache.maximumSizeBytes = 24 << 20; // 24MB
   await AppConfig.loadCustomBaseUrl();
 
   final client = ApiClient();
@@ -313,6 +318,8 @@ class _AppBackgroundState extends State<_AppBackground> {
           child: Image(
             image: _imageProvider!,
             fit: BoxFit.cover,
+            // 背景图同样限制解码尺寸，避免全分辨率大图驻留内存。
+            cacheWidth: 360,
             gaplessPlayback: true,
             errorBuilder: (_, _, _) => const SizedBox.shrink(),
           ),
