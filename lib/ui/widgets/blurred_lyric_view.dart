@@ -1,6 +1,4 @@
 import 'dart:async';
-import 'dart:math' as math;
-import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart' hide LineMetrics;
 import 'package:flutter_lyric/core/lyric_controller.dart';
@@ -171,24 +169,8 @@ class _BlurredLyricPainter extends LyricPainter {
     int index,
     bool isInAnchorArea,
   ) {
-    final distance = (index - playIndex).abs();
-    final shouldStaySharp = distance == 0 || (isSelecting && isInAnchorArea);
-    if (shouldStaySharp || maxBlurSigma <= 0) {
-      super.drawLine(canvas, metric, size, index, isInAnchorArea);
-      return;
-    }
-
-    final sigma = math.min(maxBlurSigma, blurStep * distance).toDouble();
-    if (sigma <= 0) {
-      super.drawLine(canvas, metric, size, index, isInAnchorArea);
-      return;
-    }
-
-    final blurPaint = Paint()
-      ..imageFilter = ImageFilter.blur(sigmaX: sigma, sigmaY: sigma);
-    canvas.saveLayer(null, blurPaint);
+    // 手表专用：已移除歌词模糊（saveLayer + 高斯模糊），所有歌词始终清晰。
     super.drawLine(canvas, metric, size, index, isInAnchorArea);
-    canvas.restore();
   }
 
   @override

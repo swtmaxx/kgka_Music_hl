@@ -367,15 +367,6 @@ class SettingsPage extends StatelessWidget {
                       value: player.keepScreenOnEnabled,
                       onChanged: player.setKeepScreenOnEnabled,
                     ),
-                    _SettingsDivider(),
-                    _SettingsSwitchTile(
-                      icon: Icons.blur_on_rounded,
-                      iconColor: colorScheme.primary,
-                      title: '歌词非高亮行高斯模糊',
-                      subtitle: '全屏歌词非当前行呈现景深模糊效果（默认关闭，若卡顿建议关闭）',
-                      value: player.lyricBlurEnabled,
-                      onChanged: player.setLyricBlurEnabled,
-                    ),
                     if (player.isDesktopLyricsSupported) ...[
                       _SettingsDivider(),
                       _SettingsSwitchTile(

@@ -52,7 +52,6 @@ class LiquidGlassCard extends StatelessWidget {
     this.enableTouchFlex = true,
     this.backgroundColor,
     this.borderColor,
-    this.blurSigma = 0.0,
   });
 
   final Widget child;
@@ -65,7 +64,6 @@ class LiquidGlassCard extends StatelessWidget {
   final bool enableTouchFlex;
   final Color? backgroundColor;
   final Color? borderColor;
-  final double blurSigma;
 
   @override
   Widget build(BuildContext context) {
@@ -124,7 +122,6 @@ class LiquidGlassCapsule extends StatelessWidget {
     this.onTap,
     this.isActive = false,
     this.activeColor,
-    this.blurSigma = 0.0,
   });
 
   final Widget child;
@@ -133,7 +130,6 @@ class LiquidGlassCapsule extends StatelessWidget {
   final VoidCallback? onTap;
   final bool isActive;
   final Color? activeColor;
-  final double blurSigma;
 
   @override
   Widget build(BuildContext context) {

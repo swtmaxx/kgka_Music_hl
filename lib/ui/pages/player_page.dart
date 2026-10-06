@@ -236,7 +236,6 @@ class _PlayerBodyState extends State<_PlayerBody> {
             children: [
               _ArtworkBackground(
                 song: widget.song,
-                isPaused: _page == 1 && !_pageScrolling,
               ),
             SafeArea(
               // 横屏时同样需要处理顶部状态栏和底部系统导航栏（如车机空调控制栏）的遮挡。
@@ -400,106 +399,29 @@ String _lyricDisplayModeLabel(_LyricDisplayMode mode) {
   };
 }
 
-class _ArtworkBackground extends StatefulWidget {
-  const _ArtworkBackground({
-    required this.song,
-    this.isPaused = false,
-  });
+class _ArtworkBackground extends StatelessWidget {
+  const _ArtworkBackground({required this.song});
 
   final Song song;
-  final bool isPaused;
-
-  @override
-  State<_ArtworkBackground> createState() => _ArtworkBackgroundState();
-}
-
-class _ArtworkBackgroundState extends State<_ArtworkBackground>
-    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
-  late final AnimationController _rotationController;
-  bool _appInBackground = false;
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addObserver(this);
-    _rotationController = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 40),
-    );
-    // 仅当确有封面且应用在前台时才启动旋转动画。
-    // 无封面时空转会白耗 CPU/电量，是手表发热与掉电的主因之一。
-    _syncRotation();
-  }
-
-  @override
-  void didUpdateWidget(covariant _ArtworkBackground oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    _syncRotation();
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    super.didChangeAppLifecycleState(state);
-    _appInBackground = state != AppLifecycleState.resumed;
-    _syncRotation();
-  }
-
-  void _syncRotation() {
-    final shouldAnimate =
-        widget.song.coverUrl != null &&
-        !_appInBackground &&
-        !widget.isPaused;
-    if (shouldAnimate) {
-      if (!_rotationController.isAnimating) _rotationController.repeat();
-    } else {
-      if (_rotationController.isAnimating) _rotationController.stop();
-    }
-  }
-
-  @override
-  void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    _rotationController.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
-    final coverUrl = widget.song.coverUrl;
-    final size = MediaQuery.sizeOf(context);
-    final maxDim = math.max(size.width, size.height);
-    final bgDim = maxDim.clamp(300.0, 900.0);
-
-    // 旋转动画背景是纯装饰性的，排除语义树防止 Windows AXTree 竞态崩溃，并用 RepaintBoundary 彻底隔离图层
+    // 手表专用：已移除背景模糊与旋转（GPU 密集），改为静态封面 + 深色渐变。
+    final coverUrl = song.coverUrl;
     return RepaintBoundary(
       child: ExcludeSemantics(
         child: Stack(
           fit: StackFit.expand,
           children: [
-            // 始终显示渐变兜底背景，避免封面加载期间出现纯黑背景
             const _FallbackBackground(),
             if (coverUrl != null)
-              Center(
-                child: SizedBox(
-                  width: bgDim,
-                  height: bgDim,
-                  child: RotationTransition(
-                    turns: _rotationController,
-                    child: RepaintBoundary(
-                      child: ImageFiltered(
-                        imageFilter: ImageFilter.blur(sigmaX: 28, sigmaY: 28),
-                        child: Image.network(
-                          coverUrl,
-                          fit: BoxFit.cover,
-                          cacheWidth: 360,
-                          cacheHeight: 360,
-                          errorBuilder: (context, error, stackTrace) =>
-                              const SizedBox.shrink(),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
+              Image.network(
+                coverUrl,
+                fit: BoxFit.cover,
+                cacheWidth: 240,
+                cacheHeight: 240,
+                errorBuilder: (context, error, stackTrace) =>
+                    const SizedBox.shrink(),
               ),
             DecoratedBox(
               decoration: BoxDecoration(
@@ -507,9 +429,9 @@ class _ArtworkBackgroundState extends State<_ArtworkBackground>
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: [
-                    Colors.black.withValues(alpha: .32),
-                    Colors.black.withValues(alpha: .56),
-                    Colors.black.withValues(alpha: .82),
+                    Colors.black.withValues(alpha: .42),
+                    Colors.black.withValues(alpha: .66),
+                    Colors.black.withValues(alpha: .88),
                   ],
                 ),
               ),
@@ -521,6 +443,7 @@ class _ArtworkBackgroundState extends State<_ArtworkBackground>
     );
   }
 }
+
 
 class _FallbackBackground extends StatelessWidget {
   const _FallbackBackground();
@@ -1824,13 +1747,10 @@ class _LyricPlayerPageState extends State<_LyricPlayerPage>
   static const _lyricScaleKey = 'settings.lyric_scale';
   double _lyricScale = 1.0;
 
-  bool _lastLyricBlurEnabled = false;
-
   @override
   void initState() {
     super.initState();
     _lastLyrics = widget.player.lyrics;
-    _lastLyricBlurEnabled = widget.player.lyricBlurEnabled;
     _displayMode = _initialLyricDisplayMode(_lastLyrics);
     _loadLyricScale();
     widget.player.addListener(_onPlayerLyricsChanged);
@@ -1843,10 +1763,8 @@ class _LyricPlayerPageState extends State<_LyricPlayerPage>
   }
 
   void _onPlayerLyricsChanged() {
-    final blurChanged = widget.player.lyricBlurEnabled != _lastLyricBlurEnabled;
-    if (widget.player.lyrics != _lastLyrics || blurChanged) {
+    if (widget.player.lyrics != _lastLyrics) {
       _lastLyrics = widget.player.lyrics;
-      _lastLyricBlurEnabled = widget.player.lyricBlurEnabled;
       setState(() {
         _displayMode = _normalizeLyricDisplayMode(
           _lastLyrics,
@@ -2010,8 +1928,6 @@ class _LyricViewport extends StatefulWidget {
 
 class _LyricViewportState extends State<_LyricViewport> {
   static const double _lyricAnchorFraction = 0.43;
-  static const double _lyricBlurSigma = 3.0;
-  static const double _lyricBlurStep = 0.7;
 
   late final LyricController _lyricController;
   late final Ticker _ticker;
@@ -2154,17 +2070,13 @@ class _LyricViewportState extends State<_LyricViewport> {
       scrollCurve: const Cubic(0.16, 1.0, 0.3, 1.0),
     );
 
-    final blurEnabled = widget.player.lyricBlurEnabled;
-    final maxBlurSigma = blurEnabled ? _lyricBlurSigma : 0.0;
-    final blurStep = blurEnabled ? _lyricBlurStep : 0.0;
-
     return ExcludeSemantics(
       // 歌词视图高频更新会触发 Windows AXTree 竞态崩溃，排除语义树
       child: BlurredLyricView(
         controller: _lyricController,
         style: lyricStyle,
-        maxBlurSigma: maxBlurSigma,
-        blurStep: blurStep,
+        maxBlurSigma: 0,
+        blurStep: 0,
       ),
     );
   }
