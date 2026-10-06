@@ -515,6 +515,33 @@ class KugouClient {
       case '/login/cellphone':
         return _loginByVerifyCode(query);
 
+      // ===== 歌单删除 =====
+      case '/playlist/del':
+        return _deletePlaylist(query);
+
+      // ===== 概念版 VIP =====
+      case '/youth/day/vip':
+        return _forward(
+          method: 'POST',
+          url: '/youth/v1/recharge/receive_vip_listen_song',
+          params: {'source_id': 90139, 'receive_day': query['receive_day']},
+          headers: const {
+            'content-type': 'application/x-www-form-urlencoded',
+          },
+        );
+      case '/youth/day/vip/upgrade':
+        return _forward(
+          method: 'POST',
+          url: '/youth/v1/listen_song/upgrade_vip_reward',
+          params: {'kugouid': _userId(), 'ad_type': 1},
+        );
+      case '/youth/month/vip/record':
+        return _forward(
+          method: 'GET',
+          url: '/youth/v1/activity/get_month_vip_record',
+          params: {'latest_limit': 100},
+        );
+
       // ===== 杂项 =====
       case '/listen/timeadd':
         return _forward(
@@ -816,6 +843,57 @@ class KugouClient {
   static const _liteT2Iv = '17a20ae7adae7020';
   static const _liteT1Key = '5e4ef500e9597fe004bd09a46d8add98';
   static const _liteT1Iv = '04bd09a46d8add98';
+
+  /// 删除歌单（`module/playlist_del.js`）：AES 请求体 + RSA 会话串。
+  Future<Object?> _deletePlaylist(Map<String, Object?> q) async {
+    final clientTimeSec = _nowSec();
+    final aesKeyRaw = KugouUtil.randomString(6).toLowerCase();
+    final digest = KugouCrypto.md5Hex(aesKeyRaw);
+    final aesKey = digest.substring(0, 16);
+    final aesIv = digest.substring(16, 32);
+
+    final bodyBase64 = KugouCrypto.aesCbcEncryptBase64(
+      utf8.encode(
+        jsonEncode({
+          'listid': _int(q['listid'], 0),
+          'total_ver': 0,
+          'type': 1,
+        }),
+      ),
+      aesKey,
+      aesIv,
+    );
+    final portrait = KugouCrypto.rsaEncryptPkcs1(
+      utf8.encode(
+        jsonEncode({'aes': aesKeyRaw, 'uid': _userId(), 'token': _token()}),
+      ),
+      KugouCrypto.parseRsaPublicKey(KugouConfig.publicLiteRsaKey),
+    ).toUpperCase();
+
+    final raw = await _request.send(
+      method: 'POST',
+      url: '/v2/delete_list',
+      params: {
+        'clienttime': clientTimeSec,
+        'key': KugouSignature.signParamsKey('$clientTimeSec'),
+        'last_area': 'gztx',
+        'clientver': KugouConfig.liteClientVer,
+        'appid': KugouConfig.liteAppId,
+        'last_time': clientTimeSec,
+        'p': portrait,
+      },
+      data: bodyBase64,
+      rawResponse: true,
+    );
+    if (raw is! Uint8List || raw.isEmpty) return raw;
+
+    final text = KugouCrypto.aesCbcDecryptHex(_hex(raw), aesKey, aesIv);
+    try {
+      return jsonDecode(text);
+    } catch (_) {
+      return text;
+    }
+  }
 
   /// 用 token 刷新登录态（`module/login_token.js`）。
   Future<Object?> _loginByToken() async {
