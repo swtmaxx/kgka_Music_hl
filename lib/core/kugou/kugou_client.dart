@@ -1,9 +1,12 @@
 import 'dart:convert';
+import 'dart:typed_data';
 
+import 'kugou_crypto.dart';
 import 'kugou_device.dart';
 import 'kugou_register.dart';
 import 'kugou_request.dart';
 import 'kugou_signature.dart';
+import 'kugou_util.dart';
 
 /// 内置酷狗 API 的**路由调度器**。
 ///
@@ -48,23 +51,433 @@ class KugouClient {
     String path, [
     Map<String, Object?> query = const {},
   ]) async {
-    await _ensureRegistered();
     final route = path.startsWith('/') ? path : '/$path';
+    // 除歌词/版本查询外，统一先确保设备已注册。
+    if (route != '/search/lyric' && route != '/lyric') {
+      await _ensureRegistered();
+    }
+
     switch (route) {
+      // ===== 搜索 / 歌曲 / 歌词 =====
       case '/search':
         return _search(query);
+      case '/search/hot':
+        return _forward(
+          method: 'GET',
+          url: '/api/v3/search/hot_tab',
+          params: {'navid': 1, 'plat': 2},
+          headers: const {'x-router': 'msearch.kugou.com'},
+        );
+      case '/search/suggest':
+        return _forward(
+          method: 'GET',
+          url: '/v2/getSearchTip',
+          params: {
+            'keyword': query['keywords'] ?? '',
+            'AlbumTipCount': query['albumTipCount'] ?? 10,
+            'CorrectTipCount': query['correctTipCount'] ?? 10,
+            'MVTipCount': query['mvTipCount'] ?? 10,
+            'MusicTipCount': query['musicTipCount'] ?? 10,
+            'radiotip': 1,
+          },
+          headers: const {'x-router': 'searchtip.kugou.com'},
+        );
       case '/song/url':
         return _songUrl(query);
+      case '/song/climax':
+        return _forward(
+          method: 'GET',
+          url: '/v1/audio_climax/audio',
+          baseURL: 'https://expendablekmrcdn.kugou.com',
+          params: {
+            'data': jsonEncode(
+              (query['hash']?.toString() ?? '')
+                  .split(',')
+                  .map((h) => {'hash': h})
+                  .toList(),
+            ),
+          },
+        );
       case '/search/lyric':
         return _searchLyric(query);
       case '/lyric':
         return _lyric(query);
+
+      // ===== 用户 =====
+      case '/user/detail':
+        return _userDetail();
+      case '/user/playlist':
+        return _forward(
+          method: 'POST',
+          url: '/v7/get_all_list',
+          params: {'plat': 1, 'userid': _userId(), 'token': _token()},
+          data: {
+            'userid': _userId(),
+            'token': _token(),
+            'total_ver': 979,
+            'type': 2,
+            'page': query['page'] ?? 1,
+            'pagesize': query['pagesize'] ?? 30,
+          },
+          headers: const {'x-router': 'cloudlist.service.kugou.com'},
+        );
+      case '/user/vip/detail':
+        return _forward(
+          method: 'GET',
+          url: '/v1/get_union_vip',
+          params: {'busi_type': 'all'},
+          headers: const {'x-router': 'kugouvip.kugou.com'},
+        );
+
+      // ===== 歌单 =====
+      case '/playlist/detail':
+        return _forward(
+          method: 'POST',
+          url: '/v3/get_list_info',
+          data: {
+            'data': (query['ids']?.toString() ?? '')
+                .split(',')
+                .map((s) => {'global_collection_id': s})
+                .toList(),
+            'userid': _userId(),
+            'token': _token(),
+          },
+          headers: const {'x-router': 'pubsongs.kugou.com'},
+        );
+      case '/playlist/track/all':
+        return _forward(
+          method: 'GET',
+          url: '/pubsongs/v2/get_other_list_file_nofilt',
+          params: {
+            'area_code': 1,
+            'begin_idx':
+                ((_int(query['page'], 1) - 1) * _int(query['pagesize'], 80)),
+            'plat': 1,
+            'type': 1,
+            'mode': 1,
+            'personal_switch': 1,
+            'extend_fields': 'abtags,hot_cmt,popularization',
+            'pagesize': _int(query['pagesize'], 80),
+            'global_collection_id': query['id'],
+          },
+        );
+      case '/playlist/similar':
+        return _forward(
+          method: 'POST',
+          url: '/pubsongs/v1/kmr_get_similar_lists',
+          data: {
+            'appid': KugouConfig.liteAppId,
+            'clientver': KugouConfig.liteClientVer,
+            'clienttime': _nowMs(),
+            'key': _signParamsKey(_nowMs().toString()),
+            'userid': _userId(),
+            'ugc': 1,
+            'show_list': 1,
+            'need_songs': 1,
+            'data': (query['ids']?.toString() ?? '')
+                .split(',')
+                .map((s) => {'global_collection_id': s})
+                .toList(),
+          },
+        );
+
+      // ===== 推荐 / 榜单 =====
+      case '/recommend/songs':
+        return _forward(
+          method: 'POST',
+          url: '/everyday_song_recommend',
+          data: {
+            'platform': query['platform'] ?? 'android',
+            'userid': _userIdString(),
+          },
+          headers: const {'x-router': 'everydayrec.service.kugou.com'},
+        );
+      case '/top/song':
+        return _forward(
+          method: 'POST',
+          url: '/musicadservice/container/v1/newsong_publish',
+          data: {
+            'rank_id': query['type'] ?? 21608,
+            'userid': _userId(),
+            'page': query['page'] ?? 1,
+            'pagesize': query['pagesize'] ?? 30,
+            'tags': <Object?>[],
+          },
+        );
+      case '/top/album':
+        return _forward(
+          method: 'POST',
+          url: '/musicadservice/v1/mobile_newalbum_sp',
+          data: {
+            'apiver': 20,
+            'token': _token(),
+            'page': query['page'] ?? 1,
+            'pagesize': query['pagesize'] ?? 30,
+            'withpriv': 1,
+          },
+        );
+      case '/top/playlist':
+        return _forward(
+          method: 'POST',
+          url: '/v2/special_recommend',
+          data: {
+            'appid': KugouConfig.liteAppId,
+            'mid': KugouDevice.instance.mid,
+            'clientver': KugouConfig.liteClientVer,
+            'platform': 'android',
+            'clienttime': _nowMs(),
+            'userid': _userId(),
+            'module_id': query['module_id'] ?? 1,
+            'page': query['page'] ?? 1,
+            'pagesize': query['pagesize'] ?? 30,
+            'key': _signParamsKey(_nowMs().toString()),
+            'special_recommend': {'withtag': 1, 'withsong': 1, 'sort': 1},
+            'req_multi': 1,
+            'retrun_min': 5,
+            'return_special_falg': 1,
+          },
+          headers: const {'x-router': 'specialrec.service.kugou.com'},
+        );
+      case '/top/card':
+        return _forward(
+          method: 'POST',
+          url: '/singlecardrec.service/v1/single_card_recommend',
+          data: {
+            'appid': KugouConfig.liteAppId,
+            'clientver': KugouConfig.liteClientVer,
+            'platform': 'android',
+            'clienttime': _nowMs(),
+            'userid': _userId(),
+            'key': _signParamsKey(_nowMs().toString()),
+            'fakem': 'ca981cfc583a4c37f28d2d49000013c16a0a',
+            'area_code': 1,
+            'mid': KugouDevice.instance.mid,
+            'uuid': '-',
+            'client_playlist': <Object?>[],
+            'u_info': 'a0c35cd40af564444b5584c2754dedec',
+          },
+          params: {
+            'card_id': query['card_id'] ?? 1,
+            'fakem': 'ca981cfc583a4c37f28d2d49000013c16a0a',
+            'area_code': 1,
+            'platform': 'ios',
+          },
+        );
+      case '/personal/fm':
+        return _personalFm(query);
+      case '/album/shop':
+        return _forward(
+          method: 'GET',
+          url: '/zhuanjidata/v3/album_shop_v2/get_classify_data',
+        );
+
+      // ===== 专辑 / 歌手 =====
+      case '/album/songs':
+        return _forward(
+          method: 'POST',
+          url: '/v1/album_audio/lite',
+          baseURL: 'https://openapi.kugou.com',
+          data: {
+            'album_id': query['id'],
+            'is_buy': query['is_buy'] ?? '',
+            'page': query['page'] ?? 1,
+            'pagesize': query['pagesize'] ?? 30,
+          },
+          headers: const {'x-router': 'openapi.kugou.com', 'kg-tid': '255'},
+        );
+      case '/artist/detail':
+        return _forward(
+          method: 'POST',
+          url: '/kmr/v3/author',
+          baseURL: 'https://openapi.kugou.com',
+          data: {'author_id': query['id']},
+          headers: const {'x-router': 'openapi.kugou.com', 'kg-tid': '36'},
+        );
+      case '/artist/albums':
+        return _forward(
+          method: 'POST',
+          url: '/kmr/v1/author/albums',
+          baseURL: 'https://openapi.kugou.com',
+          data: {
+            'author_id': query['id'],
+            'pagesize': query['pagesize'] ?? 30,
+            'page': query['page'] ?? 1,
+            'sort': query['sort'] == 'hot' ? 3 : 1,
+            'category': 1,
+            'area_code': 'all',
+          },
+          headers: const {'x-router': 'openapi.kugou.com', 'kg-tid': '36'},
+        );
+      case '/artist/audios':
+        return _forward(
+          method: 'POST',
+          url: '/kmr/v1/audio_group/author',
+          baseURL: 'https://openapi.kugou.com',
+          data: {
+            'appid': KugouConfig.liteAppId,
+            'clientver': KugouConfig.liteClientVer,
+            'mid': KugouDevice.instance.mid,
+            'clienttime': _nowMs(),
+            'key': _signParamsKey(_nowMs().toString()),
+            'author_id': query['id'],
+            'pagesize': query['pagesize'] ?? 30,
+            'page': query['page'] ?? 1,
+            'sort': query['sort'] == 'hot' ? 1 : 2,
+            'area_code': 'all',
+          },
+          headers: const {'x-router': 'openapi.kugou.com', 'kg-tid': '220'},
+        );
+
+      // ===== 电台 =====
+      case '/fm/recommend':
+        return _forward(
+          method: 'POST',
+          url: '/v1/rcmd_list',
+          data: {
+            'appid': KugouConfig.liteAppId,
+            'clientver': KugouConfig.liteClientVer,
+            'clienttime': _nowMs(),
+            'mid': KugouDevice.instance.mid,
+            'key': _signParamsKey(_nowMs().toString()),
+            'rcmdsongcount': 1,
+            'level': 0,
+            'area_code': 1,
+            'get_tracker': 1,
+            'uid': 0,
+          },
+          headers: const {'x-router': 'fm.service.kugou.com'},
+        );
+      case '/fm/class':
+        return _forward(
+          method: 'POST',
+          url: '/v1/class_fm_song',
+          data: {
+            'kguid': _userId(),
+            'clienttime': _nowMs(),
+            'mid': KugouDevice.instance.mid,
+            'platform': 'android',
+            'clientver': KugouConfig.liteClientVer,
+            'uid': _userId(),
+            'get_tracker': 1,
+            'key': _signParamsKey(_nowMs().toString()),
+            'appid': KugouConfig.liteAppId,
+          },
+          headers: const {'x-router': 'fm.service.kugou.com'},
+        );
+      case '/fm/songs':
+        return _forward(
+          method: 'POST',
+          url: '/v1/app_song_list_offset',
+          data: {
+            'appid': KugouConfig.liteAppId,
+            'area_code': 1,
+            'clienttime': _nowMs(),
+            'clientver': KugouConfig.liteClientVer,
+            'data': (query['fmid']?.toString() ?? '')
+                .split(',')
+                .map((s) => {
+                      'fmid': s,
+                      'fmtype': query['type'] ?? 2,
+                      'offset': query['offset'] ?? -1,
+                      'size': query['size'] ?? 20,
+                      'singername': '',
+                    })
+                .toList(),
+            'get_tracker': 1,
+            'key': _signParamsKey(_nowMs().toString()),
+            'mid': KugouDevice.instance.mid,
+            'uid': _userId(),
+          },
+          headers: const {
+            'x-router': 'fm.service.kugou.com',
+            'Content-Type': 'application/json',
+          },
+        );
+      case '/fm/image':
+        return _forward(
+          method: 'POST',
+          url: '/v1/fm_info',
+          data: {
+            'appid': KugouConfig.liteAppId,
+            'clienttime': _nowMs(),
+            'clientver': KugouConfig.liteClientVer,
+            'data': (query['fmid']?.toString() ?? '')
+                .split(',')
+                .map((s) => {
+                      'fields': 'imgUrl100,imgUrl50',
+                      'fmid': s,
+                      'fmtype': 2,
+                    })
+                .toList(),
+            'dfid': KugouDevice.instance.dfid,
+            'key': _signParamsKey(_nowMs().toString()),
+            'mid': KugouDevice.instance.mid,
+          },
+          headers: const {
+            'x-router': 'fm.service.kugou.com',
+            'Content-Type': 'application/json',
+          },
+        );
+
+      // ===== 评论 =====
+      case '/comment/music':
+        return _forward(
+          method: 'POST',
+          url: '/mcomment/v1/cmtlist',
+          params: {
+            'ver': 6,
+            'mixsongid': query['mixsongid'],
+            'need_show_image': 1,
+            'p': query['page'] ?? 1,
+            'pagesize': query['pagesize'] ?? 30,
+            'show_classify': query['show_classify'] ?? 1,
+            'show_hotword_list': query['show_hotword_list'] ?? 1,
+            'extdata': '0',
+            'code': 'fc4be23b4e972707f36b8a828a93ba8a',
+          },
+        );
+
+      // ===== 云盘 =====
+      case '/user/cloud':
+        return _userCloud(query);
+      case '/user/cloud/url':
+        return _forward(
+          method: 'GET',
+          url: '/bsstrackercdngz/v2/query_musicclound_url',
+          params: {
+            'hash': (query['hash']?.toString() ?? '').toLowerCase(),
+            'ssa_flag': 'is_fromtrack',
+            'version': '20102',
+            'ssl': 0,
+            'album_audio_id': query['album_audio_id'] ?? 0,
+            'pid': 20026,
+            'audio_id': query['audio_id'] ?? 0,
+            'kv_id': 2,
+            'key': KugouSignature.signCloudKey(
+              (query['hash']?.toString() ?? '').toLowerCase(),
+              '20026',
+            ),
+            'bucket': 'musicclound',
+            'name': query['name'] ?? '',
+            'with_res_tag': 0,
+          },
+        );
+
+      // ===== 杂项 =====
+      case '/listen/timeadd':
+        return _forward(
+          method: 'POST',
+          url: '/v1/listen_time',
+          baseURL: 'https://listenservice.kugou.com',
+          params: {'userid': _userId()},
+        );
+
       default:
         throw KugouUnsupportedRoute(route);
     }
   }
 
-  // ===== /search =====
+  // ===== 端点实现 =====
 
   /// 歌曲/专辑搜索（`module/search.js`）。
   Future<Object?> _search(Map<String, Object?> q) async {
@@ -86,7 +499,6 @@ class KugouClient {
       final raw = await _request.send(
         method: 'GET',
         url: '/v1/search/album',
-        baseURL: KugouConfig.gateway,
         params: {
           'keyword': keyword,
           'page': page,
@@ -106,7 +518,6 @@ class KugouClient {
     final raw = await _request.send(
       method: 'GET',
       url: '/song_search_v2',
-      baseURL: KugouConfig.gateway,
       params: {
         'keyword': keyword,
         'page': page,
@@ -120,8 +531,6 @@ class KugouClient {
     );
     return _flattenList(raw, const ['songs', 'song', 'lists']);
   }
-
-  // ===== /song/url =====
 
   /// 获取播放地址（`module/song_url.js`）。
   Future<Object?> _songUrl(Map<String, Object?> q) async {
@@ -140,16 +549,15 @@ class KugouClient {
     final raw = await _request.send(
       method: 'GET',
       url: '/v5/url',
-      baseURL: KugouConfig.gateway,
       params: {
-        'album_id': _int(q['album_id']),
+        'album_id': _int(q['album_id'], 0),
         'area_code': 1,
         'hash': (q['hash']?.toString() ?? '').toLowerCase(),
         'ssa_flag': 'is_fromtrack',
         'version': 11430,
         'page_id': 967177915,
         'quality': quality,
-        'album_audio_id': _int(q['album_audio_id']),
+        'album_audio_id': _int(q['album_audio_id'], 0),
         'behavior': 'play',
         'pid': 411,
         'cmd': 26,
@@ -166,14 +574,12 @@ class KugouClient {
     return _normalizeSongUrl(raw);
   }
 
-  // ===== /search/lyric =====
-
   /// 歌词候选搜索（`module/search_lyric.js`）。
   ///
   /// 上游实际端点为 `krcs.kugou.com/search`（`/v1/search` 已失效），
   /// 参数必须**按 key 排序**，否则 CDN 报 `cdn paramters must be sorted`。
   Future<Object?> _searchLyric(Map<String, Object?> q) async {
-    final raw = await _request.send(
+    return _request.send(
       method: 'GET',
       url: '/search',
       baseURL: 'https://krcs.kugou.com',
@@ -183,20 +589,16 @@ class KugouClient {
         'client': q['client'] ?? 'mobi',
         'keyword': q['keywords'] ?? '',
         'hash': q['hash'] ?? '',
-        'album_audio_id': _int(q['album_audio_id']),
-        'duration': _int(q['duration']),
+        'album_audio_id': _int(q['album_audio_id'], 0),
+        'duration': _int(q['duration'], 0),
       },
       clearDefaultParams: true,
       notSignature: true,
       sortQuery: true,
     );
-    return raw;
   }
 
-  // ===== /lyric =====
-
-  /// 下载歌词（`module/lyric.js`）。返回体带 `decodedContent`/`rawContent`，
-  /// 与外部服务的字段对齐。
+  /// 下载歌词（`module/lyric.js`）。
   Future<Object?> _lyric(Map<String, Object?> q) async {
     final fmt = q['fmt']?.toString() ?? 'krc';
     final raw = await _request.send(
@@ -215,10 +617,144 @@ class KugouClient {
     return _decodeLyricBody(raw, fmt);
   }
 
-  // ===== 整形工具 =====
+  /// 用户资料（`module/user_detail.js`）：`p` 为无填充 RSA 加密。
+  Future<Object?> _userDetail() async {
+    final clientTimeSec = _nowSec();
+    final pk = KugouCrypto.rsaEncryptRaw(
+      utf8.encode(jsonEncode({'token': _token(), 'clienttime': clientTimeSec})),
+      KugouCrypto.parseRsaPublicKey(KugouConfig.publicLiteRsaKey),
+    );
+    return _request.send(
+      method: 'POST',
+      url: '/v3/get_my_info',
+      params: {'plat': 1},
+      data: {
+        'visit_time': clientTimeSec,
+        'usertype': 1,
+        'p': pk,
+        'userid': _userId(),
+      },
+      headers: const {'x-router': 'usercenter.kugou.com'},
+    );
+  }
 
-  /// 把 `{data:{lists:[...]}}` 之类的嵌套列表拍平为数组；
-  /// 已经是数组时原样返回。
+  /// 私人 FM（`module/personal_fm.js`）。
+  Future<Object?> _personalFm(Map<String, Object?> q) async {
+    final data = <String, Object?>{
+      'appid': KugouConfig.liteAppId,
+      'clienttime': _nowMs(),
+      'mid': KugouDevice.instance.mid,
+      'action': q['action'] ?? 'play',
+      'recommend_source_locked': 0,
+      'song_pool_id': _int(q['song_pool_id'], 0),
+      'callerid': 0,
+      'm_type': 1,
+      'platform': q['platform'] ?? 'ios',
+      'area_code': 1,
+      'remain_songcnt': _int(q['remain_songcnt'], 0),
+      'clientver': KugouConfig.liteClientVer,
+      'is_overplay': q['isOverplay'] == true ? 1 : 0,
+      'mode': q['mode'] ?? 'normal',
+      'fakem': 'ca981cfc583a4c37f28d2d49000013c16a0a',
+      'key': _signParamsKey(_nowMs().toString()),
+    };
+    if (_userId() != 0) {
+      data['userid'] = _userId();
+      data['kguid'] = _userId();
+    }
+    if (_token().isNotEmpty) data['token'] = _token();
+    for (final key in const ['hash', 'songid', 'playtime', 'cur_mark']) {
+      final value = q[key] ?? q[key == 'songid' ? 'songId' : key];
+      if (value != null) data[key] = value;
+    }
+    return _request.send(
+      method: 'POST',
+      url: '/v2/personal_recommend',
+      data: data,
+      headers: const {'x-router': 'persnfm.service.kugou.com'},
+    );
+  }
+
+  /// 云盘列表（`module/user_cloud.js`）：AES 请求体 + RSA 会话串。
+  Future<Object?> _userCloud(Map<String, Object?> q) async {
+    final clientTimeSec = _nowSec();
+    final aesKeyRaw = KugouUtil.randomString(6).toLowerCase();
+    final digest = KugouCrypto.md5Hex(aesKeyRaw);
+    final aesKey = digest.substring(0, 16);
+    final aesIv = digest.substring(16, 32);
+
+    final bodyBase64 = KugouCrypto.aesCbcEncryptBase64(
+      utf8.encode(
+        jsonEncode({
+          'page': q['page'] ?? 1,
+          'pagesize': q['pagesize'] ?? 30,
+          'getkmr': 1,
+        }),
+      ),
+      aesKey,
+      aesIv,
+    );
+
+    final portrait = KugouCrypto.rsaEncryptPkcs1(
+      utf8.encode(
+        jsonEncode({'aes': aesKeyRaw, 'uid': _userId(), 'token': _token()}),
+      ),
+      KugouCrypto.parseRsaPublicKey(KugouConfig.publicLiteRsaKey),
+    ).toUpperCase();
+
+    final raw = await _request.send(
+      method: 'POST',
+      url: '/v1/get_list',
+      baseURL: 'https://mcloudservice.kugou.com',
+      params: {
+        'clienttime': clientTimeSec,
+        'mid': KugouDevice.instance.mid,
+        'key': KugouSignature.signParamsKey('$clientTimeSec'),
+        'clientver': KugouConfig.liteClientVer,
+        'appid': KugouConfig.liteAppId,
+        'p': portrait,
+      },
+      data: bodyBase64,
+      clearDefaultParams: true,
+      notSignature: true,
+      rawResponse: true,
+    );
+    if (raw is! Uint8List || raw.isEmpty) return raw;
+
+    final text = KugouCrypto.aesCbcDecryptHex(_hex(raw), aesKey, aesIv);
+    try {
+      return jsonDecode(text);
+    } catch (_) {
+      return text;
+    }
+  }
+
+  // ===== 通用转发 =====
+
+  Future<Object?> _forward({
+    required String method,
+    required String url,
+    String? baseURL,
+    Map<String, Object?>? params,
+    Object? data,
+    Map<String, String> headers = const {},
+    bool encryptKey = false,
+    bool sortQuery = false,
+  }) {
+    return _request.send(
+      method: method,
+      url: url,
+      baseURL: baseURL,
+      params: params ?? const {},
+      data: data,
+      headers: headers,
+      encryptKey: encryptKey,
+      sortQuery: sortQuery,
+    );
+  }
+
+  // ===== 整形 / 工具 =====
+
   Object? _flattenList(Object? raw, List<String> keys) {
     if (raw is List) return raw;
     if (raw is! Map) return raw;
@@ -235,7 +771,6 @@ class KugouClient {
     return raw;
   }
 
-  /// `/v5/url` 响应整形：保证 `{url: [...], hash: '...'}` 结构（与外部服务一致）。
   Object? _normalizeSongUrl(Object? raw) {
     if (raw is! Map) return raw;
     final data = raw['data'];
@@ -250,14 +785,9 @@ class KugouClient {
         'hash': hash,
       };
     }
-    // 上游返回失败（如需要验证）：透传原始错误体
     return raw;
   }
 
-  /// 歌词内容解码：KRC 为加密格式，此处仅解 Base64（明文 LRC）。
-  ///
-  /// KRC 的二次解码由上层 `parseLyrics` 的 `[language:]` 分支处理；
-  /// 与外部服务一致，同时给出 `decodedContent` 与 `rawContent`。
   Object? _decodeLyricBody(Object? raw, String fmt) {
     if (raw is! Map) return raw;
     final rawData = raw['data'];
@@ -269,8 +799,8 @@ class KugouClient {
     if (content == null || content.isEmpty) return raw;
 
     final contentType = body['contenttype'];
-    final isPlain =
-        fmt == 'lrc' || (contentType != null && int.tryParse('$contentType') != 0);
+    final isPlain = fmt == 'lrc' ||
+        (contentType != null && int.tryParse('$contentType') != 0);
 
     String? decoded;
     try {
@@ -288,11 +818,24 @@ class KugouClient {
     return body;
   }
 
-  int _int(Object? value) {
-    if (value == null) return 0;
+  String _signParamsKey(String data) =>
+      KugouSignature.signParamsKey(data);
+
+  int _nowMs() => DateTime.now().millisecondsSinceEpoch;
+  int _nowSec() => DateTime.now().millisecondsSinceEpoch ~/ 1000;
+
+  int _userId() => int.tryParse(_request.userId ?? '0') ?? 0;
+  String _userIdString() => _request.userId ?? '0';
+  String _token() => _request.token ?? '';
+
+  int _int(Object? value, int fallback) {
+    if (value == null) return fallback;
     if (value is int) return value;
-    return int.tryParse(value.toString()) ?? 0;
+    return int.tryParse(value.toString()) ?? fallback;
   }
+
+  String _hex(Uint8List bytes) =>
+      bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
 
   void close() => _request.close();
 }

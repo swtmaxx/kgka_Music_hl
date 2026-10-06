@@ -103,6 +103,26 @@ class KugouCrypto {
     return _hex(engine.process(Uint8List.fromList(data)));
   }
 
+  /// 无填充 RSA（裸模幂），返回定长大写 hex（与 JS `cryptoRSAEncrypt` 一致）。
+  ///
+  /// `user_detail` / `login` 的 `p`/`pk` 参数使用这种方式（非 PKCS#1）。
+  static String rsaEncryptRaw(List<int> data, pc.RSAPublicKey publicKey) {
+    final keyLength = (publicKey.modulus!.bitLength + 7) ~/ 8;
+    if (data.length > keyLength) {
+      throw ArgumentError('数据长度超过 RSA 密钥长度');
+    }
+    // 左侧补零到密钥长度
+    var value = BigInt.zero;
+    for (final b in data) {
+      value = (value << 8) | BigInt.from(b);
+    }
+    final encrypted = value.modPow(publicKey.exponent!, publicKey.modulus!);
+    return encrypted
+        .toRadixString(16)
+        .padLeft(keyLength * 2, '0')
+        .toUpperCase();
+  }
+
   /// 从 PEM（SubjectPublicKeyInfo）解析 1024-bit RSA 公钥。
   static pc.RSAPublicKey parseRsaPublicKey(String pem) {
     final b64 = pem
