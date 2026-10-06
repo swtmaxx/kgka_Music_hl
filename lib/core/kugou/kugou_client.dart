@@ -220,7 +220,7 @@ class KugouClient {
   Object? _normalizeSongUrl(Object? raw) {
     if (raw is! Map) return raw;
     final data = raw['data'];
-    final source = data is Map ? data : raw;
+    final source = Map<String, Object?>.from(data is Map ? data : raw);
 
     final url = source['url'];
     final hash = source['hash'] ?? '';
@@ -241,9 +241,10 @@ class KugouClient {
   /// 与外部服务一致，同时给出 `decodedContent` 与 `rawContent`。
   Object? _decodeLyricBody(Object? raw, String fmt) {
     if (raw is! Map) return raw;
-    final body = raw['data'] is Map
-        ? Map<String, Object?>.of(raw['data'] as Map)
-        : Map<String, Object?>.of(raw);
+    final rawData = raw['data'];
+    final body = rawData is Map
+        ? Map<String, Object?>.from(rawData)
+        : Map<String, Object?>.from(raw);
 
     final content = body['content']?.toString();
     if (content == null || content.isEmpty) return raw;
