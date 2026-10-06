@@ -29,6 +29,8 @@ Future<void> main() async {
   PaintingBinding.instance.imageCache.maximumSize = 80;
   PaintingBinding.instance.imageCache.maximumSizeBytes = 24 << 20; // 24MB
   await AppConfig.loadCustomBaseUrl();
+  // 应用内置 API 开关（可在设置中切换）
+  ApiClient.useBuiltInApi = AppConfig.useBuiltInApi;
 
   final client = ApiClient();
   final api = MusicApi(client);

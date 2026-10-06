@@ -9,6 +9,7 @@ class AppConfig {
 
   static const _defaultApiBaseUrl = 'https://music.api.hoilai.cn';
   static const _customBaseUrlKey = 'settings.custom_api_base_url';
+  static const _useBuiltInApiKey = 'settings.use_built_in_api';
 
   static const apiBaseUrl = String.fromEnvironment(
     'KA_MUSIC_API_BASE_URL',
@@ -60,6 +61,20 @@ class AppConfig {
     if (stored != null && stored.trim().isNotEmpty) {
       _customBaseUrl = stored.trim();
     }
+    // 内置 API 开关（默认开启）
+    _useBuiltInApi = prefs.getBool(_useBuiltInApiKey) ?? true;
+  }
+
+  /// 是否使用**内置酷狗 API**（直连酷狗，无需外部服务器）。
+  static bool _useBuiltInApi = true;
+
+  static bool get useBuiltInApi => _useBuiltInApi;
+
+  /// 保存内置 API 开关。
+  static Future<void> saveUseBuiltInApi(bool enabled) async {
+    _useBuiltInApi = enabled;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_useBuiltInApiKey, enabled);
   }
 
   /// Save a custom API base URL. Pass `null` or empty to reset to default.

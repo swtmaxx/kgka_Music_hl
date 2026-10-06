@@ -23,6 +23,7 @@ import 'vip_info_page.dart';
 import 'playback_history_page.dart';
 import 'playback_stats_page.dart';
 import '../adaptive_layout.dart';
+import '../../core/api_client.dart';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({
@@ -405,6 +406,8 @@ class SettingsPage extends StatelessWidget {
                 const SizedBox(height: 8),
                 _SettingsCard(
                   children: [
+                    const _BuiltInApiSwitch(),
+                    _SettingsDivider(),
                     _SettingsTile(
                       icon: Icons.dns_rounded,
                       iconColor: colorScheme.primary,
@@ -817,6 +820,70 @@ class _SettingsDivider extends StatelessWidget {
       height: 1,
       indent: 62,
       color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: .4),
+    );
+  }
+}
+
+/// 内置 API 开关：在「直连酷狗」与「自建服务器」之间切换。
+class _BuiltInApiSwitch extends StatefulWidget {
+  const _BuiltInApiSwitch();
+
+  @override
+  State<_BuiltInApiSwitch> createState() => _BuiltInApiSwitchState();
+}
+
+class _BuiltInApiSwitchState extends State<_BuiltInApiSwitch> {
+  bool _enabled = AppConfig.useBuiltInApi;
+
+  Future<void> _toggle(bool value) async {
+    setState(() => _enabled = value);
+    await AppConfig.saveUseBuiltInApi(value);
+    ApiClient.useBuiltInApi = value;
+    if (!mounted) return;
+    Toast.success(value ? '已切换到内置 API（直连酷狗）' : '已切换到自建服务器');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 32,
+            child: Icon(
+              _enabled ? Icons.offline_bolt_rounded : Icons.cloud_rounded,
+              size: 22,
+              color: colorScheme.primary,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '内置 API',
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  _enabled
+                      ? '直连酷狗，不依赖外部服务器'
+                      : '使用下方配置的服务器地址',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Switch(value: _enabled, onChanged: _toggle),
+        ],
+      ),
     );
   }
 }
