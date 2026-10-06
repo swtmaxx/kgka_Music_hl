@@ -405,7 +405,7 @@ class _SearchPageState extends State<SearchPage> {
           backgroundColor: Colors.transparent,
           surfaceTintColor: Colors.transparent,
           elevation: 0,
-          toolbarHeight: 64,
+          toolbarHeight: 44,
           titleSpacing: 4,
           title: LiquidGlassCapsule(
             padding: const EdgeInsets.symmetric(horizontal: 4),

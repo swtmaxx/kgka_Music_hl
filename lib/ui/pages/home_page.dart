@@ -981,7 +981,7 @@ class _FeatureShelf extends StatelessWidget {
         builder: (context, constraints) {
           final cardSize = (constraints.maxWidth - 10) / 2;
           return SizedBox(
-            height: cardSize.clamp(140.0, 200.0),
+            height: cardSize.clamp(88.0, 120.0),
             child: Row(
               children: [
                 Expanded(
