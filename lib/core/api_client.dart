@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import '../config/app_config.dart';
+import 'kugou/kugou_client.dart';
+import 'kugou/kugou_request.dart';
 
 class ApiException implements Exception {
   ApiException(this.message, {this.statusCode});
@@ -18,14 +20,26 @@ class ApiClient {
   ApiClient({http.Client? client}) : _client = client ?? http.Client();
 
   final http.Client _client;
+  final KugouClient _builtIn = KugouClient();
+
   String? token;
   String? t1;
   String? sessionId;
 
+  /// 是否使用**内置酷狗 API**（直连酷狗，无需外部服务器）。
+  ///
+  /// 关闭时回退到 [AppConfig.effectiveBaseUrl] 指向的外部服务器。
+  /// 内置 API 尚未实现的路由会自动回退到外部服务器。
+  static bool useBuiltInApi = true;
+
+  /// 内置 API 失败时是否回退外部服务器（避免内置实现有 bug 时完全不可用）。
+  static bool fallbackOnBuiltInError = true;
+
+  /// 内置客户端（供上层同步登录态）。
+  KugouClient get builtIn => _builtIn;
+
   Future<dynamic> get(String path, [Map<String, Object?> query = const {}]) {
-    return _sendWithRetry(
-      () => _client.get(AppConfig.apiUri(path, query), headers: _headers),
-    );
+    return _dispatch('GET', path, query);
   }
 
   /// 直接请求外部 URI（不经过 AppConfig.apiUri），返回原始 JSON。
@@ -41,12 +55,42 @@ class ApiClient {
     Map<String, Object?> query = const {},
     Map<String, Object?>? body,
   }) {
+    return _dispatch('POST', path, query, body: body);
+  }
+
+  /// 统一分发：优先走内置 API，未实现或未启用时走外部服务器。
+  Future<dynamic> _dispatch(
+    String method,
+    String path,
+    Map<String, Object?> query, {
+    Map<String, Object?>? body,
+  }) async {
+    if (useBuiltInApi) {
+      _builtIn.setSession(token: token, t1: t1, userId: sessionId);
+      try {
+        final result = await _builtIn.handle(method, path, query);
+        return result;
+      } on KugouUnsupportedRoute {
+        // 路由未内置：回退到外部服务器
+      } on KugouApiException catch (error) {
+        // 内置实现出错：默认回退，保证不劣化；关闭回退时直接报错
+        if (!fallbackOnBuiltInError) {
+          throw ApiException(error.message, statusCode: error.statusCode);
+        }
+      }
+    }
+
+    if (method == 'POST') {
+      return _sendWithRetry(
+        () => _client.post(
+          AppConfig.apiUri(path, query),
+          headers: _headers,
+          body: body == null ? null : jsonEncode(body),
+        ),
+      );
+    }
     return _sendWithRetry(
-      () => _client.post(
-        AppConfig.apiUri(path, query),
-        headers: _headers,
-        body: body == null ? null : jsonEncode(body),
-      ),
+      () => _client.get(AppConfig.apiUri(path, query), headers: _headers),
     );
   }
 
@@ -57,7 +101,6 @@ class ApiClient {
     };
 
     if (token case final value?) {
-      //headers['Authorization'] = 'Bearer $value';
       headers['X-Kg-Session-Id'] = value;
     }
     if (t1 case final value?) {
@@ -80,7 +123,10 @@ class ApiClient {
   }) async {
     for (var attempt = 0; attempt <= maxRetries; attempt++) {
       try {
-        final response = await request();
+        final response = await request().timeout(
+          const Duration(seconds: 20),
+          onTimeout: () => throw http.ClientException('请求超时'),
+        );
         // 5xx 服务器错误可重试
         if (response.statusCode >= 500 && attempt < maxRetries) {
           await Future.delayed(Duration(milliseconds: 500 * (1 << attempt)));
@@ -99,7 +145,6 @@ class ApiClient {
         rethrow;
       }
     }
-    // 理论上不会到达这里，但为了保证编译器认为有返回值
     throw ApiException('请求失败，已重试 $maxRetries 次');
   }
 
@@ -123,7 +168,10 @@ class ApiClient {
     }
   }
 
-  void close() => _client.close();
+  void close() {
+    _builtIn.close();
+    _client.close();
+  }
 }
 
 dynamic unwrapData(dynamic json) {

@@ -167,8 +167,8 @@ class _RhythmGamePageState extends State<RhythmGamePage>
         _score += 8 * multiplier;
         _addFeverEnergy(0.003);
 
-        final hitLineY = MediaQuery.of(context).size.height * 0.78;
-        final nodeX = MediaQuery.of(context).size.width * holdNode.xRatio;
+        final hitLineY = MediaQuery.sizeOf(context).height * 0.78;
+        final nodeX = MediaQuery.sizeOf(context).width * holdNode.xRatio;
         _spawnParticles(Offset(nodeX, hitLineY), count: 2, isSuper: _isFeverActive);
       } else {
         holdNode.holdFinished = true;
@@ -217,7 +217,7 @@ class _RhythmGamePageState extends State<RhythmGamePage>
       _feverTimeMs = _maxFeverTimeMs;
       _triggerShake(12.0);
 
-      final center = Offset(MediaQuery.of(context).size.width / 2, MediaQuery.of(context).size.height / 2);
+      final center = Offset(MediaQuery.sizeOf(context).width / 2, MediaQuery.sizeOf(context).height / 2);
       _shockwaves.add(_ShockwaveRing(position: center, color: const Color(0xFF00FFCC), maxRadius: 400));
       _shockwaves.add(_ShockwaveRing(position: center, color: const Color(0xFFFF007F), maxRadius: 300));
       HapticFeedback.vibrate();
@@ -293,8 +293,8 @@ class _RhythmGamePageState extends State<RhythmGamePage>
     closestNode.hit = true;
     _totalHits++;
 
-    final nodeX = MediaQuery.of(context).size.width * closestNode.xRatio;
-    final hitLineY = MediaQuery.of(context).size.height * 0.78;
+    final nodeX = MediaQuery.sizeOf(context).width * closestNode.xRatio;
+    final hitLineY = MediaQuery.sizeOf(context).height * 0.78;
     final hitPoint = Offset(nodeX, hitLineY);
 
     final multiplier = _isFeverActive ? 2 : 1;
@@ -470,7 +470,7 @@ class _RhythmGamePageState extends State<RhythmGamePage>
 
               // 2. 顶栏：返回、歌曲信息、暂停
               Positioned(
-                top: MediaQuery.of(context).padding.top + 8,
+                top: MediaQuery.paddingOf(context).top + 8,
                 left: 16,
                 right: 16,
                 child: Row(
@@ -531,7 +531,7 @@ class _RhythmGamePageState extends State<RhythmGamePage>
 
               // 3. 霓虹仪表盘（得分 & 准确率 & 暴走能量条）
               Positioned(
-                top: MediaQuery.of(context).padding.top + 64,
+                top: MediaQuery.paddingOf(context).top + 64,
                 left: 20,
                 right: 20,
                 child: Column(
@@ -654,7 +654,7 @@ class _RhythmGamePageState extends State<RhythmGamePage>
               // 4. 连击数 Combo 霓虹爆发
               if (_combo > 1)
                 Positioned(
-                  top: MediaQuery.of(context).size.height * 0.26,
+                  top: MediaQuery.sizeOf(context).height * 0.26,
                   left: 0,
                   right: 0,
                   child: Column(
@@ -692,7 +692,7 @@ class _RhythmGamePageState extends State<RhythmGamePage>
               // 5. 击打判定浮动提示 (完美 / 优秀 / 奖励! / 失误)
               if (_lastJudgment != null)
                 Positioned(
-                  top: MediaQuery.of(context).size.height * 0.54,
+                  top: MediaQuery.sizeOf(context).height * 0.54,
                   left: 0,
                   right: 0,
                   child: Center(
@@ -718,7 +718,7 @@ class _RhythmGamePageState extends State<RhythmGamePage>
 
               // 6. 底部触控提示
               Positioned(
-                bottom: MediaQuery.of(context).padding.bottom + 20,
+                bottom: MediaQuery.paddingOf(context).bottom + 20,
                 left: 0,
                 right: 0,
                 child: const Text(
