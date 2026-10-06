@@ -116,7 +116,7 @@ class _StatsContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+      padding: const EdgeInsets.fromLTRB(10, 8, 16, 32),
       children: [
         _SectionHeader(title: '总览'),
         const SizedBox(height: 8),

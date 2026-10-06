@@ -116,7 +116,7 @@ class _AlbumShopPageState extends State<AlbumShopPage> {
                 ),
               ),
               SliverPadding(
-                padding: const EdgeInsets.fromLTRB(18, 8, 18, 12),
+                padding: const EdgeInsets.fromLTRB(10, 8, 18, 12),
                 sliver: SliverGrid(
                   gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: crossAxisCount,
@@ -139,7 +139,7 @@ class _AlbumShopPageState extends State<AlbumShopPage> {
               if (_isLoadingMore)
                 const SliverToBoxAdapter(
                   child: Padding(
-                    padding: EdgeInsets.fromLTRB(18, 8, 18, 118),
+                    padding: EdgeInsets.fromLTRB(10, 8, 18, 118),
                     child: Center(
                       child: SizedBox.square(
                         dimension: 22,
@@ -151,7 +151,7 @@ class _AlbumShopPageState extends State<AlbumShopPage> {
               else if (!_hasMore)
                 const SliverToBoxAdapter(
                   child: Padding(
-                    padding: EdgeInsets.fromLTRB(18, 8, 18, 118),
+                    padding: EdgeInsets.fromLTRB(10, 8, 18, 118),
                     child: Center(
                       child: Text(
                         '已加载全部',

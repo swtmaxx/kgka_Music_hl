@@ -59,7 +59,7 @@ class SettingsPage extends StatelessWidget {
         final colorScheme = Theme.of(sheetContext).colorScheme;
         return SafeArea(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+            padding: const EdgeInsets.fromLTRB(12, 0, 20, 20),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -121,7 +121,7 @@ class SettingsPage extends StatelessWidget {
       builder: (sheetContext) {
         return SafeArea(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+            padding: const EdgeInsets.fromLTRB(12, 0, 20, 20),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -192,7 +192,7 @@ class SettingsPage extends StatelessWidget {
             builder: (context, _) {
               return AdaptiveContentPadding(
                 child: ListView(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+                  padding: const EdgeInsets.fromLTRB(10, 8, 16, 32),
               children: [
                 // Account section
                 _SectionHeader(title: '账号'),
@@ -962,7 +962,7 @@ class _CacheManagementSheetState extends State<_CacheManagementSheet> {
   Widget build(BuildContext context) {
     return SafeArea(
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+        padding: const EdgeInsets.fromLTRB(12, 0, 20, 20),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,

@@ -80,7 +80,7 @@ class _LocalSongsPageState extends State<LocalSongsPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+                      padding: const EdgeInsets.fromLTRB(12, 0, 20, 8),
                       child: Row(
                         children: [
                           Expanded(
@@ -102,7 +102,7 @@ class _LocalSongsPageState extends State<LocalSongsPage> {
                       ),
                     ),
                     Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
+                      padding: const EdgeInsets.fromLTRB(12, 0, 20, 10),
                       child: Text(
                         '取消勾选的文件夹将从本地音乐中排除（例如录音文件夹），'
                         '其子目录中的音频也不会显示。',
@@ -186,7 +186,7 @@ class _LocalSongsPageState extends State<LocalSongsPage> {
                     ),
                     if (excludedCount > 0)
                       Padding(
-                        padding: const EdgeInsets.fromLTRB(20, 6, 20, 14),
+                        padding: const EdgeInsets.fromLTRB(12, 6, 20, 14),
                         child: Text(
                           '已排除 $excludedCount 个文件夹',
                           style: Theme.of(sheetContext).textTheme.bodySmall
@@ -222,7 +222,7 @@ class _LocalSongsPageState extends State<LocalSongsPage> {
             builder: (context, _) {
               if (widget.localMusic.isScanning) {
                 return const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 16),
+                  padding: EdgeInsets.symmetric(horizontal: 10),
                   child: SizedBox(
                     width: 20,
                     height: 20,

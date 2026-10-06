@@ -1933,7 +1933,7 @@ class _LyricPlayerPageState extends State<_LyricPlayerPage>
     );
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 8, 20, 18),
+      padding: const EdgeInsets.fromLTRB(12, 8, 20, 18),
       child: Stack(
         children: [
           _LyricViewport(
@@ -2714,7 +2714,7 @@ class _CommentEntry extends StatelessWidget {
     // 按钮组靠右对齐（用户要求放最右边）；右缘无手势条，不会被遮挡，
     // 也自然避开了左缘 60px opaque 手势条。
     return Padding(
-      padding: const EdgeInsets.only(right: 16),
+      padding: const EdgeInsets.only(right: 10),
       child: Align(
         alignment: Alignment.centerRight,
         child: Row(

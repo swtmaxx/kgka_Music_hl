@@ -438,14 +438,14 @@ class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver {
                 builder: (context, constraints) {
                   return SingleChildScrollView(
                     padding: EdgeInsets.fromLTRB(
-                      22,
-                      34,
-                      22,
-                      keyboardInset + 24,
+                      12,
+                      16,
+                      12,
+                      keyboardInset + 16,
                     ),
                     child: ConstrainedBox(
                       constraints: BoxConstraints(
-                        minHeight: constraints.maxHeight - 58,
+                        minHeight: constraints.maxHeight - 40,
                       ),
                       child: Center(
                         child: ConstrainedBox(
@@ -455,7 +455,7 @@ class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               _LoginHeader(colorScheme: colorScheme),
-                              const SizedBox(height: 28),
+                              const SizedBox(height: 14),
                               _LoginTabBar(
                                 selectedIndex: _tabIndex,
                                 onChanged: (i) {
@@ -463,7 +463,7 @@ class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver {
                                   if (i == 1) _loadQrCode();
                                 },
                               ),
-                              const SizedBox(height: 20),
+                              const SizedBox(height: 10),
                               if (_tabIndex == 0)
                                 _LoginForm(
                                   auth: widget.auth,
@@ -495,8 +495,8 @@ class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver {
               ),
             ),
             Positioned(
-              top: MediaQuery.paddingOf(context).top + 10,
-              right: 16,
+              top: MediaQuery.paddingOf(context).top + 4,
+              right: 6,
               child: IconButton(
                 tooltip: '设置 API 服务器地址',
                 icon: const Icon(Icons.dns_rounded),
@@ -587,7 +587,7 @@ class _LoginForm extends StatelessWidget {
         ],
       ),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(18, 20, 18, 18),
+        padding: const EdgeInsets.fromLTRB(10, 20, 18, 18),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisSize: MainAxisSize.min,
@@ -678,7 +678,7 @@ class _AccountSelectionSheet extends StatelessWidget {
 
     return SafeArea(
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
+        padding: const EdgeInsets.fromLTRB(12, 8, 20, 20),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,

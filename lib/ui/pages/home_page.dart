@@ -737,13 +737,13 @@ class _RecommendHeader extends StatelessWidget {
     return SafeArea(
       bottom: false,
       child: Padding(
-        padding: EdgeInsets.fromLTRB(18, isCarMode ? 4 : 10, 0, 12),
+        padding: EdgeInsets.fromLTRB(10, 6, 0, 8),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               if (!isCarMode) ...[
                 Padding(
-                  padding: const EdgeInsets.only(right: 18),
+                  padding: const EdgeInsets.only(right: 10),
                   child: _TopTabs(
                     auth: auth,
                     index: sectionIndex,
@@ -753,14 +753,14 @@ class _RecommendHeader extends StatelessWidget {
                 ),
                 const SizedBox(height: 16),
                 Padding(
-                  padding: const EdgeInsets.only(right: 18),
+                  padding: const EdgeInsets.only(right: 10),
                   child: _SmartSearch(api: api, auth: auth, player: player),
                 ),
               ],
               if (updateVersion != null) ...[
                 const SizedBox(height: 10),
                 Padding(
-                  padding: const EdgeInsets.only(right: 18),
+                  padding: const EdgeInsets.only(right: 10),
                   child: AppUpdateBanner(
                     version: updateVersion!,
                     onTap: onUpdateTap,
@@ -976,7 +976,7 @@ class _FeatureShelf extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(right: 18),
+      padding: const EdgeInsets.only(right: 10),
       child: LayoutBuilder(
         builder: (context, constraints) {
           final cardSize = (constraints.maxWidth - 10) / 2;
@@ -1199,7 +1199,7 @@ class _SongSectionState extends State<_SongSection> {
       animation: widget.auth,
       builder: (context, _) {
         return Padding(
-          padding: const EdgeInsets.fromLTRB(18, 0, 18, 24),
+          padding: const EdgeInsets.fromLTRB(10, 0, 10, 16),
           child: Column(
             children: [
               _SectionHeader(
@@ -1585,12 +1585,12 @@ class _TopAlbumRail extends StatelessWidget {
   Widget build(BuildContext context) {
     if (albums.isEmpty) return const SizedBox.shrink();
     return Padding(
-      padding: const EdgeInsets.only(top: 20),
+      padding: const EdgeInsets.only(top: 10),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 18),
+            padding: const EdgeInsets.symmetric(horizontal: 10),
             child: _SectionHeader(
               title: '新碟上架',
               action: const SizedBox.shrink(),
@@ -1601,7 +1601,7 @@ class _TopAlbumRail extends StatelessWidget {
             height: 172,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 18),
+              padding: const EdgeInsets.symmetric(horizontal: 10),
               itemCount: albums.length,
               separatorBuilder: (_, _) => const SizedBox(width: 12),
               itemBuilder: (context, index) {
@@ -1756,7 +1756,7 @@ class _PlaylistRailState extends State<_PlaylistRail> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 18),
+            padding: const EdgeInsets.symmetric(horizontal: 10),
             child: _SectionHeader(
               title: '推荐歌单',
               action: playlists.length > _collapsedCount
@@ -1778,7 +1778,7 @@ class _PlaylistRailState extends State<_PlaylistRail> {
           GridView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            padding: const EdgeInsets.symmetric(horizontal: 18),
+            padding: const EdgeInsets.symmetric(horizontal: 10),
             itemCount: visible.length,
             gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
               maxCrossAxisExtent: 160,
@@ -2001,12 +2001,12 @@ class _RadioSectionState extends State<_RadioSection> {
 
         if (isCarMode) {
           return Padding(
-            padding: const EdgeInsets.only(bottom: 24),
+            padding: const EdgeInsets.only(bottom: 12),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(18, 0, 18, 12),
+                  padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
                   child: _SectionHeader(
                     title: '推荐电台',
                     action: IconButton.filledTonal(
@@ -2022,7 +2022,7 @@ class _RadioSectionState extends State<_RadioSection> {
                 ),
                 if (radio.recommended.isNotEmpty)
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 18),
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
                     child: SizedBox(
                       height: 190,
                       child: radio.recommended.length >= 2
@@ -2073,7 +2073,7 @@ class _RadioSectionState extends State<_RadioSection> {
                 for (final group in radio.groups) ...[
                   const SizedBox(height: 16),
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 18),
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
                     child: _SectionHeader(
                       title: group.name,
                       action: Icon(
@@ -2097,7 +2097,7 @@ class _RadioSectionState extends State<_RadioSection> {
         }
 
         return Padding(
-          padding: const EdgeInsets.fromLTRB(18, 0, 18, 24),
+          padding: const EdgeInsets.fromLTRB(10, 0, 10, 16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -2197,7 +2197,7 @@ class _RadioHeroCard extends StatelessWidget {
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(10),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -2292,7 +2292,7 @@ class _RadioStationGrid extends StatelessWidget {
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      padding: const EdgeInsets.symmetric(horizontal: 18),
+      padding: const EdgeInsets.symmetric(horizontal: 10),
       itemCount: stations.length,
       gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
         maxCrossAxisExtent: 160,
@@ -2433,7 +2433,7 @@ class _RadioSkeleton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(18, 0, 18, 24),
+      padding: const EdgeInsets.fromLTRB(10, 0, 10, 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -2502,7 +2502,7 @@ class _RadioUnsupported extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(28, 54, 28, 166),
+      padding: const EdgeInsets.fromLTRB(12, 16, 12, 90),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
@@ -2540,7 +2540,7 @@ class _HomeSkeleton extends StatelessWidget {
     return SafeArea(
       bottom: false,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(18, 10, 18, 166),
+        padding: const EdgeInsets.fromLTRB(10, 6, 10, 90),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -2711,7 +2711,7 @@ class _CarQuickStatsPillsState extends State<_CarQuickStatsPills> {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.only(top: widget.isSideBySide ? 0 : 20, right: 18),
+      padding: EdgeInsets.only(top: widget.isSideBySide ? 0 : 10, right: 10),
       child: Row(
         children: [
           Expanded(
@@ -2791,7 +2791,7 @@ class _PillCard extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
           child: Row(
             children: [
               Container(

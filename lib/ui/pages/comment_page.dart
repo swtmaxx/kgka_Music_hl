@@ -172,7 +172,7 @@ class _CommentPageState extends State<CommentPage> {
       itemBuilder: (context, index) {
         if (index == _comments.length) {
           return const Padding(
-            padding: EdgeInsets.all(16),
+            padding: EdgeInsets.all(10),
             child: Center(child: CircularProgressIndicator()),
           );
         }

@@ -268,7 +268,7 @@ class _CloudHeader extends StatelessWidget {
     return SafeArea(
       bottom: false,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(18, 0, 18, 12),
+        padding: const EdgeInsets.fromLTRB(10, 0, 18, 12),
         child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.end,
@@ -373,7 +373,7 @@ class _Actions extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(18, 18, 18, 12),
+      padding: const EdgeInsets.fromLTRB(10, 18, 18, 12),
       child: Row(
         children: [
           Expanded(
@@ -392,7 +392,7 @@ class _Actions extends StatelessWidget {
             icon: const Icon(Icons.play_arrow_rounded),
             label: const Text('播放全部'),
             style: FilledButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 18),
+              padding: const EdgeInsets.symmetric(horizontal: 10),
               shape: const StadiumBorder(),
             ),
           ),
@@ -585,7 +585,7 @@ class _CloudSkeleton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SliverPadding(
-      padding: const EdgeInsets.fromLTRB(18, 18, 18, 118),
+      padding: const EdgeInsets.fromLTRB(10, 18, 18, 118),
       sliver: SliverList.list(
         children: [
           for (var index = 0; index < 10; index++) ...[
@@ -651,7 +651,7 @@ class _CloudError extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(12),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
@@ -696,7 +696,7 @@ class _LoadMoreFooter extends StatelessWidget {
 
     if (errorMessage != null) {
       return Padding(
-        padding: const EdgeInsets.fromLTRB(18, 10, 18, 118),
+        padding: const EdgeInsets.fromLTRB(10, 10, 18, 118),
         child: Center(
           child: TextButton.icon(
             onPressed: onRetry,
@@ -709,7 +709,7 @@ class _LoadMoreFooter extends StatelessWidget {
 
     if (isLoading) {
       return const Padding(
-        padding: EdgeInsets.fromLTRB(18, 14, 18, 118),
+        padding: EdgeInsets.fromLTRB(10, 14, 18, 118),
         child: Center(
           child: SizedBox.square(
             dimension: 22,
@@ -720,7 +720,7 @@ class _LoadMoreFooter extends StatelessWidget {
     }
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(18, 8, 18, 118),
+      padding: const EdgeInsets.fromLTRB(10, 8, 18, 118),
       child: Center(
         child: Text(
           hasMore ? '继续下滑加载更多' : '已加载全部',

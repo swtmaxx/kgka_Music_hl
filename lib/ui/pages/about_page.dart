@@ -104,7 +104,7 @@ class _AboutPageState extends State<AboutPage> {
                   ),
                   const SizedBox(height: 24),
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 22),
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
                     child: Row(
                       children: [
                         Expanded(
@@ -135,7 +135,7 @@ class _AboutPageState extends State<AboutPage> {
             ),
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(22, 18, 22, 8),
+                padding: const EdgeInsets.fromLTRB(12, 18, 22, 8),
                 child: _InfoSection(
                   children: [
                     const _InfoRow(label: '应用名称', value: AppConfig.appName),
@@ -162,7 +162,7 @@ class _AboutPageState extends State<AboutPage> {
             if (_changelogLoaded && _versions.isNotEmpty) ...[
               SliverToBoxAdapter(
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(22, 24, 22, 8),
+                  padding: const EdgeInsets.fromLTRB(12, 24, 22, 8),
                   child: Row(
                     children: [
                       Icon(
@@ -181,7 +181,7 @@ class _AboutPageState extends State<AboutPage> {
                 ),
               ),
               SliverPadding(
-                padding: const EdgeInsets.symmetric(horizontal: 22),
+                padding: const EdgeInsets.symmetric(horizontal: 12),
                 sliver: SliverList.separated(
                   itemCount: _versions.length,
                   separatorBuilder: (_, _) => const SizedBox(height: 10),
@@ -385,7 +385,7 @@ class _VersionCardState extends State<_VersionCard> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
+                  padding: const EdgeInsets.fromLTRB(10, 12, 12, 12),
                   child: Row(
                     children: [
                       Container(
@@ -437,7 +437,7 @@ class _VersionCardState extends State<_VersionCard> {
                       : CrossFadeState.showFirst,
                   firstChild: const SizedBox(width: double.infinity),
                   secondChild: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+                    padding: const EdgeInsets.fromLTRB(10, 0, 16, 14),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [

@@ -466,7 +466,7 @@ class _ArtistAlbumSection extends StatelessWidget {
       height: 168,
       itemWidth: 120,
       topPadding: 4,
-      headerPadding: const EdgeInsets.fromLTRB(18, 0, 18, 0),
+      headerPadding: const EdgeInsets.fromLTRB(10, 0, 18, 0),
       itemBuilder: (context, album) => _ArtistAlbumCard(
         album: album,
         onTap: () => onTap(album),
@@ -532,7 +532,7 @@ class _SongSectionHeader extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(18, 4, 18, 12),
+      padding: const EdgeInsets.fromLTRB(10, 4, 18, 12),
       child: Row(
         children: [
           Expanded(
@@ -714,7 +714,7 @@ class _ArtistDetailSkeleton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SliverPadding(
-      padding: const EdgeInsets.fromLTRB(18, 18, 18, 30),
+      padding: const EdgeInsets.fromLTRB(10, 18, 18, 30),
       sliver: SliverList.list(
         children: [
           const _SkeletonBox(width: 110, height: 22, radius: 8),
@@ -816,7 +816,7 @@ class _ArtistLoadMoreFooter extends StatelessWidget {
 
     if (errorMessage != null) {
       return Padding(
-        padding: const EdgeInsets.fromLTRB(18, 10, 18, 30),
+        padding: const EdgeInsets.fromLTRB(10, 10, 18, 30),
         child: Center(
           child: TextButton.icon(
             onPressed: onRetry,
@@ -829,7 +829,7 @@ class _ArtistLoadMoreFooter extends StatelessWidget {
 
     if (isLoading) {
       return const Padding(
-        padding: EdgeInsets.fromLTRB(18, 14, 18, 30),
+        padding: EdgeInsets.fromLTRB(10, 14, 18, 30),
         child: Center(
           child: SizedBox.square(
             dimension: 22,
@@ -840,7 +840,7 @@ class _ArtistLoadMoreFooter extends StatelessWidget {
     }
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(18, 8, 18, 30),
+      padding: const EdgeInsets.fromLTRB(10, 8, 18, 30),
       child: Center(
         child: Text(
           hasMore ? '继续下滑加载更多' : '已加载全部',
@@ -863,7 +863,7 @@ class _ArtistDetailError extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(12),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [

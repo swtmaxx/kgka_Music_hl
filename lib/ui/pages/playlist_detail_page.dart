@@ -113,7 +113,7 @@ class _PlaylistDetailPageState extends State<PlaylistDetailPage> {
         ];
         return SafeArea(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 18),
+            padding: const EdgeInsets.fromLTRB(10, 0, 16, 18),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -882,7 +882,7 @@ class _PlaylistDetailPageState extends State<PlaylistDetailPage> {
         final colorScheme = Theme.of(sheetContext).colorScheme;
         return SafeArea(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 18),
+            padding: const EdgeInsets.fromLTRB(10, 0, 16, 18),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1104,7 +1104,7 @@ class _PlaylistDetailPageState extends State<PlaylistDetailPage> {
                       ),
                     if (_isMutating)
                       const Padding(
-                        padding: EdgeInsets.only(right: 16),
+                        padding: EdgeInsets.only(right: 10),
                         child: Center(
                           child: SizedBox.square(
                             dimension: 18,
@@ -1411,7 +1411,7 @@ class _HeroHeader extends StatelessWidget {
     return SafeArea(
       bottom: false,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(18, 0, 18, 12),
+        padding: const EdgeInsets.fromLTRB(10, 0, 18, 12),
           child: LayoutBuilder(
             builder: (context, constraints) {
               final compact = constraints.maxWidth < 380;
@@ -1481,7 +1481,7 @@ class _PlaylistDetailSkeleton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SliverPadding(
-      padding: const EdgeInsets.fromLTRB(18, 18, 18, 118),
+      padding: const EdgeInsets.fromLTRB(10, 18, 18, 118),
       sliver: SliverList.list(
         children: [
           Row(
@@ -1585,7 +1585,7 @@ class _Actions extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
     final isSearching = searchQuery != null && searchQuery!.isNotEmpty;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(18, 18, 18, 12),
+      padding: const EdgeInsets.fromLTRB(10, 18, 18, 12),
       child: selectionMode
           ? Row(
               children: [
@@ -1674,7 +1674,7 @@ class _Actions extends StatelessWidget {
                     icon: const Icon(Icons.play_arrow_rounded),
                     label: const Text('播放全部'),
                     style: FilledButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 18),
+                      padding: const EdgeInsets.symmetric(horizontal: 10),
                       shape: const StadiumBorder(),
                     ),
                   ),
@@ -1684,7 +1684,7 @@ class _Actions extends StatelessWidget {
                     icon: const Icon(Icons.play_arrow_rounded),
                     label: const Text('播放结果'),
                     style: FilledButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 18),
+                      padding: const EdgeInsets.symmetric(horizontal: 10),
                       shape: const StadiumBorder(),
                     ),
                   ),
@@ -1702,7 +1702,7 @@ class _SearchEmpty extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(18, 40, 18, 160),
+      padding: const EdgeInsets.fromLTRB(10, 40, 18, 160),
       child: Column(
         children: [
           Icon(
@@ -1744,7 +1744,7 @@ class _LoadMoreFooter extends StatelessWidget {
 
     if (errorMessage != null) {
       return Padding(
-        padding: const EdgeInsets.fromLTRB(18, 10, 18, 118),
+        padding: const EdgeInsets.fromLTRB(10, 10, 18, 118),
         child: Center(
           child: TextButton.icon(
             onPressed: onRetry,
@@ -1757,7 +1757,7 @@ class _LoadMoreFooter extends StatelessWidget {
 
     if (isLoading) {
       return const Padding(
-        padding: EdgeInsets.fromLTRB(18, 14, 18, 118),
+        padding: EdgeInsets.fromLTRB(10, 14, 18, 118),
         child: Center(
           child: SizedBox.square(
             dimension: 22,
@@ -1768,7 +1768,7 @@ class _LoadMoreFooter extends StatelessWidget {
     }
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(18, 8, 18, 118),
+      padding: const EdgeInsets.fromLTRB(10, 8, 18, 118),
       child: Center(
         child: Text(
           hasMore ? '继续下滑加载更多' : '已加载全部',
@@ -2073,7 +2073,7 @@ class _SelectionBar extends StatelessWidget {
               ),
               style: FilledButton.styleFrom(
                 shape: const StadiumBorder(),
-                padding: const EdgeInsets.symmetric(horizontal: 16),
+                padding: const EdgeInsets.symmetric(horizontal: 10),
               ),
             ),
           ],

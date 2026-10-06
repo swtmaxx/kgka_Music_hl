@@ -127,7 +127,7 @@ class _VipInfoPageState extends State<VipInfoPage> {
                 : RefreshIndicator(
                     onRefresh: _load,
                     child: ListView(
-                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+                      padding: const EdgeInsets.fromLTRB(10, 8, 16, 32),
                       children: [
                         _VipStatusCard(vip: _vip),
                         const SizedBox(height: 16),
@@ -201,7 +201,7 @@ class _VipStatusCard extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
     final isVip = vip?.isVipActive ?? false;
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
@@ -279,7 +279,7 @@ class _DailyVipCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         color: colorScheme.surfaceContainer,
         borderRadius: BorderRadius.circular(AppRadius.lg),

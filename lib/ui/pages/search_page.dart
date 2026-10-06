@@ -671,7 +671,7 @@ class _SearchPageState extends State<SearchPage> {
 
       // 历史记录 + 热搜面板共存于一个可滚动列表
       return ListView(
-        padding: const EdgeInsets.fromLTRB(18, 8, 18, 160),
+        padding: const EdgeInsets.fromLTRB(10, 8, 18, 160),
         children: [
           if (_searchHistory.isNotEmpty) ...[
             Row(
@@ -755,7 +755,7 @@ class _TypeSelector extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(18, 8, 18, 4),
+      padding: const EdgeInsets.fromLTRB(10, 8, 18, 4),
       child: Row(
         children: [
           for (final t in _SearchType.values) ...[
@@ -796,7 +796,7 @@ class _PlatformSelector extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(18, 8, 18, 4),
+      padding: const EdgeInsets.fromLTRB(10, 8, 18, 4),
       child: Row(
         children: [
           for (final p in _SearchPlatform.values) ...[
@@ -835,7 +835,7 @@ class _HotSearchSkeleton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListView(
-      padding: const EdgeInsets.fromLTRB(18, 8, 18, 160),
+      padding: const EdgeInsets.fromLTRB(10, 8, 18, 160),
       children: [
         _SkeletonBlock(height: 22, width: 80),
         const SizedBox(height: 14),
@@ -1214,7 +1214,7 @@ class _AlbumResults extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
     return ListView.separated(
       controller: controller,
-      padding: const EdgeInsets.fromLTRB(18, 4, 18, 160),
+      padding: const EdgeInsets.fromLTRB(10, 4, 18, 160),
       itemCount: albums.length,
       separatorBuilder: (_, _) => const SizedBox(height: 2),
       itemBuilder: (context, index) {
@@ -1306,7 +1306,7 @@ class _SearchResults extends StatelessWidget {
       builder: (context, _) {
         return ListView.separated(
           controller: controller,
-          padding: const EdgeInsets.fromLTRB(18, 4, 18, 160),
+          padding: const EdgeInsets.fromLTRB(10, 4, 18, 160),
           itemCount: songs.length,
           separatorBuilder: (_, _) => const SizedBox(height: 2),
           itemBuilder: (context, index) {

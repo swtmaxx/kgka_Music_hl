@@ -29,11 +29,11 @@ class AudioInterruptionSettingsPage extends StatelessWidget {
           animation: player,
           builder: (context, _) {
             return ListView(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+              padding: const EdgeInsets.fromLTRB(10, 12, 16, 32),
               children: [
                 // Info banner
                 Container(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
                     color: colorScheme.primaryContainer.withValues(alpha: .35),
                     borderRadius: BorderRadius.circular(AppRadius.lg),
@@ -109,7 +109,7 @@ class AudioInterruptionSettingsPage extends StatelessWidget {
                 const SizedBox(height: 16),
                 // Compatibility notice
                 Container(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
                     color: colorScheme.tertiaryContainer.withValues(alpha: .3),
                     borderRadius: BorderRadius.circular(AppRadius.lg),

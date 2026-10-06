@@ -30,7 +30,7 @@ class _PersonalizationSettingsPageState
         builder: (context, _) {
           final tc = widget.themeController;
           return ListView(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+            padding: const EdgeInsets.fromLTRB(10, 8, 16, 32),
             children: [
               // ===== 外观模式 =====
               _SectionHeader(title: '外观模式'),
@@ -50,7 +50,7 @@ class _PersonalizationSettingsPageState
               _SettingsCard(
                 children: [
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
+                    padding: const EdgeInsets.fromLTRB(10, 14, 16, 10),
                     child: Wrap(
                       spacing: 14,
                       runSpacing: 14,
@@ -425,12 +425,12 @@ class _FullBackgroundPreview extends StatelessWidget {
           ),
           SafeArea(
             child: Padding(
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.all(12),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
                       color: colorScheme.surfaceContainer,
                       borderRadius: BorderRadius.circular(AppRadius.lg),

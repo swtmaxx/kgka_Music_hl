@@ -123,7 +123,7 @@ class _DownloadedList extends StatelessWidget {
           children: [
             if (completed.isNotEmpty) ...[
               Padding(
-                padding: const EdgeInsets.fromLTRB(18, 12, 18, 4),
+                padding: const EdgeInsets.fromLTRB(10, 12, 18, 4),
                 child: Row(
                   children: [
                     Text(
@@ -150,7 +150,7 @@ class _DownloadedList extends StatelessWidget {
             ],
             if (downloading.isNotEmpty) ...[
               Padding(
-                padding: const EdgeInsets.fromLTRB(18, 16, 18, 4),
+                padding: const EdgeInsets.fromLTRB(10, 16, 18, 4),
                 child: Text(
                   '下载中 ${downloading.length} 首',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
@@ -162,7 +162,7 @@ class _DownloadedList extends StatelessWidget {
             ],
             if (failed.isNotEmpty) ...[
               Padding(
-                padding: const EdgeInsets.fromLTRB(18, 16, 18, 4),
+                padding: const EdgeInsets.fromLTRB(10, 16, 18, 4),
                 child: Text(
                   '下载失败 ${failed.length} 首',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
@@ -452,7 +452,7 @@ class _PlayCacheList extends StatelessWidget {
         return ListView(
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(18, 12, 18, 4),
+              padding: const EdgeInsets.fromLTRB(10, 12, 18, 4),
               child: Row(
                 children: [
                   Text(

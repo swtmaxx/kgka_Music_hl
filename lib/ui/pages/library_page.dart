@@ -152,7 +152,7 @@ class _LibraryPageState extends State<LibraryPage> {
         ];
         return SafeArea(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 18),
+            padding: const EdgeInsets.fromLTRB(10, 0, 16, 18),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -294,7 +294,7 @@ class _LibraryPageState extends State<LibraryPage> {
                   // 1. 顶部 Header
                   SliverToBoxAdapter(
                     child: Padding(
-                      padding: const EdgeInsets.fromLTRB(18, 14, 12, 0),
+                      padding: const EdgeInsets.fromLTRB(10, 14, 12, 0),
                       child: Row(
                         children: [
                           Expanded(
@@ -326,7 +326,7 @@ class _LibraryPageState extends State<LibraryPage> {
                   // 2. 用户资料头部（同款用户区域）
                   SliverToBoxAdapter(
                     child: Padding(
-                      padding: const EdgeInsets.fromLTRB(18, 12, 18, 0),
+                      padding: const EdgeInsets.fromLTRB(10, 12, 18, 0),
                       child: _UserProfileHeader(auth: widget.auth),
                     ),
                   ),
@@ -334,7 +334,7 @@ class _LibraryPageState extends State<LibraryPage> {
                   // 3. 同款 2x2 核心功能卡片网格（我喜欢、最近播放、本地音乐、已下载）
                   SliverToBoxAdapter(
                     child: Padding(
-                      padding: const EdgeInsets.fromLTRB(18, 16, 18, 0),
+                      padding: const EdgeInsets.fromLTRB(10, 16, 18, 0),
                       child: _LibraryQuickGrid(
                         auth: widget.auth,
                         downloads: widget.downloads,
@@ -378,7 +378,7 @@ class _LibraryPageState extends State<LibraryPage> {
                   // 4. 折叠分组 1：我创建的歌单
                   SliverToBoxAdapter(
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 18),
+                      padding: const EdgeInsets.symmetric(horizontal: 10),
                       child: _CollapsibleSection(
                         title: '我创建的歌单',
                         count: created.length,
@@ -435,7 +435,7 @@ class _LibraryPageState extends State<LibraryPage> {
                   // 5. 折叠分组 2：我收藏的歌单
                   SliverToBoxAdapter(
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 18),
+                      padding: const EdgeInsets.symmetric(horizontal: 10),
                       child: _CollapsibleSection(
                         title: '我收藏的歌单',
                         count: collected.length,
@@ -457,7 +457,7 @@ class _LibraryPageState extends State<LibraryPage> {
                     const SliverToBoxAdapter(child: SizedBox(height: 16)),
                     SliverToBoxAdapter(
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 18),
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
                         child: _CollapsibleSection(
                           title: '收藏的专辑',
                           count: albums.length,
@@ -480,7 +480,7 @@ class _LibraryPageState extends State<LibraryPage> {
                   // 7. 折叠分组 4：我的云盘（独立放到最下面）
                   SliverToBoxAdapter(
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 18),
+                      padding: const EdgeInsets.symmetric(horizontal: 10),
                       child: _CollapsibleSection(
                         title: '我的云盘',
                         isExpanded: _expandedCloud,
