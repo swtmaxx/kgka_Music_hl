@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart';
+
 import 'kugou_crypto.dart';
 import 'kugou_device.dart';
 import 'kugou_register.dart';
@@ -21,6 +23,9 @@ class KugouClient {
   KugouRequest get request => _request;
 
   bool _registerAttempted = false;
+
+  /// 启动时预热：后台完成设备注册，避免首次请求等待注册往返。
+  Future<void> warmUp() => _ensureRegistered();
 
   /// 首次使用前完成设备注册（拿到 dfid），否则播放地址等接口会被上游要求安全验证。
   Future<void> _ensureRegistered() async {

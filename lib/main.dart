@@ -33,6 +33,10 @@ Future<void> main() async {
   ApiClient.useBuiltInApi = AppConfig.useBuiltInApi;
 
   final client = ApiClient();
+  // 内置 API 预热：后台完成设备注册，避免首次请求等待。
+  if (ApiClient.useBuiltInApi) {
+    unawaited(client.builtIn.warmUp());
+  }
   final api = MusicApi(client);
   final audioHandler = await AudioService.init(
     builder: MusicAudioHandler.new,
