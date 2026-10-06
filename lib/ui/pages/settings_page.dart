@@ -22,6 +22,7 @@ import 'personalization_settings_page.dart';
 import 'vip_info_page.dart';
 import 'playback_history_page.dart';
 import 'playback_stats_page.dart';
+import '../adaptive_layout.dart';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({
