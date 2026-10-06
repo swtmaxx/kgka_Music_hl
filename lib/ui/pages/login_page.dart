@@ -283,7 +283,7 @@ class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver {
                   color: Theme.of(dialogContext).colorScheme.onSurfaceVariant,
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 10),
               TextField(
                 controller: controller,
                 autofocus: true,
@@ -455,7 +455,7 @@ class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               _LoginHeader(colorScheme: colorScheme),
-                              const SizedBox(height: 14),
+                              const SizedBox(height: 8),
                               _LoginTabBar(
                                 selectedIndex: _tabIndex,
                                 onChanged: (i) {
@@ -599,7 +599,7 @@ class _LoginForm extends StatelessWidget {
                 fontWeight: FontWeight.w900,
               ),
             ),
-            const SizedBox(height: 18),
+            const SizedBox(height: 10),
             _LoginTextField(
               controller: mobileController,
               focusNode: mobileFocus,
@@ -638,7 +638,7 @@ class _LoginForm extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 18),
+            const SizedBox(height: 10),
             _PrimaryLoginButton(isLoading: isBusy, onTap: onLogin),
             AnimatedSwitcher(
               duration: const Duration(milliseconds: 180),
@@ -698,7 +698,7 @@ class _AccountSelectionSheet extends StatelessWidget {
                 fontWeight: FontWeight.w600,
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 10),
             Flexible(
               child: ListView.separated(
                 shrinkWrap: true,
@@ -876,7 +876,7 @@ class _LoginTextField extends StatelessWidget {
                   style: TextStyle(
                     color: colorScheme.onSurface,
                     fontWeight: FontWeight.w800,
-                    fontSize: 16,
+                    fontSize: 12,
                   ),
                   decoration: InputDecoration(
                     filled: false,
@@ -893,7 +893,7 @@ class _LoginTextField extends StatelessWidget {
                     hintStyle: TextStyle(
                       color: colorScheme.onSurfaceVariant,
                       fontWeight: FontWeight.w700,
-                      fontSize: 16,
+                      fontSize: 12,
                     ),
                     counterText: '',
                   ),
@@ -999,7 +999,7 @@ class _PrimaryLoginButton extends StatelessWidget {
                 '登录',
                 style: TextStyle(
                   color: colorScheme.onPrimary,
-                  fontSize: 16,
+                  fontSize: 12,
                   fontWeight: FontWeight.w900,
                 ),
               ),
@@ -1044,7 +1044,7 @@ class _LoginTabBar extends StatelessWidget {
                         ? colorScheme.onSurface
                         : colorScheme.onSurfaceVariant,
                     fontWeight: FontWeight.w800,
-                    fontSize: 14,
+                    fontSize: 11,
                   ),
                 ),
               ),
@@ -1070,7 +1070,7 @@ class _LoginTabBar extends StatelessWidget {
                         ? colorScheme.onSurface
                         : colorScheme.onSurfaceVariant,
                     fontWeight: FontWeight.w800,
-                    fontSize: 14,
+                    fontSize: 11,
                   ),
                 ),
               ),
@@ -1151,7 +1151,7 @@ class _QrLoginForm extends StatelessWidget {
                   color: colorScheme.onSurfaceVariant,
                 ),
               ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 12),
             Text(
               statusText,
               style: textTheme.bodyMedium?.copyWith(
@@ -1162,7 +1162,7 @@ class _QrLoginForm extends StatelessWidget {
               ),
             ),
             if (isExpired) ...[
-              const SizedBox(height: 20),
+              const SizedBox(height: 10),
               GestureDetector(
                 onTap: onRefresh,
                 child: Container(
@@ -1179,7 +1179,7 @@ class _QrLoginForm extends StatelessWidget {
                     style: TextStyle(
                       color: colorScheme.onPrimary,
                       fontWeight: FontWeight.w800,
-                      fontSize: 14,
+                      fontSize: 11,
                     ),
                   ),
                 ),

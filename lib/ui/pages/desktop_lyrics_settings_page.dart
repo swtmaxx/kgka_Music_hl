@@ -107,7 +107,7 @@ class _DesktopLyricsSettingsPageState
               ),
             ],
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 12),
           // Behavior
           _SectionHeader(title: '行为'),
           const SizedBox(height: 8),

@@ -303,7 +303,7 @@ class _LibraryPageState extends State<LibraryPage> {
                               style: Theme.of(context).textTheme.headlineSmall
                                   ?.copyWith(
                                     fontWeight: FontWeight.w900,
-                                    fontSize: 22,
+                                    fontSize: 12,
                                   ),
                             ),
                           ),
@@ -373,7 +373,7 @@ class _LibraryPageState extends State<LibraryPage> {
                     ),
                   ),
 
-                  const SliverToBoxAdapter(child: SizedBox(height: 20)),
+                  const SliverToBoxAdapter(child: SizedBox(height: 10)),
 
                   // 4. 折叠分组 1：我创建的歌单
                   SliverToBoxAdapter(
@@ -430,7 +430,7 @@ class _LibraryPageState extends State<LibraryPage> {
                     ),
                   ),
 
-                  const SliverToBoxAdapter(child: SizedBox(height: 16)),
+                  const SliverToBoxAdapter(child: SizedBox(height: 10)),
 
                   // 5. 折叠分组 2：我收藏的歌单
                   SliverToBoxAdapter(
@@ -454,7 +454,7 @@ class _LibraryPageState extends State<LibraryPage> {
 
                   // 6. 折叠分组 3：收藏的专辑（若有或需要展示）
                   if (albums.isNotEmpty) ...[
-                    const SliverToBoxAdapter(child: SizedBox(height: 16)),
+                    const SliverToBoxAdapter(child: SizedBox(height: 10)),
                     SliverToBoxAdapter(
                       child: Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 10),
@@ -475,7 +475,7 @@ class _LibraryPageState extends State<LibraryPage> {
                     ),
                   ],
 
-                  const SliverToBoxAdapter(child: SizedBox(height: 16)),
+                  const SliverToBoxAdapter(child: SizedBox(height: 10)),
 
                   // 7. 折叠分组 4：我的云盘（独立放到最下面）
                   SliverToBoxAdapter(
@@ -598,7 +598,7 @@ class _UserProfileHeader extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: theme.textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w900,
-                    fontSize: 20,
+                    fontSize: 11,
                     letterSpacing: -0.3,
                   ),
                 ),
@@ -812,7 +812,7 @@ class _QuickHubTileState extends State<_QuickHubTile> {
                       widget.title,
                       style: theme.textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w900,
-                        fontSize: 15,
+                        fontSize: 12,
                         letterSpacing: -0.2,
                       ),
                       maxLines: 1,
@@ -890,7 +890,7 @@ class _CollapsibleSection extends StatelessWidget {
                   title,
                   style: theme.textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w900,
-                    fontSize: 16,
+                    fontSize: 12,
                   ),
                 ),
                 if (count != null) ...[
@@ -978,7 +978,7 @@ class _CloudDriveSectionItem extends StatelessWidget {
                       '云盘音乐',
                       style: theme.textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.w800,
-                        fontSize: 15,
+                        fontSize: 12,
                       ),
                     ),
                     const SizedBox(height: 2),
@@ -1162,8 +1162,8 @@ class _PlaylistGroup extends StatelessWidget {
         gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
           maxCrossAxisExtent: isUltraWide ? 280 : 340,
           mainAxisExtent: 72,
-          crossAxisSpacing: 12,
-          mainAxisSpacing: 12,
+          crossAxisSpacing: 8,
+          mainAxisSpacing: 8,
         ),
         itemCount: playlists.length,
         itemBuilder: (context, i) {
@@ -1352,7 +1352,7 @@ class _CreatePlaylistSheetState extends State<_CreatePlaylistSheet> {
                   fontWeight: FontWeight.w900,
                 ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 10),
           TextField(
             controller: _controller,
             focusNode: _focusNode,
@@ -1365,7 +1365,7 @@ class _CreatePlaylistSheetState extends State<_CreatePlaylistSheet> {
             ),
             onSubmitted: _submit,
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 10),
           Row(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [

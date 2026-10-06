@@ -233,7 +233,7 @@ class _EqualizerPanel extends StatelessWidget {
                   child: const Text('预设'),
                 ),
               ),
-              const SizedBox(width: 18),
+              const SizedBox(width: 10),
               Expanded(
                 child: OutlinedButton(
                   onPressed: player.resetEqualizer,
@@ -383,7 +383,7 @@ class _EnhancePanel extends StatelessWidget {
           value: player.bassBoostEnabled,
           onChanged: player.setBassBoostEnabled,
         ),
-        const SizedBox(height: 18),
+        const SizedBox(height: 10),
         Row(
           children: [
             const Text('Bass'),
@@ -504,7 +504,7 @@ class _UnsupportedView extends StatelessWidget {
               size: 42,
               color: colorScheme.primary,
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: 8),
             Text(
               '当前平台暂不支持音效调节',
               style: Theme.of(

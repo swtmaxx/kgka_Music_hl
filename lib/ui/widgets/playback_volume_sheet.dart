@@ -81,7 +81,7 @@ class _PlaybackVolumeSheetState extends State<_PlaybackVolumeSheet> {
                 color: colorScheme.onSurfaceVariant,
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 10),
             Center(
               child: Text(
                 '${(_volume * 100).round()}%',
@@ -127,7 +127,7 @@ class _PlaybackVolumeSheetState extends State<_PlaybackVolumeSheet> {
                 ],
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 10),
             Center(
               child: TextButton.icon(
                 onPressed: _volume == 1.0

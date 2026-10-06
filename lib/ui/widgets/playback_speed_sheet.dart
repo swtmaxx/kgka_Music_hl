@@ -83,7 +83,7 @@ class _PlaybackSpeedSheetState extends State<_PlaybackSpeedSheet> {
                 color: colorScheme.onSurfaceVariant,
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 10),
             // Current speed display
             Center(
               child: Text(
@@ -133,7 +133,7 @@ class _PlaybackSpeedSheetState extends State<_PlaybackSpeedSheet> {
                 ],
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 10),
             // Reset button
             Center(
               child: TextButton.icon(

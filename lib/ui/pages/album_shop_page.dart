@@ -120,8 +120,8 @@ class _AlbumShopPageState extends State<AlbumShopPage> {
                 sliver: SliverGrid(
                   gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: crossAxisCount,
-                    mainAxisSpacing: 14,
-                    crossAxisSpacing: 14,
+                    mainAxisSpacing: 8,
+                    crossAxisSpacing: 8,
                     childAspectRatio: 0.72,
                   ),
                   delegate: SliverChildBuilderDelegate(

@@ -463,7 +463,7 @@ class _ArtistAlbumSection extends StatelessWidget {
     return AppHorizontalRail<ArtistAlbum>(
       title: '专辑 ${albums.length}',
       items: albums,
-      height: 168,
+      height: 106,
       itemWidth: 120,
       topPadding: 4,
       headerPadding: const EdgeInsets.fromLTRB(10, 0, 18, 0),
@@ -718,10 +718,10 @@ class _ArtistDetailSkeleton extends StatelessWidget {
       sliver: SliverList.list(
         children: [
           const _SkeletonBox(width: 110, height: 22, radius: 8),
-          const SizedBox(height: 18),
+          const SizedBox(height: 10),
           for (var index = 0; index < 8; index++) ...[
             const _SkeletonSongRow(),
-            const SizedBox(height: 16),
+            const SizedBox(height: 10),
           ],
         ],
       ),
@@ -877,7 +877,7 @@ class _ArtistDetailError extends StatelessWidget {
             maxLines: 3,
             overflow: TextOverflow.ellipsis,
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 10),
           FilledButton.icon(
             onPressed: onRetry,
             icon: const Icon(Icons.refresh_rounded),

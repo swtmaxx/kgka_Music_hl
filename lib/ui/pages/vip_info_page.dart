@@ -130,14 +130,14 @@ class _VipInfoPageState extends State<VipInfoPage> {
                       padding: const EdgeInsets.fromLTRB(10, 8, 16, 32),
                       children: [
                         _VipStatusCard(vip: _vip),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 10),
                         _DailyVipCard(
                           isClaiming: _isClaiming,
                           claimedToday: _isClaimedToday(_history),
                           onClaim: _claimDailyVip,
                         ),
                         if ((_vip?.busiVip.isNotEmpty ?? false)) ...[
-                          const SizedBox(height: 24),
+                          const SizedBox(height: 12),
                           const _SectionTitle('业务线 VIP'),
                           const SizedBox(height: 8),
                           ..._vip!.busiVip.map(
@@ -145,7 +145,7 @@ class _VipInfoPageState extends State<VipInfoPage> {
                           ),
                         ],
                         if ((_history?.items.isNotEmpty ?? false)) ...[
-                          const SizedBox(height: 24),
+                          const SizedBox(height: 12),
                           const _SectionTitle('本月领取记录'),
                           const SizedBox(height: 4),
                           _VipCalendar(
@@ -178,7 +178,7 @@ class _VipInfoPageState extends State<VipInfoPage> {
             textAlign: TextAlign.center,
             style: TextStyle(color: colorScheme.onSurfaceVariant),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 10),
           FilledButton.icon(
             onPressed: _load,
             icon: const Icon(Icons.refresh_rounded),
@@ -222,7 +222,7 @@ class _VipStatusCard extends StatelessWidget {
             size: 44,
             color: isVip ? Colors.white : colorScheme.onSurfaceVariant,
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -439,7 +439,7 @@ class _VipCalendar extends StatelessWidget {
           GridView.count(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            crossAxisCount: 7,
+            crossAxisCount: 4,
             mainAxisSpacing: 4,
             children: [
               for (final label in const ['一', '二', '三', '四', '五', '六', '日'])
@@ -490,7 +490,7 @@ class _CalendarDay extends StatelessWidget {
           style: TextStyle(
             color: claimed ? colorScheme.onPrimary : colorScheme.onSurface,
             fontWeight: claimed ? FontWeight.w800 : FontWeight.w500,
-            fontSize: 14,
+            fontSize: 11,
           ),
         ),
       ),

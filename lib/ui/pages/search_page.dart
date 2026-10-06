@@ -283,7 +283,7 @@ class _SearchPageState extends State<SearchPage> {
                   onSubmitted: (_) => _onSubmit(),
                   textAlignVertical: TextAlignVertical.center,
                   style: TextStyle(
-                    fontSize: 15,
+                    fontSize: 12,
                     fontWeight: FontWeight.w500,
                     color: (!_focusNode.hasFocus && _controller.text.isNotEmpty)
                         ? Colors.transparent
@@ -335,7 +335,7 @@ class _SearchPageState extends State<SearchPage> {
                           child: MarqueeText(
                             text: _controller.text,
                             style: TextStyle(
-                              fontSize: 15,
+                              fontSize: 12,
                               fontWeight: FontWeight.w500,
                               color: colorScheme.onSurface,
                             ),
@@ -384,7 +384,7 @@ class _SearchPageState extends State<SearchPage> {
             child: Column(
               children: [
                 _buildCarSearchHeader(context, colorScheme),
-                const SizedBox(height: 16),
+                const SizedBox(height: 10),
                 Expanded(
                   child: AnimatedBuilder(
                     animation: widget.auth,
@@ -421,7 +421,7 @@ class _SearchPageState extends State<SearchPage> {
                     onSubmitted: (_) => _onSubmit(),
                     textAlignVertical: TextAlignVertical.center,
                     style: TextStyle(
-                      fontSize: 14.5,
+                      fontSize: 11.5,
                       fontWeight: FontWeight.w500,
                       color: (!_focusNode.hasFocus && _controller.text.isNotEmpty)
                           ? Colors.transparent
@@ -461,7 +461,7 @@ class _SearchPageState extends State<SearchPage> {
                       hintText: '搜索歌曲、歌手、专辑',
                       hintStyle: TextStyle(
                         color: colorScheme.onSurfaceVariant,
-                        fontSize: 14,
+                        fontSize: 11,
                       ),
                       filled: false,
                       border: InputBorder.none,
@@ -486,7 +486,7 @@ class _SearchPageState extends State<SearchPage> {
                             child: MarqueeText(
                               text: _controller.text,
                               style: TextStyle(
-                                fontSize: 14.5,
+                                fontSize: 11.5,
                                 fontWeight: FontWeight.w500,
                                 color: colorScheme.onSurface,
                               ),
@@ -607,7 +607,7 @@ class _SearchPageState extends State<SearchPage> {
                     '搜索历史',
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w900,
-                      fontSize: 18,
+                      fontSize: 13,
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -642,7 +642,7 @@ class _SearchPageState extends State<SearchPage> {
                   );
                 }).toList(),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 12),
             ],
             if (_hotCategories.isNotEmpty) ...[
               Row(
@@ -660,7 +660,7 @@ class _SearchPageState extends State<SearchPage> {
                       ),
                     ),
                     if (i < math.min(3, _hotCategories.length) - 1)
-                      const SizedBox(width: 24),
+                      const SizedBox(width: 12),
                   ],
                 ],
               ),
@@ -681,7 +681,7 @@ class _SearchPageState extends State<SearchPage> {
                     '搜索历史',
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
                       fontWeight: FontWeight.w900,
-                      fontSize: 20,
+                      fontSize: 11,
                     ),
                   ),
                 ),
@@ -716,7 +716,7 @@ class _SearchPageState extends State<SearchPage> {
                 );
               }).toList(),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 12),
           ],
           if (_hotCategories.isEmpty)
             const SizedBox.shrink()
@@ -838,7 +838,7 @@ class _HotSearchSkeleton extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(10, 8, 18, 160),
       children: [
         _SkeletonBlock(height: 22, width: 80),
-        const SizedBox(height: 14),
+        const SizedBox(height: 8),
         SizedBox(
           height: 36,
           child: ListView.separated(
@@ -966,7 +966,7 @@ class _HotSearchPanelState extends State<_HotSearchPanel> {
             '热搜',
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
               fontWeight: FontWeight.w900,
-              fontSize: 20,
+              fontSize: 11,
             ),
           ),
         ),
@@ -1243,7 +1243,7 @@ class _AlbumResults extends StatelessWidget {
                         style: Theme.of(context).textTheme.titleSmall
                             ?.copyWith(
                               fontWeight: FontWeight.w700,
-                              fontSize: 14.5,
+                              fontSize: 11.5,
                             ),
                       ),
                       if (subtitle.isNotEmpty) ...[
@@ -1377,7 +1377,7 @@ class _SearchResults extends StatelessWidget {
                                     ?.copyWith(
                                       color: active ? activeColor : null,
                                       fontWeight: FontWeight.w700,
-                                      fontSize: 14.5,
+                                      fontSize: 11.5,
                                     ),
                               ),
                               const SizedBox(height: 4),
@@ -1520,7 +1520,7 @@ class _EmptyResults extends StatelessWidget {
             size: 48,
             color: colorScheme.primary.withValues(alpha: .64),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 8),
           Text(
             '没有找到「$keyword」相关歌曲',
             textAlign: TextAlign.center,

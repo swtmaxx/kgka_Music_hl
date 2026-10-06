@@ -43,7 +43,7 @@ class _PersonalizationSettingsPageState
                   ),
                 ],
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 12),
               // ===== 配色方案 =====
               _SectionHeader(title: '配色方案'),
               const SizedBox(height: 8),
@@ -76,7 +76,7 @@ class _PersonalizationSettingsPageState
                   ],
                 ],
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 12),
               // ===== 自定义背景图 =====
               _SectionHeader(title: '全局背景图'),
               const SizedBox(height: 8),
@@ -127,7 +127,7 @@ class _PersonalizationSettingsPageState
                   ],
                 ],
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 12),
               // ===== 背景预览区域 =====
               if (tc.backgroundImagePath != null) ...[
                 _SectionHeader(title: '当前背景预览'),
@@ -347,7 +347,7 @@ class _BackgroundPreviewCard extends StatelessWidget {
     return ClipRRect(
       borderRadius: BorderRadius.circular(AppRadius.lg),
       child: SizedBox(
-        height: 160,
+        height: 104,
         child: Stack(
           children: [
             Positioned.fill(

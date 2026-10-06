@@ -154,7 +154,7 @@ class _CommentPageState extends State<CommentPage> {
               size: 56,
               color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: .42),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 10),
             Text(
               '还没有人评论，快来抢沙发吧！',
               style: Theme.of(context).textTheme.bodyLarge?.copyWith(
@@ -233,7 +233,7 @@ class _CommentRow extends StatelessWidget {
                         color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
                     ),
-                    const SizedBox(width: 16),
+                    const SizedBox(width: 10),
                     Text(
                       comment.addtime ?? '',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(

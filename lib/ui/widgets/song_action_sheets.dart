@@ -123,7 +123,7 @@ Future<void> showSongActionSheet({
                 ),
                 // Actions card (grid + list in one unified card)
                 if (gridActions.isNotEmpty || listActions.isNotEmpty) ...[
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 10),
                   Material(
                     color: colorScheme.surfaceContainer,
                     borderRadius: BorderRadius.circular(AppRadius.lg),
@@ -420,7 +420,7 @@ Widget _buildCarActionDialogContent(
               ),
             ],
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 10),
           Flexible(
             child: GridView.builder(
               shrinkWrap: true,

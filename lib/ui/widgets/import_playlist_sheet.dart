@@ -187,7 +187,7 @@ class _ImportPlaylistSheetState extends State<ImportPlaylistSheet> {
               color: colorScheme.onSurfaceVariant,
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 10),
           if (_step == _ImportStep.input || _step == _ImportStep.parsing) ...[
             TextField(
               controller: _controller,
@@ -208,7 +208,7 @@ class _ImportPlaylistSheetState extends State<ImportPlaylistSheet> {
                 style: TextStyle(color: colorScheme.error, fontSize: 13),
               ),
             ],
-            const SizedBox(height: 16),
+            const SizedBox(height: 10),
             FilledButton.icon(
               onPressed: _step == _ImportStep.parsing ? null : _parse,
               icon: _step == _ImportStep.parsing
@@ -270,7 +270,7 @@ class _ImportPlaylistSheetState extends State<ImportPlaylistSheet> {
             ],
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 10),
         Text(
           '导入到',
           style: Theme.of(context).textTheme.titleSmall?.copyWith(
@@ -302,7 +302,7 @@ class _ImportPlaylistSheetState extends State<ImportPlaylistSheet> {
           const SizedBox(height: 10),
           Text(message, style: TextStyle(color: colorScheme.error, fontSize: 13)),
         ],
-        const SizedBox(height: 18),
+        const SizedBox(height: 10),
         if (_step == _ImportStep.importing) ...[
           LinearProgressIndicator(
             value: _total == 0 ? null : _done / _total,

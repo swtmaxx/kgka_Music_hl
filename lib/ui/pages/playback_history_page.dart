@@ -192,7 +192,7 @@ class _PlaybackHistoryPageState extends State<PlaybackHistoryPage> {
       surfaceTintColor: Colors.transparent,
       title: const Text(
         '播放历史',
-        style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800),
       ),
       actions: [
         IconButton(
@@ -423,7 +423,7 @@ class _EmptyOrError extends StatelessWidget {
             size: 56,
             color: colorScheme.onSurfaceVariant.withValues(alpha: .5),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 8),
           Text(
             title,
             style: Theme.of(context).textTheme.titleMedium?.copyWith(

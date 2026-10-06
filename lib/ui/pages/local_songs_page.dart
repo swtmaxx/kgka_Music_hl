@@ -456,7 +456,7 @@ class _LocalSongsPageState extends State<LocalSongsPage> {
               size: 72,
               color: colorScheme.onSurfaceVariant.withValues(alpha: .5),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 10),
             Text(
               title,
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
@@ -472,7 +472,7 @@ class _LocalSongsPageState extends State<LocalSongsPage> {
                   ),
             ),
             if (action != null) ...[
-              const SizedBox(height: 24),
+              const SizedBox(height: 12),
               action,
             ],
           ],

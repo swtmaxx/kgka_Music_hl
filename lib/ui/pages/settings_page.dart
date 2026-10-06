@@ -228,7 +228,7 @@ class SettingsPage extends StatelessWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 12),
                 // Playback section
                 _SectionHeader(title: '播放'),
                 const SizedBox(height: 8),
@@ -408,7 +408,7 @@ class SettingsPage extends StatelessWidget {
                     ],
                   ],
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 12),
                 // Network section
                 _SectionHeader(title: '网络'),
                 const SizedBox(height: 8),
@@ -425,7 +425,7 @@ class SettingsPage extends StatelessWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 12),
                 // Cache section
                 _SectionHeader(title: '缓存'),
                 const SizedBox(height: 8),
@@ -440,7 +440,7 @@ class SettingsPage extends StatelessWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 12),
                 // Personalization section
                 _SectionHeader(title: '个性化'),
                 const SizedBox(height: 8),
@@ -477,7 +477,7 @@ class SettingsPage extends StatelessWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 12),
                 _SectionHeader(title: '应用'),
                 const SizedBox(height: 8),
                 _SettingsCard(
@@ -571,7 +571,7 @@ class SettingsPage extends StatelessWidget {
                   color: Theme.of(dialogContext).colorScheme.onSurfaceVariant,
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 10),
               TextField(
                 controller: controller,
                 autofocus: true,
@@ -973,7 +973,7 @@ class _CacheManagementSheetState extends State<_CacheManagementSheet> {
                 fontWeight: FontWeight.w900,
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 10),
             _CacheItem(
               icon: Icons.storage_rounded,
               title: '数据缓存',
@@ -1072,7 +1072,7 @@ class _CacheManagementSheetState extends State<_CacheManagementSheet> {
                 ],
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 10),
             if (_clearing) const Center(child: CircularProgressIndicator()),
           ],
         ),

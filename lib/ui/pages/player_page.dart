@@ -1634,7 +1634,7 @@ class _PosterLyricPreviewState extends State<_PosterLyricPreview>
     final next = index + 1 < lyrics.length ? lyrics[index + 1] : null;
     final currentStyle = Theme.of(context).textTheme.titleLarge!.copyWith(
       color: Colors.white,
-      fontSize: 22,
+      fontSize: 12,
       height: 1.22,
       fontWeight: FontWeight.w900,
     );

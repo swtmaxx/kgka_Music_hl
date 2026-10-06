@@ -1048,7 +1048,7 @@ class _PlaylistDetailPageState extends State<PlaylistDetailPage> {
                           ),
                         ),
                         style: const TextStyle(
-                          fontSize: 16,
+                          fontSize: 12,
                           fontWeight: FontWeight.w600,
                         ),
                       )
@@ -1070,7 +1070,7 @@ class _PlaylistDetailPageState extends State<PlaylistDetailPage> {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
-                            fontSize: 18,
+                            fontSize: 13,
                             fontWeight: FontWeight.w800,
                           ),
                         ),
@@ -1291,7 +1291,7 @@ class _SimilarPlaylistsSection extends StatelessWidget {
     return AppHorizontalRail<PlaylistSummary>(
       title: '相似歌单',
       items: playlists,
-      height: 170,
+      height: 108,
       itemWidth: 120,
       topPadding: 20,
       itemBuilder: (context, playlist) => _SimilarPlaylistCard(
@@ -1425,7 +1425,7 @@ class _HeroHeader extends StatelessWidget {
                     size: artworkSize,
                     borderRadius: 16,
                   ),
-                  const SizedBox(width: 16),
+                  const SizedBox(width: 10),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1437,7 +1437,7 @@ class _HeroHeader extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                           style: Theme.of(context).textTheme.titleLarge
                               ?.copyWith(
-                                fontSize: 18,
+                                fontSize: 13,
                                 fontWeight: FontWeight.w900,
                                 height: 1.05,
                               ),
@@ -1491,10 +1491,10 @@ class _PlaylistDetailSkeleton extends StatelessWidget {
               _SkeletonBox(width: 104, height: 40, radius: 20),
             ],
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 10),
           for (var index = 0; index < 10; index++) ...[
             const _PlaylistSkeletonSongRow(),
-            const SizedBox(height: 18),
+            const SizedBox(height: 10),
           ],
         ],
       ),
@@ -1524,7 +1524,7 @@ class _PlaylistSkeletonSongRow extends StatelessWidget {
         ),
         SizedBox(width: 12),
         _SkeletonBox(width: 38, height: 14, radius: 6),
-        SizedBox(width: 18),
+        SizedBox(width: 10),
         _SkeletonBox(width: 24, height: 24, radius: 12),
       ],
     );

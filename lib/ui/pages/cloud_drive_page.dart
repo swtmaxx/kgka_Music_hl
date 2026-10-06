@@ -173,7 +173,7 @@ class _CloudDrivePageState extends State<CloudDrivePage> {
                     backgroundColor: Colors.transparent,
                     title: const Text(
                       '云盘',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800),
                     ),
                     flexibleSpace: FlexibleSpaceBar(
                       stretchModes: const [StretchMode.zoomBackground],
@@ -284,7 +284,7 @@ class _CloudHeader extends StatelessWidget {
                       color: colorScheme.primary,
                     ),
                   ),
-                  const SizedBox(width: 16),
+                  const SizedBox(width: 10),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -293,7 +293,7 @@ class _CloudHeader extends StatelessWidget {
                           '我的云盘',
                           style: Theme.of(context).textTheme.titleLarge
                               ?.copyWith(
-                                fontSize: 20,
+                                fontSize: 11,
                                 fontWeight: FontWeight.w900,
                               ),
                         ),
@@ -314,7 +314,7 @@ class _CloudHeader extends StatelessWidget {
                 ],
               ),
               if (info != null && info!.maxBytes != null) ...[
-                const SizedBox(height: 14),
+                const SizedBox(height: 8),
                 _CapacityBar(info: info!),
               ],
             ],
@@ -590,7 +590,7 @@ class _CloudSkeleton extends StatelessWidget {
         children: [
           for (var index = 0; index < 10; index++) ...[
             const _SkeletonRow(),
-            const SizedBox(height: 18),
+            const SizedBox(height: 10),
           ],
         ],
       ),
@@ -620,7 +620,7 @@ class _SkeletonRow extends StatelessWidget {
         ),
         const SizedBox(width: 12),
         _buildBox(colorScheme, 38, 14),
-        const SizedBox(width: 18),
+        const SizedBox(width: 10),
         _buildBox(colorScheme, 24, 24, 12),
       ],
     );
@@ -665,7 +665,7 @@ class _CloudError extends StatelessWidget {
             maxLines: 3,
             overflow: TextOverflow.ellipsis,
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 10),
           FilledButton.icon(
             onPressed: onRetry,
             icon: const Icon(Icons.refresh_rounded),

@@ -15,7 +15,7 @@ class AppSectionHeader extends StatelessWidget {
           child: Text(
             title,
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              fontSize: 18,
+              fontSize: 13,
               fontWeight: FontWeight.w900,
               color: Theme.of(context).colorScheme.onSurface,
             ),

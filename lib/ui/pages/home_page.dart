@@ -670,7 +670,7 @@ class _HomePageState extends State<HomePage> {
                           ],
                         ),
                       ),
-                      const SliverToBoxAdapter(child: SizedBox(height: 166)),
+                      const SliverToBoxAdapter(child: SizedBox(height: 90)),
                     ],
                   ],
                 ),
@@ -751,7 +751,7 @@ class _RecommendHeader extends StatelessWidget {
                     onSettingsTap: onSettingsTap,
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 10),
                 Padding(
                   padding: const EdgeInsets.only(right: 10),
                   child: _SmartSearch(api: api, auth: auth, player: player),
@@ -769,7 +769,7 @@ class _RecommendHeader extends StatelessWidget {
                 ),
               ],
               if (sectionIndex == 0) ...[
-                const SizedBox(height: 14),
+                const SizedBox(height: 8),
                 if (isUltraWide)
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -878,7 +878,7 @@ class _TopTabs extends StatelessWidget {
                           child: Text(
                             entry.$2,
                             style: TextStyle(
-                              fontSize: 15,
+                              fontSize: 12,
                               color: entry.$1 == index
                                   ? (isDark ? Colors.white : colorScheme.primary)
                                   : colorScheme.onSurfaceVariant,
@@ -1124,7 +1124,7 @@ class _FeatureCard extends StatelessWidget {
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         color: Colors.white,
                         fontWeight: FontWeight.w900,
-                        fontSize: 16,
+                        fontSize: 12,
                       ),
                     ),
                     const SizedBox(height: 6),
@@ -1260,7 +1260,7 @@ class _SongSectionState extends State<_SongSection> {
                                   col < crossAxisCount;
                                   col++
                                 ) ...[
-                                  if (col > 0) const SizedBox(width: 16),
+                                  if (col > 0) const SizedBox(width: 10),
                                   Expanded(
                                     child: Column(
                                       children: [
@@ -1412,7 +1412,7 @@ class _HomeSongRow extends StatelessWidget {
                               ?.copyWith(
                                 color: active ? activeColor : null,
                                 fontWeight: FontWeight.w700,
-                                fontSize: 16,
+                                fontSize: 12,
                               ),
                         ),
                         const SizedBox(height: 4),
@@ -1516,7 +1516,7 @@ class _TopSongRail extends StatelessWidget {
     return AppHorizontalRail<Song>(
       title: '新歌速递',
       items: songs,
-      height: 162,
+      height: 104,
       itemWidth: 110,
       topPadding: 20,
       itemBuilder: (context, song) => _TopSongCard(
@@ -1598,7 +1598,7 @@ class _TopAlbumRail extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           SizedBox(
-            height: 172,
+            height: 110,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 10),
@@ -1675,7 +1675,7 @@ class _RecommendedSongCardRail extends StatelessWidget {
     return AppHorizontalRail<RecommendedSongCard>(
       title: '推荐歌曲',
       items: cards,
-      height: 172,
+      height: 110,
       itemWidth: 120,
       itemBuilder: (context, card) => _RecommendedSongCardTile(
         card: card,
@@ -1782,8 +1782,8 @@ class _PlaylistRailState extends State<_PlaylistRail> {
             itemCount: visible.length,
             gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
               maxCrossAxisExtent: 160,
-              mainAxisSpacing: 16,
-              crossAxisSpacing: 14,
+              mainAxisSpacing: 8,
+              crossAxisSpacing: 8,
               childAspectRatio: 0.60,
             ),
             itemBuilder: (context, index) {
@@ -1815,7 +1815,7 @@ class _SectionHeader extends StatelessWidget {
           child: Text(
             title,
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              fontSize: 18,
+              fontSize: 13,
               fontWeight: FontWeight.w900,
               color: Theme.of(context).colorScheme.onSurface,
             ),
@@ -2024,7 +2024,7 @@ class _RadioSectionState extends State<_RadioSection> {
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 10),
                     child: SizedBox(
-                      height: 190,
+                      height: 80,
                       child: radio.recommended.length >= 2
                           // 有两个及以上推荐时，并排展示两张大卡
                           ? Row(
@@ -2063,7 +2063,7 @@ class _RadioSectionState extends State<_RadioSection> {
                     ),
                   ),
                 if (radio.recommended.length > 2) ...[
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 8),
                   _RadioStationGrid(
                     stations: radio.recommended.skip(2).toList(),
                     loadingStationId: _loadingStationId,
@@ -2071,7 +2071,7 @@ class _RadioSectionState extends State<_RadioSection> {
                   ),
                 ],
                 for (final group in radio.groups) ...[
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 10),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 10),
                     child: _SectionHeader(
@@ -2121,7 +2121,7 @@ class _RadioSectionState extends State<_RadioSection> {
                   onTap: () => _playStation(radio.recommended.first),
                 ),
               if (radio.recommended.length > 1) ...[
-                const SizedBox(height: 14),
+                const SizedBox(height: 8),
                 _RadioStationRail(
                   stations: radio.recommended.skip(1).toList(),
                   loadingStationId: _loadingStationId,
@@ -2129,7 +2129,7 @@ class _RadioSectionState extends State<_RadioSection> {
                 ),
               ],
               for (final group in radio.groups) ...[
-                const SizedBox(height: 24),
+                const SizedBox(height: 12),
                 _SectionHeader(
                   title: group.name,
                   action: Icon(
@@ -2255,7 +2255,7 @@ class _RadioStationRail extends StatelessWidget {
     }
 
     return SizedBox(
-      height: 182,
+      height: 115,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: stations.length,
@@ -2296,8 +2296,8 @@ class _RadioStationGrid extends StatelessWidget {
       itemCount: stations.length,
       gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
         maxCrossAxisExtent: 160,
-        mainAxisSpacing: 16,
-        crossAxisSpacing: 14,
+        mainAxisSpacing: 8,
+        crossAxisSpacing: 8,
         childAspectRatio: 0.72,
       ),
       itemBuilder: (context, index) {
@@ -2438,13 +2438,13 @@ class _RadioSkeleton extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const _SkeletonBox(width: 112, height: 24, radius: 8),
-          const SizedBox(height: 14),
-          const _SkeletonBox(width: double.infinity, height: 170, radius: 14),
+          const SizedBox(height: 8),
+          const _SkeletonBox(width: double.infinity, height: 108, radius: 14),
           const SizedBox(height: 22),
           const _SkeletonBox(width: 90, height: 22, radius: 8),
           const SizedBox(height: 12),
           SizedBox(
-            height: 164,
+            height: 104,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               itemCount: 3,
@@ -2452,7 +2452,7 @@ class _RadioSkeleton extends StatelessWidget {
               itemBuilder: (context, index) {
                 return _SkeletonBox(
                   width: index == 2 ? 76 : 128,
-                  height: 164,
+                  height: 104,
                   radius: 10,
                 );
               },
@@ -2511,7 +2511,7 @@ class _RadioUnsupported extends StatelessWidget {
             size: 42,
             color: colorScheme.primary.withValues(alpha: .72),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 8),
           Text(
             '电台暂不支持',
             style: Theme.of(
@@ -2555,9 +2555,9 @@ class _HomeSkeleton extends StatelessWidget {
                 _SkeletonBox.circle(size: 34),
               ],
             ),
-            const SizedBox(height: 28),
+            const SizedBox(height: 8),
             const _SkeletonBox(width: double.infinity, height: 44, radius: 9),
-            const SizedBox(height: 14),
+            const SizedBox(height: 8),
             LayoutBuilder(
               builder: (context, constraints) {
                 final cardSize = (constraints.maxWidth - 10) / 2;
@@ -2570,9 +2570,9 @@ class _HomeSkeleton extends StatelessWidget {
                 );
               },
             ),
-            const SizedBox(height: 28),
+            const SizedBox(height: 8),
             const _SkeletonBox(width: 128, height: 24, radius: 8),
-            const SizedBox(height: 18),
+            const SizedBox(height: 10),
             for (var index = 0; index < 6; index++) ...[
               Row(
                 children: [
@@ -2594,7 +2594,7 @@ class _HomeSkeleton extends StatelessWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 18),
+              const SizedBox(height: 10),
             ],
           ],
         ),
@@ -2829,7 +2829,7 @@ class _PillCard extends StatelessWidget {
                       style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                         fontWeight: FontWeight.w900,
                         color: colorScheme.onSurface,
-                        fontSize: 16,
+                        fontSize: 12,
                       ),
                     ),
                   ],

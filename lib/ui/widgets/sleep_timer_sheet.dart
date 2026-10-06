@@ -97,7 +97,7 @@ class _SleepTimerSheetState extends State<_SleepTimerSheet> {
               const SizedBox(height: 8),
               _ActiveTimerDisplay(player: player),
             ],
-            const SizedBox(height: 16),
+            const SizedBox(height: 10),
             // Finish song toggle
             DecoratedBox(
               decoration: BoxDecoration(
@@ -121,7 +121,7 @@ class _SleepTimerSheetState extends State<_SleepTimerSheet> {
                 ),
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 10),
             // Time presets
             Wrap(
               spacing: 10,
@@ -200,7 +200,7 @@ class _ActiveTimerDisplay extends StatelessWidget {
             style: TextStyle(
               color: colorScheme.onPrimaryContainer,
               fontWeight: FontWeight.w700,
-              fontSize: 14,
+              fontSize: 11,
               fontFeatures: const [FontFeature.tabularFigures()],
             ),
           ),

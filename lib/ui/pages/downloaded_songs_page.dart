@@ -532,7 +532,7 @@ Widget _emptyState(BuildContext context, String title, String subtitle) {
             size: 64,
             color: colorScheme.outline,
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 10),
           Text(
             title,
             style: Theme.of(context).textTheme.titleMedium,

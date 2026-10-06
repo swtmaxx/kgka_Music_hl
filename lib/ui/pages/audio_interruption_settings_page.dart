@@ -60,7 +60,7 @@ class AudioInterruptionSettingsPage extends StatelessWidget {
                     ],
                   ),
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 10),
                 // Settings card
                 DecoratedBox(
                   decoration: BoxDecoration(
@@ -106,7 +106,7 @@ class AudioInterruptionSettingsPage extends StatelessWidget {
                     ],
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 10),
                 // Compatibility notice
                 Container(
                   padding: const EdgeInsets.all(10),

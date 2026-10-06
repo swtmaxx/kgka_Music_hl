@@ -498,7 +498,7 @@ class _RhythmGamePageState extends State<RhythmGamePage>
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
                                 color: Colors.white,
-                                fontSize: 15,
+                                fontSize: 12,
                                 fontWeight: FontWeight.bold,
                                 shadows: [Shadow(color: Color(0xFF00FFCC), blurRadius: 8)],
                               ),
@@ -578,7 +578,7 @@ class _RhythmGamePageState extends State<RhythmGamePage>
                               _score.toString().padLeft(6, '0'),
                               style: TextStyle(
                                 color: _isFeverActive ? const Color(0xFFFFD700) : Colors.white,
-                                fontSize: 28,
+                                fontSize: 13,
                                 fontWeight: FontWeight.w900,
                                 fontFamily: 'monospace',
                                 shadows: [
@@ -607,7 +607,7 @@ class _RhythmGamePageState extends State<RhythmGamePage>
                               '${_accuracy.toStringAsFixed(1)}%',
                               style: const TextStyle(
                                 color: Colors.white,
-                                fontSize: 24,
+                                fontSize: 12,
                                 fontWeight: FontWeight.bold,
                                 shadows: [Shadow(color: Color(0xFFFF007F), blurRadius: 12)],
                               ),
@@ -678,7 +678,7 @@ class _RhythmGamePageState extends State<RhythmGamePage>
                       const Text(
                         '连 击',
                         style: TextStyle(
-                          fontSize: 15,
+                          fontSize: 12,
                           letterSpacing: 4,
                           fontWeight: FontWeight.w800,
                           color: Colors.white,
@@ -755,7 +755,7 @@ class _RhythmGamePageState extends State<RhythmGamePage>
                           Text(
                             _isGameOver ? '关卡完成' : '游戏暂停',
                             style: TextStyle(
-                              fontSize: 26,
+                              fontSize: 13,
                               fontWeight: FontWeight.w900,
                               color: _isGameOver ? const Color(0xFF00FFCC) : Colors.white,
                               letterSpacing: 3,
@@ -767,7 +767,7 @@ class _RhythmGamePageState extends State<RhythmGamePage>
                               ],
                             ),
                           ),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: 10),
                           if (_isGameOver) ...[
                             Text(
                               _grade,
@@ -790,13 +790,13 @@ class _RhythmGamePageState extends State<RhythmGamePage>
                             Text('最终得分: $_score',
                                 style: const TextStyle(
                                     color: Colors.white,
-                                    fontSize: 20,
+                                    fontSize: 11,
                                     fontWeight: FontWeight.bold)),
                             const SizedBox(height: 4),
                             Text('最高连击: $_maxCombo',
-                                style: const TextStyle(color: Colors.white70, fontSize: 14)),
+                                style: const TextStyle(color: Colors.white70, fontSize: 11)),
                             Text('准确率: ${_accuracy.toStringAsFixed(1)}%',
-                                style: const TextStyle(color: Colors.white70, fontSize: 14)),
+                                style: const TextStyle(color: Colors.white70, fontSize: 11)),
                             Text('完美: $_perfectCount | 优秀: $_greatCount | 良好: $_goodCount | 失误: $_missCount',
                                 style: const TextStyle(color: Colors.white38, fontSize: 11)),
                             const SizedBox(height: 22),

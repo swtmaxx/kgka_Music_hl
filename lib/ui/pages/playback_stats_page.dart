@@ -147,7 +147,7 @@ class _StatsContent extends StatelessWidget {
           ],
         ),
         if (stats.topArtists.isNotEmpty) ...[
-          const SizedBox(height: 24),
+          const SizedBox(height: 12),
           _SectionHeader(title: '最常听歌手 Top 10'),
           const SizedBox(height: 8),
           _StatsCard(
@@ -164,7 +164,7 @@ class _StatsContent extends StatelessWidget {
           ),
         ],
         if (stats.topSongs.isNotEmpty) ...[
-          const SizedBox(height: 24),
+          const SizedBox(height: 12),
           _SectionHeader(title: '最常听歌曲 Top 10'),
           const SizedBox(height: 8),
           _StatsCard(

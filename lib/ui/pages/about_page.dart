@@ -80,7 +80,7 @@ class _AboutPageState extends State<AboutPage> {
                 children: [
                   const SizedBox(height: 12),
                   _AppLogo(),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 10),
                   Text(
                     AppConfig.appName,
                     style: Theme.of(context).textTheme.headlineSmall?.copyWith(
@@ -102,7 +102,7 @@ class _AboutPageState extends State<AboutPage> {
                       color: colorScheme.onSurfaceVariant,
                     ),
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 12),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 12),
                     child: Row(
@@ -194,9 +194,9 @@ class _AboutPageState extends State<AboutPage> {
                   },
                 ),
               ),
-              const SliverToBoxAdapter(child: SizedBox(height: 32)),
+              const SliverToBoxAdapter(child: SizedBox(height: 10)),
             ] else if (_changelogLoaded) ...[
-              const SliverToBoxAdapter(child: SizedBox(height: 32)),
+              const SliverToBoxAdapter(child: SizedBox(height: 10)),
             ],
           ],
         ),
@@ -272,7 +272,7 @@ class _InfoLinkRow extends StatelessWidget {
                 fontWeight: FontWeight.w600,
               ),
             ),
-            const SizedBox(width: 16),
+            const SizedBox(width: 10),
             Expanded(
               child: Text(
                 value,
@@ -334,7 +334,7 @@ class _InfoRow extends StatelessWidget {
               fontWeight: FontWeight.w600,
             ),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: 10),
           Expanded(
             child: Text(
               value,
