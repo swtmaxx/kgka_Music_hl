@@ -120,9 +120,13 @@ class ThemeController extends ChangeNotifier {
     applyOrientations(AdaptiveLayout.isTabletByPlatform());
     notifyListeners();
 
-    // 预缓存自定义背景图，避免页面切换时出现纯色闪烁
+    // 预缓存自定义背景图，避免页面切换时出现纯色闪烁。
+    // 手表专用：与显示端一致限制解码尺寸，避免全分辨率大图驻留内存。
     if (_backgroundEnabled && _backgroundImagePath != null) {
-      final provider = FileImage(File(_backgroundImagePath!));
+      final provider = ResizeImage(
+        FileImage(File(_backgroundImagePath!)),
+        width: 360,
+      );
       provider.resolve(ImageConfiguration.empty);
     }
   }
