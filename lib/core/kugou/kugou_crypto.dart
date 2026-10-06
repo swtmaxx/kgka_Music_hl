@@ -46,14 +46,16 @@ class KugouCrypto {
 
   // ===== AES-128-CBC =====
 
-  /// AES-CBC 加密，返回 hex。key/iv 长度不足 16 会按 UTF-8 截断/补齐由调用方保证。
+  /// AES-CBC 加密，返回 hex。
+  ///
+  /// key 支持 16/24/32 字符（AES-128/192/256）；iv 必须 16 字符。
   static String aesCbcEncryptHex(List<int> data, String key, String iv) {
     final engine = pc.CBCBlockCipher(pc.AESEngine())
       ..init(
         true,
         pc.ParametersWithIV(
-          pc.KeyParameter(_fit16(key)),
-          _fit16(iv),
+          pc.KeyParameter(_keyBytes(key)),
+          _ivBytes(iv),
         ),
       );
     final input = _pkcs7Pad(Uint8List.fromList(data), 16);
@@ -70,8 +72,8 @@ class KugouCrypto {
       ..init(
         false,
         pc.ParametersWithIV(
-          pc.KeyParameter(_fit16(key)),
-          _fit16(iv),
+          pc.KeyParameter(_keyBytes(key)),
+          _ivBytes(iv),
         ),
       );
     final input = _fromHex(hexCipher);
@@ -172,9 +174,21 @@ class KugouCrypto {
 
   // ===== 内部工具 =====
 
-  static Uint8List _fit16(String s) {
+  static Uint8List _keyBytes(String s) {
     final b = utf8.encode(s);
-    if (b.length == 16) return Uint8List.fromList(b);
+    if (b.length == 16 || b.length == 24 || b.length == 32) {
+      return Uint8List.fromList(b);
+    }
+    // 非常规长度：截断/补零到 16 字节
+    final out = Uint8List(16);
+    for (var i = 0; i < 16 && i < b.length; i++) {
+      out[i] = b[i];
+    }
+    return out;
+  }
+
+  static Uint8List _ivBytes(String s) {
+    final b = utf8.encode(s);
     final out = Uint8List(16);
     for (var i = 0; i < 16 && i < b.length; i++) {
       out[i] = b[i];

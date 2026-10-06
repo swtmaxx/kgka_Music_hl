@@ -463,6 +463,58 @@ class KugouClient {
           },
         );
 
+      // ===== 登录 =====
+      case '/login/qr/key':
+        return _forward(
+          method: 'GET',
+          url: '/v2/qrcode',
+          baseURL: 'https://login-user.kugou.com',
+          params: {
+            'appid': query['type'] == 'web' ? 1014 : 1001,
+            'type': 1,
+            'plat': 4,
+            'qrcode_txt':
+                'https://h5.kugou.com/apps/loginQRCode/html/index.html?appid=${KugouConfig.appId}&',
+            'srcappid': 2919,
+          },
+          encryptType: KugouEncryptType.web,
+        );
+      case '/login/qr/check':
+        return _forward(
+          method: 'GET',
+          url: '/v2/get_userinfo_qrcode',
+          baseURL: 'https://login-user.kugou.com',
+          params: {
+            'plat': 4,
+            'appid': KugouConfig.appId,
+            'srcappid': 2919,
+            'qrcode': query['key'],
+            'dev': KugouDevice.instance.serverDev,
+          },
+          encryptType: KugouEncryptType.web,
+        );
+      case '/login/logout':
+        return _forward(
+          method: 'POST',
+          url: '/v1/logout',
+          baseURL: 'https://login.user.kugou.com',
+        );
+      case '/captcha/sent':
+        return _forward(
+          method: 'POST',
+          url: '/v7/send_mobile_code',
+          baseURL: 'http://login.user.kugou.com',
+          data: {
+            'businessid': 5,
+            'mobile': query['mobile']?.toString() ?? '',
+            'plat': 3,
+          },
+        );
+      case '/login/token':
+        return _loginByToken();
+      case '/login/cellphone':
+        return _loginByVerifyCode(query);
+
       // ===== 杂项 =====
       case '/listen/timeadd':
         return _forward(
@@ -740,6 +792,7 @@ class KugouClient {
     Map<String, String> headers = const {},
     bool encryptKey = false,
     bool sortQuery = false,
+    KugouEncryptType encryptType = KugouEncryptType.android,
   }) {
     return _request.send(
       method: method,
@@ -750,7 +803,166 @@ class KugouClient {
       headers: headers,
       encryptKey: encryptKey,
       sortQuery: sortQuery,
+      encryptType: encryptType,
     );
+  }
+
+  // ===== 登录实现 =====
+
+  /// 固定 AES key/iv（概念版，`login_token.js` / `login_cellphone.js`）。
+  static const _liteLoginKey = 'c24f74ca2820225badc01946dba4fdf7';
+  static const _liteLoginIv = 'adc01946dba4fdf7';
+  static const _liteT2Key = 'fd14b35e3f81af3817a20ae7adae7020';
+  static const _liteT2Iv = '17a20ae7adae7020';
+  static const _liteT1Key = '5e4ef500e9597fe004bd09a46d8add98';
+  static const _liteT1Iv = '04bd09a46d8add98';
+
+  /// 用 token 刷新登录态（`module/login_token.js`）。
+  Future<Object?> _loginByToken() async {
+    final nowMs = _nowMs();
+    final device = KugouDevice.instance;
+
+    // AES(clienttime + token)，固定 key/iv
+    final encrypt = KugouCrypto.aesCbcEncryptHex(
+      utf8.encode(
+        jsonEncode({'clienttime': nowMs ~/ 1000, 'token': _token()}),
+      ),
+      _liteLoginKey,
+      _liteLoginIv,
+    );
+    // AES({}) 生成随机会话 key
+    final sessionKey = KugouUtil.randomString(16).toLowerCase();
+    final encryptParams = KugouCrypto.aesCbcEncryptHex(
+      utf8.encode(jsonEncode(<String, Object?>{})),
+      KugouCrypto.md5Hex(sessionKey).substring(0, 32),
+      KugouCrypto.md5Hex(sessionKey).substring(16, 32),
+    );
+    final pk = KugouCrypto.rsaEncryptRaw(
+      utf8.encode(jsonEncode({'clienttime_ms': nowMs, 'key': sessionKey})),
+      KugouCrypto.parseRsaPublicKey(KugouConfig.publicLiteRsaKey),
+    );
+    final t2 = KugouCrypto.aesCbcEncryptHex(
+      utf8.encode(
+        '${device.guid}|0f607264fc6318a92b9e13c65db7cd3c|${device.mac}|${device.serverDev}|$nowMs',
+      ),
+      _liteT2Key,
+      _liteT2Iv,
+    );
+    final t1 = KugouCrypto.aesCbcEncryptHex(
+      utf8.encode('${_request.t1 ?? ''}|$nowMs'),
+      _liteT1Key,
+      _liteT1Iv,
+    );
+
+    final raw = await _request.send(
+      method: 'POST',
+      url: '/v5/login_by_token',
+      baseURL: 'http://login.user.kugou.com',
+      data: {
+        'dfid': device.dfid,
+        'p3': encrypt,
+        'plat': 1,
+        't1': t1,
+        't2': t2,
+        't3': 'MCwwLDAsMCwwLDAsMCwwLDA=',
+        'pk': pk,
+        'params': encryptParams,
+        'userid': _userIdString(),
+        'clienttime_ms': nowMs,
+        'dev': device.serverDev,
+      },
+    );
+    return _extractSecuParams(raw, sessionKey);
+  }
+
+  /// 手机验证码登录（`module/login_cellphone.js`）。
+  Future<Object?> _loginByVerifyCode(Map<String, Object?> q) async {
+    final nowMs = _nowMs();
+    final device = KugouDevice.instance;
+    final mobile = q['mobile']?.toString() ?? '';
+    final masked = mobile.length >= 11
+        ? '${mobile.substring(0, 2)}*****${mobile.substring(10, 11)}'
+        : mobile;
+
+    final sessionKey = KugouUtil.randomString(16).toLowerCase();
+    final sessionDigest = KugouCrypto.md5Hex(sessionKey);
+    final encrypt = KugouCrypto.aesCbcEncryptHex(
+      utf8.encode(jsonEncode({'mobile': mobile, 'code': q['code'] ?? ''})),
+      sessionDigest.substring(0, 32),
+      sessionDigest.substring(16, 32),
+    );
+    final t2 = KugouCrypto.aesCbcEncryptHex(
+      utf8.encode(
+        '${device.guid}|0f607264fc6318a92b9e13c65db7cd3c|${device.mac}|${device.serverDev}|$nowMs',
+      ),
+      _liteT2Key,
+      _liteT2Iv,
+    );
+    final t1 = KugouCrypto.aesCbcEncryptHex(
+      utf8.encode('|$nowMs'),
+      _liteT1Key,
+      _liteT1Iv,
+    );
+    final pk = KugouCrypto.rsaEncryptRaw(
+      utf8.encode(jsonEncode({'clienttime_ms': nowMs, 'key': sessionKey})),
+      KugouCrypto.parseRsaPublicKey(KugouConfig.publicLiteRsaKey),
+    );
+
+    final data = <String, Object?>{
+      'plat': 1,
+      'support_multi': 1,
+      't1': t1,
+      't2': t2,
+      'clienttime_ms': nowMs,
+      'mobile': masked,
+      'key': _signParamsKey('$nowMs'),
+      'pk': pk,
+      'params': encrypt,
+      'dfid': device.dfid,
+      'dev': device.serverDev,
+      'gitversion': '5f0b7c4',
+    };
+    if (q['userId'] != null) data['userid'] = q['userId'];
+
+    final raw = await _request.send(
+      method: 'POST',
+      url: '/v7/login_by_verifycode',
+      baseURL: 'https://loginserviceretry.kugou.com',
+      data: data,
+      headers: const {
+        'support-calm': '1',
+        'User-Agent': 'Android16-1070-11440-130-0-LOGIN-wifi',
+      },
+    );
+    return _extractSecuParams(raw, sessionKey);
+  }
+
+  /// 解密登录响应中的 `secu_params` 并合并回 `data`。
+  Object? _extractSecuParams(Object? raw, String sessionKey) {
+    if (raw is! Map) return raw;
+    final body = Map<String, Object?>.from(raw);
+    final data = body['data'];
+    if (data is! Map) return raw;
+    final secu = data['secu_params']?.toString();
+    if (secu == null || secu.isEmpty) return raw;
+
+    final digest = KugouCrypto.md5Hex(sessionKey);
+    try {
+      final text = KugouCrypto.aesCbcDecryptHex(
+        secu,
+        digest.substring(0, 32),
+        digest.substring(16, 32),
+      );
+      final decoded = jsonDecode(text);
+      if (decoded is Map) {
+        body['data'] = {...Map<String, Object?>.from(data), ...decoded};
+      } else if (decoded is String) {
+        body['data'] = {...Map<String, Object?>.from(data), 'token': decoded};
+      }
+    } catch (_) {
+      // 解密失败保留原始响应
+    }
+    return body;
   }
 
   // ===== 整形 / 工具 =====
