@@ -2565,13 +2565,15 @@ class _ControlsState extends State<_Controls> {
         final tiny = widget.tinyOverride;
         // 超大按钮仅在车机模式开启时使用，普通横屏用标准尺寸。
         final isCar = isLandscape && false;
-        final edgeButtonSize = tiny ? 26.0 : (dense ? 34.0 : (isCar ? 56.0 : (compact ? 40.0 : 44.0)));
-        final edgeIconSize = tiny ? 16.0 : (dense ? 21.0 : (isCar ? 34.0 : (compact ? 24.0 : 27.0)));
-        final skipButtonSize = tiny ? 30.0 : (dense ? 42.0 : (isCar ? 72.0 : (compact ? 50.0 : 56.0)));
-        final skipIconSize = tiny ? 22.0 : (dense ? 33.0 : (isCar ? 54.0 : (compact ? 40.0 : 46.0)));
-        final playButtonSize = tiny ? 40.0 : (dense ? 58.0 : (isCar ? 96.0 : (compact ? 72.0 : 82.0)));
-        final playIconSize = tiny ? 30.0 : (dense ? 46.0 : (isCar ? 72.0 : (compact ? 56.0 : 64.0)));
-        final gap = tiny ? 2.0 : (dense ? 3.0 : (isCar ? 24.0 : (compact ? 5.0 : 9.0)));
+        // 手表(tiny)按 Wear OS 媒体控制规范放大触控目标：
+        // 5 键合计 ≈ 210px，在 240px 宽度内仍留出边距。
+        final edgeButtonSize = tiny ? 34.0 : (dense ? 34.0 : (isCar ? 56.0 : (compact ? 40.0 : 44.0)));
+        final edgeIconSize = tiny ? 18.0 : (dense ? 21.0 : (isCar ? 34.0 : (compact ? 24.0 : 27.0)));
+        final skipButtonSize = tiny ? 40.0 : (dense ? 42.0 : (isCar ? 72.0 : (compact ? 50.0 : 56.0)));
+        final skipIconSize = tiny ? 26.0 : (dense ? 33.0 : (isCar ? 54.0 : (compact ? 40.0 : 46.0)));
+        final playButtonSize = tiny ? 50.0 : (dense ? 58.0 : (isCar ? 96.0 : (compact ? 72.0 : 82.0)));
+        final playIconSize = tiny ? 32.0 : (dense ? 46.0 : (isCar ? 72.0 : (compact ? 56.0 : 64.0)));
+        final gap = tiny ? 3.0 : (dense ? 3.0 : (isCar ? 24.0 : (compact ? 5.0 : 9.0)));
 
         return Row(
           mainAxisAlignment: MainAxisAlignment.center,

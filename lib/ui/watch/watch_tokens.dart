@@ -22,8 +22,8 @@ abstract final class WatchRadius {
 }
 
 abstract final class WatchSize {
-  /// 最小触控目标（手表上再小就点不准了）。
-  static const double minTouch = 40;
+  /// 最小触控目标。Wear OS 规范建议 48dp；小屏手表取 48 仍可容纳 5 键媒体控制。
+  static const double minTouch = 48;
   static const double appBar = 40;
   static const double icon = 18;
   static const double iconSmall = 14;
@@ -35,10 +35,10 @@ abstract final class WatchSize {
 }
 
 abstract final class WatchText {
-  static const double caption = 9;
-  static const double small = 10;
-  static const double body = 11;
-  static const double title = 12;
-  static const double heading = 14;
-  static const double display = 16;
+  static const double caption = 10;
+  static const double small = 11;
+  static const double body = 13;
+  static const double title = 14;
+  static const double heading = 16;
+  static const double display = 18;
 }
