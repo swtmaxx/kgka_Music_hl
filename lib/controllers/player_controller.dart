@@ -540,7 +540,8 @@ class PlayerController extends ChangeNotifier {
     final coverUrl = song.coverUrl;
     if (coverUrl == null || coverUrl.isEmpty) return;
     if (coverUrl.startsWith('content://')) return; // 本地封面走原生加载，不预缓存
-    final provider = NetworkImage(coverUrl);
+    // 手表专用：限制预缓存解码尺寸，避免全分辨率封面驻留内存。
+    final provider = ResizeImage(NetworkImage(coverUrl), width: 240, height: 240);
     provider.resolve(ImageConfiguration.empty);
   }
 

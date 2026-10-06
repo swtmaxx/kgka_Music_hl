@@ -245,7 +245,7 @@ class _AppBackground extends StatefulWidget {
 }
 
 class _AppBackgroundState extends State<_AppBackground> {
-  FileImage? _imageProvider;
+  ImageProvider? _imageProvider;
   String? _cachedPath;
 
   @override
@@ -288,7 +288,8 @@ class _AppBackgroundState extends State<_AppBackground> {
     final path = widget.themeController.backgroundImagePath;
     if (path != null && path != _cachedPath) {
       _cachedPath = path;
-      _imageProvider = FileImage(File(path));
+      // 手表专用：背景图统一限制解码尺寸，precache 与显示共用同一 provider。
+      _imageProvider = ResizeImage(FileImage(File(path)), width: 360);
     }
   }
 
@@ -318,8 +319,6 @@ class _AppBackgroundState extends State<_AppBackground> {
           child: Image(
             image: _imageProvider!,
             fit: BoxFit.cover,
-            // 背景图同样限制解码尺寸，避免全分辨率大图驻留内存。
-            cacheWidth: 360,
             gaplessPlayback: true,
             errorBuilder: (_, _, _) => const SizedBox.shrink(),
           ),

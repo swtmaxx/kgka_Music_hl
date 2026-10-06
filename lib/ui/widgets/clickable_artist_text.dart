@@ -80,7 +80,11 @@ Future<void> openArtistDetail({
                 leading: CircleAvatar(
                   backgroundImage: artist.avatarUrl == null
                       ? null
-                      : NetworkImage(artist.avatarUrl!),
+                      : ResizeImage(
+                          NetworkImage(artist.avatarUrl!),
+                          width: 96,
+                          height: 96,
+                        ),
                   child: artist.avatarUrl == null
                       ? const Icon(Icons.person_rounded)
                       : null,
