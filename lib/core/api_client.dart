@@ -68,10 +68,10 @@ class ApiClient {
     if (useBuiltInApi) {
       _builtIn.setSession(token: token, t1: t1, userId: sessionId);
       try {
+        // 内置实现已按路由把响应整形成与外部服务器一致的结构
+        // （外部服务器是**逐路由**决定是否解包 `data` 的，不能统一处理）。
         final result = await _builtIn.handle(method, path, query);
-        // 酷狗原生响应多为 `{status, errcode, data: {...}}`，而外部服务器会
-        // 把 `data` 解包后返回。这里做同样处理，保证上层解析逻辑零改动。
-        return unwrapData(result);
+        return result;
       } on KugouUnsupportedRoute {
         // 路由未内置：回退到外部服务器
       } on KugouApiException catch (error) {

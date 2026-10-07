@@ -67,11 +67,13 @@ class KugouClient {
       case '/search':
         return _search(query);
       case '/search/hot':
-        return _forward(
-          method: 'GET',
-          url: '/api/v3/search/hot_tab',
-          params: {'navid': 1, 'plat': 2},
-          headers: const {'x-router': 'msearch.kugou.com'},
+        return _unwrap(
+          await _forward(
+            method: 'GET',
+            url: '/api/v3/search/hot_tab',
+            params: {'navid': 1, 'plat': 2},
+            headers: const {'x-router': 'msearch.kugou.com'},
+          ),
         );
       case '/search/suggest':
         return _forward(
@@ -112,47 +114,53 @@ class KugouClient {
       case '/user/detail':
         return _userDetail();
       case '/user/playlist':
-        return _forward(
-          method: 'POST',
-          url: '/v7/get_all_list',
-          params: {'plat': 1, 'userid': _userId(), 'token': _token()},
-          data: {
-            'userid': _userId(),
-            'token': _token(),
-            'total_ver': 979,
-            'type': 2,
-            'page': query['page'] ?? 1,
-            'pagesize': query['pagesize'] ?? 30,
-          },
-          headers: const {'x-router': 'cloudlist.service.kugou.com'},
+        return _unwrap(
+          await _forward(
+            method: 'POST',
+            url: '/v7/get_all_list',
+            params: {'plat': 1, 'userid': _userId(), 'token': _token()},
+            data: {
+              'userid': _userId(),
+              'token': _token(),
+              'total_ver': 979,
+              'type': 2,
+              'page': query['page'] ?? 1,
+              'pagesize': query['pagesize'] ?? 30,
+            },
+            headers: const {'x-router': 'cloudlist.service.kugou.com'},
+          ),
         );
       case '/user/vip/detail':
-        return _forward(
-          method: 'GET',
-          url: '/v1/get_union_vip',
-          params: {'busi_type': 'all'},
-          headers: const {'x-router': 'kugouvip.kugou.com'},
+        return _unwrap(
+          await _forward(
+            method: 'GET',
+            url: '/v1/get_union_vip',
+            params: {'busi_type': 'all'},
+            headers: const {'x-router': 'kugouvip.kugou.com'},
+          ),
         );
 
       // ===== 歌单 =====
       case '/playlist/detail':
         return _playlistDetail(query);
       case '/playlist/track/all':
-        return _forward(
-          method: 'GET',
-          url: '/pubsongs/v2/get_other_list_file_nofilt',
-          params: {
-            'area_code': 1,
-            'begin_idx':
-                ((_int(query['page'], 1) - 1) * _int(query['pagesize'], 80)),
-            'plat': 1,
-            'type': 1,
-            'mode': 1,
-            'personal_switch': 1,
-            'extend_fields': 'abtags,hot_cmt,popularization',
-            'pagesize': _int(query['pagesize'], 80),
-            'global_collection_id': query['id'],
-          },
+        return _unwrap(
+          await _forward(
+            method: 'GET',
+            url: '/pubsongs/v2/get_other_list_file_nofilt',
+            params: {
+              'area_code': 1,
+              'begin_idx':
+                  ((_int(query['page'], 1) - 1) * _int(query['pagesize'], 80)),
+              'plat': 1,
+              'type': 1,
+              'mode': 1,
+              'personal_switch': 1,
+              'extend_fields': 'abtags,hot_cmt,popularization',
+              'pagesize': _int(query['pagesize'], 80),
+              'global_collection_id': query['id'],
+            },
+          ),
         );
       case '/playlist/similar':
         return _forward(
@@ -176,14 +184,16 @@ class KugouClient {
 
       // ===== 推荐 / 榜单 =====
       case '/recommend/songs':
-        return _forward(
-          method: 'POST',
-          url: '/everyday_song_recommend',
-          data: {
-            'platform': query['platform'] ?? 'android',
-            'userid': _userIdString(),
-          },
-          headers: const {'x-router': 'everydayrec.service.kugou.com'},
+        return _unwrap(
+          await _forward(
+            method: 'POST',
+            url: '/everyday_song_recommend',
+            data: {
+              'platform': query['platform'] ?? 'android',
+              'userid': _userIdString(),
+            },
+            headers: const {'x-router': 'everydayrec.service.kugou.com'},
+          ),
         );
       case '/top/song':
         return _forward(
@@ -210,9 +220,10 @@ class KugouClient {
           },
         );
       case '/top/playlist':
-        return _forward(
-          method: 'POST',
-          url: '/v2/special_recommend',
+        return _unwrap(
+          await _forward(
+            method: 'POST',
+            url: '/v2/special_recommend',
           data: {
             'appid': KugouConfig.liteAppId,
             'mid': KugouDevice.instance.mid,
@@ -229,12 +240,14 @@ class KugouClient {
             'retrun_min': 5,
             'return_special_falg': 1,
           },
-          headers: const {'x-router': 'specialrec.service.kugou.com'},
+            headers: const {'x-router': 'specialrec.service.kugou.com'},
+          ),
         );
       case '/top/card':
-        return _forward(
-          method: 'POST',
-          url: '/singlecardrec.service/v1/single_card_recommend',
+        return _unwrap(
+          await _forward(
+            method: 'POST',
+            url: '/singlecardrec.service/v1/single_card_recommend',
           data: {
             'appid': KugouConfig.liteAppId,
             'clientver': KugouConfig.liteClientVer,
@@ -255,13 +268,16 @@ class KugouClient {
             'area_code': 1,
             'platform': 'ios',
           },
+          ),
         );
       case '/personal/fm':
         return _personalFm(query);
       case '/album/shop':
-        return _forward(
-          method: 'GET',
-          url: '/zhuanjidata/v3/album_shop_v2/get_classify_data',
+        return _unwrap(
+          await _forward(
+            method: 'GET',
+            url: '/zhuanjidata/v3/album_shop_v2/get_classify_data',
+          ),
         );
 
       // ===== 专辑 / 歌手 =====
@@ -279,12 +295,14 @@ class KugouClient {
           headers: const {'x-router': 'openapi.kugou.com', 'kg-tid': '255'},
         );
       case '/artist/detail':
-        return _forward(
-          method: 'POST',
-          url: '/kmr/v3/author',
-          baseURL: 'https://openapi.kugou.com',
-          data: {'author_id': query['id']},
-          headers: const {'x-router': 'openapi.kugou.com', 'kg-tid': '36'},
+        return _unwrap(
+          await _forward(
+            method: 'POST',
+            url: '/kmr/v3/author',
+            baseURL: 'https://openapi.kugou.com',
+            data: {'author_id': query['id']},
+            headers: const {'x-router': 'openapi.kugou.com', 'kg-tid': '36'},
+          ),
         );
       case '/artist/albums':
         return _forward(
@@ -438,33 +456,37 @@ class KugouClient {
 
       // ===== 登录 =====
       case '/login/qr/key':
-        return _forward(
-          method: 'GET',
-          url: '/v2/qrcode',
-          baseURL: 'https://login-user.kugou.com',
-          params: {
-            'appid': query['type'] == 'web' ? 1014 : 1001,
-            'type': 1,
-            'plat': 4,
-            'qrcode_txt':
-                'https://h5.kugou.com/apps/loginQRCode/html/index.html?appid=${KugouConfig.appId}&',
-            'srcappid': 2919,
-          },
-          encryptType: KugouEncryptType.web,
+        return _unwrap(
+          await _forward(
+            method: 'GET',
+            url: '/v2/qrcode',
+            baseURL: 'https://login-user.kugou.com',
+            params: {
+              'appid': query['type'] == 'web' ? 1014 : 1001,
+              'type': 1,
+              'plat': 4,
+              'qrcode_txt':
+                  'https://h5.kugou.com/apps/loginQRCode/html/index.html?appid=${KugouConfig.appId}&',
+              'srcappid': 2919,
+            },
+            encryptType: KugouEncryptType.web,
+          ),
         );
       case '/login/qr/check':
-        return _forward(
-          method: 'GET',
-          url: '/v2/get_userinfo_qrcode',
-          baseURL: 'https://login-user.kugou.com',
-          params: {
-            'plat': 4,
-            'appid': KugouConfig.appId,
-            'srcappid': 2919,
-            'qrcode': query['key'],
-            'dev': KugouDevice.instance.serverDev,
-          },
-          encryptType: KugouEncryptType.web,
+        return _unwrap(
+          await _forward(
+            method: 'GET',
+            url: '/v2/get_userinfo_qrcode',
+            baseURL: 'https://login-user.kugou.com',
+            params: {
+              'plat': 4,
+              'appid': KugouConfig.appId,
+              'srcappid': 2919,
+              'qrcode': query['key'],
+              'dev': KugouDevice.instance.serverDev,
+            },
+            encryptType: KugouEncryptType.web,
+          ),
         );
       case '/login/logout':
         return _forward(
@@ -494,25 +516,31 @@ class KugouClient {
 
       // ===== 概念版 VIP =====
       case '/youth/day/vip':
-        return _forward(
-          method: 'POST',
-          url: '/youth/v1/recharge/receive_vip_listen_song',
-          params: {'source_id': 90139, 'receive_day': query['receive_day']},
-          headers: const {
-            'content-type': 'application/x-www-form-urlencoded',
-          },
+        return _unwrap(
+          await _forward(
+            method: 'POST',
+            url: '/youth/v1/recharge/receive_vip_listen_song',
+            params: {'source_id': 90139, 'receive_day': query['receive_day']},
+            headers: const {
+              'content-type': 'application/x-www-form-urlencoded',
+            },
+          ),
         );
       case '/youth/day/vip/upgrade':
-        return _forward(
-          method: 'POST',
-          url: '/youth/v1/listen_song/upgrade_vip_reward',
-          params: {'kugouid': _userId(), 'ad_type': 1},
+        return _unwrap(
+          await _forward(
+            method: 'POST',
+            url: '/youth/v1/listen_song/upgrade_vip_reward',
+            params: {'kugouid': _userId(), 'ad_type': 1},
+          ),
         );
       case '/youth/month/vip/record':
-        return _forward(
-          method: 'GET',
-          url: '/youth/v1/activity/get_month_vip_record',
-          params: {'latest_limit': 100},
+        return _unwrap(
+          await _forward(
+            method: 'GET',
+            url: '/youth/v1/activity/get_month_vip_record',
+            params: {'latest_limit': 100},
+          ),
         );
 
       // ===== 杂项 =====
@@ -676,7 +704,7 @@ class KugouClient {
       utf8.encode(jsonEncode({'token': _token(), 'clienttime': clientTimeSec})),
       KugouCrypto.parseRsaPublicKey(KugouConfig.publicLiteRsaKey),
     );
-    return _request.send(
+    final raw = await _request.send(
       method: 'POST',
       url: '/v3/get_my_info',
       params: {'plat': 1},
@@ -688,6 +716,7 @@ class KugouClient {
       },
       headers: const {'x-router': 'usercenter.kugou.com'},
     );
+    return _unwrap(raw);
   }
 
   /// 私人 FM（`module/personal_fm.js`）。
@@ -719,11 +748,13 @@ class KugouClient {
       final value = q[key] ?? q[key == 'songid' ? 'songId' : key];
       if (value != null) data[key] = value;
     }
-    return _request.send(
-      method: 'POST',
-      url: '/v2/personal_recommend',
-      data: data,
-      headers: const {'x-router': 'persnfm.service.kugou.com'},
+    return _unwrap(
+      await _request.send(
+        method: 'POST',
+        url: '/v2/personal_recommend',
+        data: data,
+        headers: const {'x-router': 'persnfm.service.kugou.com'},
+      ),
     );
   }
 
@@ -775,7 +806,7 @@ class KugouClient {
 
     final text = KugouCrypto.aesCbcDecryptHex(_hex(raw), aesKey, aesIv);
     try {
-      return jsonDecode(text);
+      return _unwrap(jsonDecode(text));
     } catch (_) {
       return text;
     }
@@ -926,7 +957,7 @@ class KugouClient {
 
     final text = KugouCrypto.aesCbcDecryptHex(_hex(raw), aesKey, aesIv);
     try {
-      return jsonDecode(text);
+      return _unwrap(jsonDecode(text));
     } catch (_) {
       return text;
     }
@@ -1077,10 +1108,28 @@ class KugouClient {
     } catch (_) {
       // 解密失败保留原始响应
     }
-    return body;
+    // 登录接口的 token/userid/t1 位于 `data`，而上层 `LoginSession.fromJson`
+    // 按顶层字段读取，因此这里解包。
+    return _unwrap(body);
   }
 
   // ===== 整形 / 工具 =====
+
+  /// 解包酷狗原生的 `data` 字段。
+  ///
+  /// 外部服务器（`music.api.hoilai.cn`）是**逐路由**决定是否解包的，
+  /// 上层 `MusicApi` 的解析代码也按各自情况编写。因此这里不能统一处理：
+  /// 需要解包的路由显式调用本方法，其余保持原始响应。
+  ///
+  /// 例：`/search/hot` 要解包（上层读 `json['list']`）；
+  /// 而 `/song/climax` / `/top/album` / `/playlist/similar` 不能解包
+  /// （上层读 `json['data']`）。
+  Object? _unwrap(Object? raw) {
+    if (raw is Map && raw['data'] != null) {
+      return raw['data'];
+    }
+    return raw;
+  }
 
   Object? _flattenList(Object? raw, List<String> keys) {
     if (raw is List) return raw;

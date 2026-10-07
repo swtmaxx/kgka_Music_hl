@@ -1992,12 +1992,16 @@ class _LyricViewportState extends State<_LyricViewport> {
   }
 
   void _syncTicker() {
+    // 与 [_LandscapeLyricPanelState] / [_PosterLyricPreviewState] 保持一致：
+    // 必须同时检查 isAppForeground，否则应用切到后台（锁屏/回到表盘）后
+    // ticker 仍会以每帧 60fps 空转，白白耗电。
     final shouldTick =
         widget.isPageVisible &&
         widget.player.isPlaying &&
         widget.lyrics.isNotEmpty &&
         !widget.player.isScrubbing &&
-        !_isUserSelecting;
+        !_isUserSelecting &&
+        widget.player.isAppForeground;
     if (shouldTick && !_ticker.isActive) {
       _ticker.start();
     } else if (!shouldTick && _ticker.isActive) {

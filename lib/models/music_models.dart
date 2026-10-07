@@ -793,6 +793,9 @@ class Song {
                   'avatarUrl': a.avatarUrl,
                 })
             .toList(),
+        // 必须持久化来源：否则本地歌曲重启后被当作酷狗歌曲去请求播放地址，
+        // 必然失败（本地歌曲的 id 是文件路径，没有 hash）。
+        'source': source.name,
         if (isCloudDrive) 'isCloudDrive': true,
       };
 
@@ -816,6 +819,10 @@ class Song {
               ))
           .where((artist) => artist.name.isNotEmpty)
           .toList(),
+      source: SongSource.values.firstWhere(
+        (value) => value.name == json['source'],
+        orElse: () => SongSource.kugou,
+      ),
       isCloudDrive: json['isCloudDrive'] == true,
     );
   }

@@ -534,6 +534,9 @@ class AuthController extends ChangeNotifier {
     _api.setSession(null);
     await prefs.remove(_tokenKey);
     await prefs.remove(_t1Key);
+    // 必须一并清除：restore() 用 sessionId 判定 isLoggedIn，
+    // 漏删会让“账号不匹配→清会话”后重启又用陈旧 sessionId 自动登录。
+    await prefs.remove(_sessionIdKey);
     await prefs.remove(_userIdKey);
     await prefs.remove(_playlistCacheKey);
     await prefs.remove(_playlistEmptyCountKey);
