@@ -103,16 +103,6 @@ class MainActivity : AudioServiceActivity() {
                 }
             }
 
-        // 车机检测：isAutomotive 判别车机。
-        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "kgka_music_hl/device")
-            .setMethodCallHandler { call, result ->
-                when (call.method) {
-                    "isAutomotive" -> result.success(isAutomotiveDevice())
-                    "isSmallWatch" -> result.success(isSmallWatchDevice())
-                    else -> result.notImplemented()
-                }
-            }
-
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "kgka_music_hl/update")
             .setMethodCallHandler { call, result ->
                 when (call.method) {
@@ -1023,24 +1013,6 @@ class MainActivity : AudioServiceActivity() {
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         startActivity(installIntent)
-    }
-
-    /// 是否为 Android Automotive 车机设备。
-    /// 仅依赖官方 FEATURE_AUTOMOTIVE 标记：国产定制 AOSP 车机通常未声明，
-    /// 会判为 false，需用户在设置→个性化手动开启车机模式。
-    private fun isAutomotiveDevice(): Boolean {
-        return packageManager.hasSystemFeature(PackageManager.FEATURE_AUTOMOTIVE)
-    }
-
-    /// 是否为小屏手表设备（S100 等 240x284 物理像素、DPR 1.0 的手表）。
-    /// 通过屏幕物理尺寸 + DPR 判断，不依赖设备型号。
-    private fun isSmallWatchDevice(): Boolean {
-        val metrics = resources.displayMetrics
-        // S100: 240x284 physical pixels, densityDpi=120 (DPR 1.0)
-        // 逻辑宽高都 <= 300 且高度 <= 320
-        return metrics.widthPixels <= 300
-            && metrics.heightPixels <= 320
-            && metrics.heightPixels > metrics.widthPixels
     }
 
     private fun getAlbumArtBytes(albumId: Long): ByteArray? {

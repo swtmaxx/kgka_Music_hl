@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Android 12+ 的备份/迁移规则。
+
+  登录态（token / t1 / sessionId）以明文存放在 SharedPreferences 中，
+  因此这里显式排除所有可含用户数据的域，避免被云备份或换机迁移带走。
+  allowBackup 已置为 false，本文件是 Android 12+ 的必要补充
+  （该版本起 device-to-device transfer 由本规则控制）。
+-->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="sharedpref" path="." />
+        <exclude domain="file" path="." />
+        <exclude domain="database" path="." />
+        <exclude domain="external" path="." />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="sharedpref" path="." />
+        <exclude domain="file" path="." />
+        <exclude domain="database" path="." />
+        <exclude domain="external" path="." />
+    </device-transfer>
+</data-extraction-rules>

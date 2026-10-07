@@ -27,6 +27,14 @@ class CacheService {
   static const _savedAtKey = 'savedAt';
   static const _payloadKey = 'payload';
 
+  /// 数据缓存条目数上限。
+  ///
+  /// `cache_playlist_{id}` / `cache_album_{id}` / `cache_artist_{id}` 是一实体一键，
+  /// 浏览越多、条目越多。SharedPreferences 启动时全量读入内存、每次写入重写整个
+  /// XML，无上限时长期使用会拖慢启动并抬高内存占用（1GB 手表尤其明显）。
+  /// 超出时按 `savedAt` 淘汰最旧的条目（近似 LRU）。
+  static const _maxEntries = 200;
+
   // ===== key 命名规范 =====
   // 首页（匿名可访问，登出不清理）：cache_home
   // 歌单详情：cache_playlist_{playlistId}
@@ -78,6 +86,38 @@ class CacheService {
       _payloadKey: payload,
     });
     await prefs.setString(key, wrapper);
+    await _evictIfNeeded(prefs);
+  }
+
+  /// 超出 [_maxEntries] 时按 `savedAt` 升序淘汰最旧的缓存条目。
+  Future<void> _evictIfNeeded(SharedPreferences prefs) async {
+    final keys = prefs
+        .getKeys()
+        .where((key) => key.startsWith('cache_'))
+        .toList();
+    if (keys.length <= _maxEntries) return;
+
+    final ages = <String, int>{};
+    for (final key in keys) {
+      var savedAt = 0;
+      final raw = prefs.getString(key);
+      if (raw != null) {
+        try {
+          final decoded = jsonDecode(raw);
+          if (decoded is Map && decoded[_savedAtKey] is num) {
+            savedAt = (decoded[_savedAtKey] as num).toInt();
+          }
+        } catch (_) {}
+      }
+      ages[key] = savedAt;
+    }
+
+    final ordered = ages.keys.toList()
+      ..sort((a, b) => (ages[a] ?? 0).compareTo(ages[b] ?? 0));
+    final removeCount = keys.length - _maxEntries;
+    for (var i = 0; i < removeCount && i < ordered.length; i++) {
+      await prefs.remove(ordered[i]);
+    }
   }
 
   /// 移除单条缓存。

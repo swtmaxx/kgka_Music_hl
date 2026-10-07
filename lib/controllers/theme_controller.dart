@@ -5,7 +5,6 @@ import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../services/device_info_service.dart';
 import '../ui/adaptive_layout.dart';
 
 /// 全局个性化设置控制器。
@@ -28,7 +27,6 @@ class ThemeController extends ChangeNotifier {
   static const _bgEnabledKey = 'theme.bg_enabled';
   static const _bgImagePathKey = 'theme.bg_image_path';
   static const _bgOpacityKey = 'theme.bg_opacity';
-  static const _landscapeEnabledKey = 'theme.landscape_enabled';
   static const _fontScaleKey = 'theme.font_scale';
   static const _themeModeKey = 'theme.mode';
 
@@ -52,10 +50,7 @@ class ThemeController extends ChangeNotifier {
   bool _backgroundEnabled = false;
   String? _backgroundImagePath;
   double _backgroundOpacity = 0.15;
-  bool _landscapeEnabled = false;
   double _fontScale = 1.0;
-  // 车机检测结果缓存（设备不变，启动时检测一次）。
-  bool _isAutomotiveDevice = false;
 
   // 小屏手表：手表专用版恒为真（见 isSmallWatchDevice）。
 
@@ -69,28 +64,13 @@ class ThemeController extends ChangeNotifier {
   bool get backgroundEnabled => _backgroundEnabled;
   String? get backgroundImagePath => _backgroundImagePath;
   double get backgroundOpacity => _backgroundOpacity;
-  bool get landscapeEnabled => _landscapeEnabled;
-
   double get fontScale => _fontScale;
-  bool get isAutomotiveDevice => _isAutomotiveDevice;
 
   /// 手表专用版：所有设备都按手表密度渲染。
   bool get isSmallWatchDevice => true;
 
   /// 是否使用了非默认种子色。
   bool get hasCustomSeedColor => _seedColor != const Color(0xFF1478FF);
-
-  /// 检测是否为 Android Automotive 车机并缓存结果。
-  /// 设备类型不变，启动时调用一次即可。须在 [load] 之前调用，
-  /// 以便首次安装时据检测结果决定车机模式默认值。
-  Future<void> detectAutomotive(DeviceInfoService deviceInfo) async {
-    _isAutomotiveDevice = await deviceInfo.isAutomotive();
-  }
-
-  /// 检测是否为小屏手表设备（手表专用版恒为真）。
-  Future<void> detectSmallWatch(DeviceInfoService deviceInfo) async {
-    // 保留调用点以兼容启动流程；结果不再使用。
-  }
 
   /// 加载持久化设置。
   Future<void> load() async {
@@ -101,7 +81,6 @@ class ThemeController extends ChangeNotifier {
     }
     _backgroundEnabled = prefs.getBool(_bgEnabledKey) ?? false;
     _backgroundImagePath = prefs.getString(_bgImagePathKey);
-    _landscapeEnabled = prefs.getBool(_landscapeEnabledKey) ?? false;
     _fontScale = prefs.getDouble(_fontScaleKey) ?? 1.0;
     final opacity = prefs.getDouble(_bgOpacityKey);
     if (opacity != null) {
@@ -156,18 +135,7 @@ class ThemeController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// 开启/关闭横屏模式。
-  Future<void> setLandscapeEnabled(bool enabled, bool isTablet) async {
-    if (_landscapeEnabled == enabled) return;
-    _landscapeEnabled = enabled;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_landscapeEnabledKey, enabled);
-    applyOrientations(isTablet);
-    notifyListeners();
-  }
-
-  /// 开启/关闭车机模式：横屏时启用左侧播放面板 + 顶栏布局，并放大文字。
-  /// 关闭时回到普通横屏（NavigationRail），竖屏始终不受影响。
+  /// 设置全局字体大小档位（见 [fontScaleOptions]）。
   Future<void> setFontScale(double scale) async {
     final clamped = fontScaleOptions.contains(scale) ? scale : 1.0;
     if (_fontScale == clamped) return;
@@ -179,8 +147,7 @@ class ThemeController extends ChangeNotifier {
 
   /// 手表专用版：强制竖屏锁定。
   ///
-  /// 原实现用 `_lastAppliedIsTablet` 做一次性门控，但调用方在 load() 与
-  /// setLandscapeEnabled() 都会传不同参数，该标志实际使后续调用全部失效
+  /// 原实现用 `_lastAppliedIsTablet` 做一次性门控，导致后续调用全部失效
   /// （且与“恒竖屏”语义矛盾）。直接每次下发即可，幂等且开销极小。
   void applyOrientations(bool isTablet) {
     SystemChrome.setPreferredOrientations(const [

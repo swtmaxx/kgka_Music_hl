@@ -800,13 +800,26 @@ class MusicApi {
   }
 
   Future<List<String>> searchSuggest(String keywords) async {
-    final json = asMap(
-      await _client.get('/search/suggest', {'keywords': keywords}),
-    );
-    final items = asList(json['music']);
-    return items
-        .whereType<Map<String, dynamic>>()
-        .map((item) => asString(item['keyword']) ?? '')
+    final json = await _client.get('/search/suggest', {'keywords': keywords});
+
+    // 老格式：{ music: [ { keyword: '...' } ] }
+    final root = asMap(json);
+    final legacy = asList(root['music'])
+        .whereType<Map>()
+        .map((item) => asString(asMap(item)['keyword']) ?? '')
+        .where((k) => k.isNotEmpty)
+        .toList();
+    if (legacy.isNotEmpty) {
+      return legacy;
+    }
+
+    // 真实返回：{ data: [ { RecordDatas: [ { HintInfo: '...' } ] } ] }
+    final groups = json is List ? json : asList(root['data']);
+    return groups
+        .whereType<Map>()
+        .expand((group) => asList(asMap(group)['RecordDatas']))
+        .whereType<Map>()
+        .map((item) => asString(asMap(item)['HintInfo']) ?? '')
         .where((k) => k.isNotEmpty)
         .toList();
   }

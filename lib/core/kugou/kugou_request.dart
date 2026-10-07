@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
 
@@ -104,13 +105,14 @@ class KugouRequest {
     }
 
     // ===== 请求体序列化 =====
-    final String bodyText;
+    // 支持三种形态：String（原样）/ Uint8List（二进制原样）/ 其它（JSON 编码）。
+    final Object bodyPayload;
     if (data == null) {
-      bodyText = '';
-    } else if (data is String) {
-      bodyText = data;
+      bodyPayload = '';
+    } else if (data is String || data is Uint8List) {
+      bodyPayload = data;
     } else {
-      bodyText = jsonEncode(data);
+      bodyPayload = jsonEncode(data);
     }
 
     // ===== 签名 =====
@@ -121,12 +123,12 @@ class KugouRequest {
         case KugouEncryptType.web:
           merged['signature'] = KugouSignature.signatureWebParams(
             merged,
-            bodyText,
+            bodyPayload is String ? bodyPayload : '',
           );
         case KugouEncryptType.android:
           merged['signature'] = KugouSignature.signatureAndroidParams(
             merged,
-            bodyText,
+            bodyPayload is Uint8List ? bodyPayload : bodyPayload as String,
           );
       }
     }
@@ -169,7 +171,7 @@ class KugouRequest {
     try {
       response = method.toUpperCase() == 'POST'
           ? await _client
-              .post(uri, headers: requestHeaders, body: bodyText)
+              .post(uri, headers: requestHeaders, body: bodyPayload)
               .timeout(const Duration(seconds: 20))
           : await _client
               .get(uri, headers: requestHeaders)

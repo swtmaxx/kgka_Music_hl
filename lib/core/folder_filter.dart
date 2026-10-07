@@ -30,17 +30,6 @@ class FolderFilter {
     return normalizeFolderPath(normalized.substring(0, index));
   }
 
-  /// 判断 [filePath] 是否位于 [folder] 目录（含其子目录）下。
-  ///
-  /// [folder] 会先做规范化；两者比较不区分大小写。
-  static bool isPathUnderFolder(String filePath, String folder) {
-    final normalizedFolder = normalizeFolderPath(folder);
-    if (normalizedFolder == null) return false;
-    final parent = parentFolderOf(filePath);
-    if (parent == null) return false;
-    return parent == normalizedFolder || parent.startsWith('$normalizedFolder/');
-  }
-
   /// 过滤掉位于 [excludedFolders] 目录（含子目录）下的歌曲。
   static List<Song> filterSongs(
     List<Song> songs,

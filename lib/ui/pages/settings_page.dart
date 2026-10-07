@@ -182,9 +182,12 @@ class SettingsPage extends StatelessWidget {
             title: const Text('设置'),
           ),
           body: AnimatedBuilder(
+            // 只监听与设置项相关的控制器。player 已从整页监听中移除：
+            // 它的 positionStream 每 ~200ms 就 notifyListeners 一次，
+            // 挂在页面级会让整个设置页（含缓存/个性化等分区）全量重建。
+            // 仅「播放」分区需要 player，已在该处单独包 AnimatedBuilder。
             animation: Listenable.merge([
               auth,
-              player,
               ?localMusic,
               theme,
             ]),
@@ -231,8 +234,12 @@ class SettingsPage extends StatelessWidget {
                 // Playback section
                 _SectionHeader(title: '播放'),
                 const SizedBox(height: 8),
-                _SettingsCard(
-                  children: [
+                // 只有这一块依赖 player 的设置值，单独监听它，
+                // 避免整页随播放进度每 ~200ms 全量重建。
+                AnimatedBuilder(
+                  animation: player,
+                  builder: (context, _) => _SettingsCard(
+                    children: [
                     _SettingsTile(
                       icon: Icons.high_quality_rounded,
                       iconColor: colorScheme.primary,
@@ -397,6 +404,7 @@ class SettingsPage extends StatelessWidget {
                       ],
                     ],
                   ],
+                  ),
                 ),
                 const SizedBox(height: 12),
                 // Cache section

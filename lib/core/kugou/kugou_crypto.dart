@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io' show ZLibDecoder;
 import 'dart:math';
 import 'dart:typed_data';
 
@@ -170,6 +171,32 @@ class KugouCrypto {
       length,
       (_) => chars[rnd.nextInt(chars.length)],
     ).join();
+  }
+
+  // ===== KRC 歌词解码 =====
+
+  /// KRC 内容的 16 字节循环 XOR 密钥。
+  static const List<int> _krcXorKey = [
+    64, 71, 97, 119, 94, 50, 116, 71, 81, 54, 49, 45, 206, 210, 110, 105,
+  ];
+
+  /// 解码 KRC：base64 → 丢弃前 4 字节文件头 → 循环 XOR → zlib inflate。
+  ///
+  /// 对应 JS 参考实现的 `decodeLyrics`。若上游内容并非 KRC 加密格式
+  /// （例如已是明文），解密会得到乱码，此时调用方应回退到其它候选内容。
+  static String? decodeKrc(String base64Content) {
+    try {
+      final raw = base64.decode(base64Content);
+      if (raw.length <= 4) return null;
+      final body = Uint8List.fromList(raw.sublist(4));
+      for (var i = 0; i < body.length; i++) {
+        body[i] = body[i] ^ _krcXorKey[i % _krcXorKey.length];
+      }
+      final inflated = ZLibDecoder().convert(body);
+      return utf8.decode(inflated, allowMalformed: true);
+    } catch (_) {
+      return null;
+    }
   }
 
   // ===== 内部工具 =====

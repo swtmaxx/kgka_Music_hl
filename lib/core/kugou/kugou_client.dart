@@ -22,22 +22,29 @@ class KugouClient {
 
   KugouRequest get request => _request;
 
-  bool _registerAttempted = false;
-
   /// 启动时预热：后台完成设备注册，避免首次请求等待注册往返。
   Future<void> warmUp() => _ensureRegistered();
 
   /// 首次使用前完成设备注册（拿到 dfid），否则播放地址等接口会被上游要求安全验证。
-  Future<void> _ensureRegistered() async {
-    if (_registerAttempted) return;
-    _registerAttempted = true;
+  /// 注册中的 Future（并发只会真正执行一次；失败后允许重试）。
+  Future<void>? _registerFuture;
+
+  Future<void> _ensureRegistered() => _registerFuture ??= _doRegister();
+
+  Future<void> _doRegister() async {
     final device = KugouDevice.instance;
     await device.ensureLoaded();
     if (device.hasDfid) return;
+    var ok = false;
     try {
-      await KugouRegister.register(_request);
+      ok = await KugouRegister.register(_request);
     } catch (_) {
-      // 注册失败不阻塞；后续请求会以未注册身份发出，必要时回退外部服务器。
+      ok = false;
+    }
+    // 注册失败（或返回 false）时清空缓存，允许后续请求再次尝试；
+    // 成功则保留 Future，之后每次调用都直接返回（幂等、开销极小）。
+    if (!ok) {
+      _registerFuture = null;
     }
   }
 
@@ -169,8 +176,7 @@ class KugouClient {
           data: {
             'appid': KugouConfig.liteAppId,
             'clientver': KugouConfig.liteClientVer,
-            'clienttime': _nowMs(),
-            'key': _signParamsKey(_nowMs().toString()),
+            ..._stampFields(),
             'userid': _userId(),
             'ugc': 1,
             'show_list': 1,
@@ -229,13 +235,23 @@ class KugouClient {
             'mid': KugouDevice.instance.mid,
             'clientver': KugouConfig.liteClientVer,
             'platform': 'android',
-            'clienttime': _nowMs(),
+            ..._stampFields(),
             'userid': _userId(),
             'module_id': query['module_id'] ?? 1,
             'page': query['page'] ?? 1,
             'pagesize': query['pagesize'] ?? 30,
-            'key': _signParamsKey(_nowMs().toString()),
-            'special_recommend': {'withtag': 1, 'withsong': 1, 'sort': 1},
+            'special_recommend': {
+              'withtag': 1,
+              'withsong': 1,
+              'sort': 1,
+              // 参考实现（module/top_playlist.js）还带这几个字段，
+              // 缺失时分类筛选（categoryid）不生效。
+              'ugc': 1,
+              'is_selected': 0,
+              'withrecommend': 1,
+              'area_code': 1,
+              'categoryid': query['category_id'] ?? 0,
+            },
             'req_multi': 1,
             'retrun_min': 5,
             'return_special_falg': 1,
@@ -252,9 +268,8 @@ class KugouClient {
             'appid': KugouConfig.liteAppId,
             'clientver': KugouConfig.liteClientVer,
             'platform': 'android',
-            'clienttime': _nowMs(),
+            ..._stampFields(),
             'userid': _userId(),
-            'key': _signParamsKey(_nowMs().toString()),
             'fakem': 'ca981cfc583a4c37f28d2d49000013c16a0a',
             'area_code': 1,
             'mid': KugouDevice.instance.mid,
@@ -328,8 +343,7 @@ class KugouClient {
             'appid': KugouConfig.liteAppId,
             'clientver': KugouConfig.liteClientVer,
             'mid': KugouDevice.instance.mid,
-            'clienttime': _nowMs(),
-            'key': _signParamsKey(_nowMs().toString()),
+            ..._stampFields(),
             'author_id': query['id'],
             'pagesize': query['pagesize'] ?? 30,
             'page': query['page'] ?? 1,
@@ -347,9 +361,8 @@ class KugouClient {
           data: {
             'appid': KugouConfig.liteAppId,
             'clientver': KugouConfig.liteClientVer,
-            'clienttime': _nowMs(),
+            ..._stampFields(),
             'mid': KugouDevice.instance.mid,
-            'key': _signParamsKey(_nowMs().toString()),
             'rcmdsongcount': 1,
             'level': 0,
             'area_code': 1,
@@ -364,13 +377,12 @@ class KugouClient {
           url: '/v1/class_fm_song',
           data: {
             'kguid': _userId(),
-            'clienttime': _nowMs(),
+            ..._stampFields(),
             'mid': KugouDevice.instance.mid,
             'platform': 'android',
             'clientver': KugouConfig.liteClientVer,
             'uid': _userId(),
             'get_tracker': 1,
-            'key': _signParamsKey(_nowMs().toString()),
             'appid': KugouConfig.liteAppId,
           },
           headers: const {'x-router': 'fm.service.kugou.com'},
@@ -382,7 +394,7 @@ class KugouClient {
           data: {
             'appid': KugouConfig.liteAppId,
             'area_code': 1,
-            'clienttime': _nowMs(),
+            ..._stampFields(),
             'clientver': KugouConfig.liteClientVer,
             'data': (query['fmid']?.toString() ?? '')
                 .split(',')
@@ -395,7 +407,6 @@ class KugouClient {
                     })
                 .toList(),
             'get_tracker': 1,
-            'key': _signParamsKey(_nowMs().toString()),
             'mid': KugouDevice.instance.mid,
             'uid': _userId(),
           },
@@ -410,7 +421,7 @@ class KugouClient {
           url: '/v1/fm_info',
           data: {
             'appid': KugouConfig.liteAppId,
-            'clienttime': _nowMs(),
+            ..._stampFields(),
             'clientver': KugouConfig.liteClientVer,
             'data': (query['fmid']?.toString() ?? '')
                 .split(',')
@@ -421,7 +432,6 @@ class KugouClient {
                     })
                 .toList(),
             'dfid': KugouDevice.instance.dfid,
-            'key': _signParamsKey(_nowMs().toString()),
             'mid': KugouDevice.instance.mid,
           },
           headers: const {
@@ -432,20 +442,22 @@ class KugouClient {
 
       // ===== 评论 =====
       case '/comment/music':
-        return _forward(
-          method: 'POST',
-          url: '/mcomment/v1/cmtlist',
-          params: {
-            'ver': 6,
-            'mixsongid': query['mixsongid'],
-            'need_show_image': 1,
-            'p': query['page'] ?? 1,
-            'pagesize': query['pagesize'] ?? 30,
-            'show_classify': query['show_classify'] ?? 1,
-            'show_hotword_list': query['show_hotword_list'] ?? 1,
-            'extdata': '0',
-            'code': 'fc4be23b4e972707f36b8a828a93ba8a',
-          },
+        return _unwrap(
+          await _forward(
+            method: 'POST',
+            url: '/mcomment/v1/cmtlist',
+            params: {
+              'ver': 6,
+              'mixsongid': query['mixsongid'],
+              'need_show_image': 1,
+              'p': query['page'] ?? 1,
+              'pagesize': query['pagesize'] ?? 30,
+              'show_classify': query['show_classify'] ?? 1,
+              'show_hotword_list': query['show_hotword_list'] ?? 1,
+              'extdata': '0',
+              'code': 'fc4be23b4e972707f36b8a828a93ba8a',
+            },
+          ),
         );
 
       // ===== 云盘 =====
@@ -723,7 +735,7 @@ class KugouClient {
   Future<Object?> _personalFm(Map<String, Object?> q) async {
     final data = <String, Object?>{
       'appid': KugouConfig.liteAppId,
-      'clienttime': _nowMs(),
+      ..._stampFields(),
       'mid': KugouDevice.instance.mid,
       'action': q['action'] ?? 'play',
       'recommend_source_locked': 0,
@@ -737,7 +749,6 @@ class KugouClient {
       'is_overplay': q['isOverplay'] == true ? 1 : 0,
       'mode': q['mode'] ?? 'normal',
       'fakem': 'ca981cfc583a4c37f28d2d49000013c16a0a',
-      'key': _signParamsKey(_nowMs().toString()),
     };
     if (_userId() != 0) {
       data['userid'] = _userId();
@@ -1179,12 +1190,16 @@ class KugouClient {
         (contentType != null && int.tryParse('$contentType') != 0);
 
     String? decoded;
-    try {
-      if (isPlain) {
+    if (isPlain) {
+      try {
         decoded = utf8.decode(base64.decode(content), allowMalformed: true);
+      } catch (_) {
+        decoded = null;
       }
-    } catch (_) {
-      decoded = null;
+    } else {
+      // fmt=krc 且 contenttype=0：正文是 KRC 加密格式（XOR + zlib），
+      // 必须解码后才能拿到逐字时间轴与 [language:] 翻译标签。
+      decoded = KugouCrypto.decodeKrc(content);
     }
 
     if (decoded != null && decoded.isNotEmpty) {
@@ -1196,6 +1211,15 @@ class KugouClient {
 
   String _signParamsKey(String data) =>
       KugouSignature.signParamsKey(data);
+
+  /// 生成同一时间戳的 `clienttime` 与配套 `key`。
+  ///
+  /// 参考实现用**同一个** dateTime 同时构造两者；此前这里分两次调用
+  /// `_nowMs()`，跨毫秒边界时 `key` 会与 `clienttime` 不一致。
+  Map<String, Object?> _stampFields() {
+    final now = _nowMs();
+    return {'clienttime': now, 'key': _signParamsKey('$now')};
+  }
 
   int _nowMs() => DateTime.now().millisecondsSinceEpoch;
   int _nowSec() => DateTime.now().millisecondsSinceEpoch ~/ 1000;
