@@ -306,6 +306,18 @@ class MusicApi {
     return cards.whereType<RecommendedSongCard>().toList();
   }
 
+  /// 获取新碟上架（专辑列表），首页「新碟上架」卡片使用。
+  Future<List<AlbumShopItem>> albumShop({int page = 1, int pageSize = 30}) async {
+    final json = asMap(
+      await _client.get('/album/shop', {'page': page, 'pagesize': pageSize}),
+    );
+    return asList(json['album_list'])
+        .whereType<Map<String, dynamic>>()
+        .map(AlbumShopItem.fromJson)
+        .where((item) => item.mediaId > 0)
+        .toList();
+  }
+
   Future<List<FmStation>> fmRecommendedStations() async {
     final raw = await _client.get('/fm/recommend');
     final items = raw is List ? raw : asList(asMap(raw)['data']);

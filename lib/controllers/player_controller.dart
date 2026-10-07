@@ -124,7 +124,6 @@ class PlayerController extends ChangeNotifier {
         _setPositionBase(audioPlayer.position, playing: isPlaying);
       }
       _syncListeningTimeTracker();
-      _syncDesktopPlayState();
       notifyListeners();
     });
     _processingStateSub = audioPlayer.processingStateStream.distinct().listen((
@@ -1352,6 +1351,11 @@ class PlayerController extends ChangeNotifier {
     await prefs.setBool(_autoResumeAfterInterruptionSettingKey, enabled);
     notifyListeners();
   }
+
+  int _lastSuperLyricIndex = -1;
+  // 初始为 false：App 启动时通常处于暂停态，若初始为 true，
+  // 首个 position tick 就会向系统发送一次无意义的 stop/playstate 广播。
+  bool _lastSuperLyricPlaying = false;
 
   void _syncSuperLyricFromPosition() {
     if (currentSong == null) return;
