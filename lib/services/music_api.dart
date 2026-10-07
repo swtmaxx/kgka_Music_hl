@@ -74,7 +74,7 @@ class MusicApi {
         errorCode: asInt(json['errorCode'] ?? json['error_code']),
       );
     }
-    if (!_isSuccess(json)) {
+    if (!_isSuccess(json) && !_hasLoginCredentials(json)) {
       throw ApiException('登录失败，$_registerHint${_failureSuffix(json)}');
     }
     final session = LoginSession.fromJson(json);
@@ -749,6 +749,25 @@ class MusicApi {
 
   bool _isSuccess(Map<String, dynamic> json) {
     return asInt(json['status']) == 1;
+  }
+
+  /// 是否已从响应里拿到可用的登录凭据。
+  ///
+  /// 不同后端的登录响应外壳不一致：
+  /// - hoilai.cn 把 `userid`/`token`/`t1` 平铺到顶层（带 `status`）；
+  /// - 自建 KuGouMusicApi 则把整个登录结果包在 `data` 里，客户端
+  ///   `unwrapData` 解包后顶层就没有 `status` 了。
+  ///
+  /// 因此不能只看 `status`：解包后若能同时拿到非空的 token 与 userid，
+  /// 同样视为登录成功（否则会把登录成功误报成
+  /// 「登录失败，若没有账号请先在酷狗音乐概念版App注册」）。
+  bool _hasLoginCredentials(Map<String, dynamic> json) {
+    final token = asString(json['token']);
+    final userId = asString(json['userid']);
+    return token != null &&
+        token.isNotEmpty &&
+        userId != null &&
+        userId.isNotEmpty;
   }
 
   bool _requiresUserSelection(Map<String, dynamic> json) {
