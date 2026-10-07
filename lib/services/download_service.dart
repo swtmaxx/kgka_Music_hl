@@ -245,6 +245,13 @@ class DownloadService {
         options: Options(headers: headers),
         cancelToken: cancelToken,
         deleteOnError: false,
+        // 断点续传必须用 append：dio 的 download 默认 FileAccessMode.write
+        // 会**先截断文件**再写入。若带着 Range 头仍截断，最终文件只会剩下
+        // 后半段（数据损坏且无法播放）。
+        // 服务端不支持 Range 而返回 200 时，dio 会自行回退到重写整份文件。
+        fileAccessMode: startOffset > 0
+            ? FileAccessMode.append
+            : FileAccessMode.write,
       );
 
       // 下载完成，重命名 .part 为最终文件

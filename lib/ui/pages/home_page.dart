@@ -1354,10 +1354,12 @@ class _HomeSongRow extends StatelessWidget {
 
     // 主页歌曲行响应 player 重建（播放进度/状态），高频更新会触发
     // Windows AXTree 竞态崩溃，排除语义树以规避 Flutter Windows 引擎 bug
+    // 主页歌曲行只关心「当前歌曲/播放状态」，用轻量通知源避免
+    // 随播放进度每次 tick 全量重建整行。
     return ExcludeSemantics(
-      child: AnimatedBuilder(
-        animation: player,
-        builder: (context, _) {
+      child: ValueListenableBuilder<String>(
+        valueListenable: player.nowPlayingToken,
+        builder: (context, _, _) {
           final active =
               song.hash.isNotEmpty && player.currentSong?.hash == song.hash;
           final activeColor = colorScheme.primary;

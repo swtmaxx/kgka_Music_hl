@@ -123,12 +123,16 @@ class _RhythmGamePageState extends State<RhythmGamePage>
   void _onTick(Duration elapsed) {
     if (!mounted) return;
 
+    // 暂停/结算时停止 ticker：否则仍会以每帧 60fps 空转耗电。
+    if (_isPaused || _isGameOver) {
+      if (_ticker.isActive) _ticker.stop();
+      return;
+    }
+
     final dt = _lastFrameTime == Duration.zero
         ? 0.016
         : (elapsed - _lastFrameTime).inMicroseconds / 1000000.0;
     _lastFrameTime = elapsed;
-
-    if (_isPaused || _isGameOver) return;
 
     final clampedDt = dt.clamp(0.0, 0.05);
     final realAudioMs = widget.player.position.inMilliseconds;
@@ -409,6 +413,9 @@ class _RhythmGamePageState extends State<RhythmGamePage>
       if (_isPaused) {
         widget.player.pause();
       } else {
+        // 恢复：重置帧基准并重启 ticker（暂停时已 stop）。
+        _lastFrameTime = Duration.zero;
+        if (!_ticker.isActive) _ticker.start();
         widget.player.play();
       }
     });
@@ -843,12 +850,14 @@ class _RhythmGamePageState extends State<RhythmGamePage>
                                     _isGameOver = false;
                                     _gameTimeMs = initialMs.toDouble();
                                     _lastJudgment = null;
+                                    _lastFrameTime = Duration.zero;
                                     for (final b in _beats) {
                                       b.hit = false;
                                       b.holdFinished = false;
                                       b.judgment = null;
                                     }
                                   });
+                                  if (!_ticker.isActive) _ticker.start();
                                   widget.player.seek(Duration.zero);
                                   widget.player.play();
                                 },

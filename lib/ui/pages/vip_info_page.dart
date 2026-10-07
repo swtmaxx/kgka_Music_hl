@@ -439,8 +439,11 @@ class _VipCalendar extends StatelessWidget {
           GridView.count(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            crossAxisCount: 4,
+            // 日历必须 7 列：星期标题 7 个 + 每月日期都按周一~周日对齐。
+            // 原先写 4 列会导致标题折行、日期与星期错位。
+            crossAxisCount: 7,
             mainAxisSpacing: 4,
+            childAspectRatio: 1,
             children: [
               for (final label in const ['一', '二', '三', '四', '五', '六', '日'])
                 Center(

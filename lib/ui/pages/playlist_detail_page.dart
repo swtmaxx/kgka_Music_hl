@@ -1814,11 +1814,12 @@ class _SongRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
 
-    // 歌曲行响应 player 重建，高频更新会触发 Windows AXTree 竞态崩溃
+    // 歌曲行只关心「当前歌曲/播放状态」，用轻量通知源避免随播放进度
+    // 每次 tick 全量重建整行（200 首歌单即 200 个行组件）。
     return ExcludeSemantics(
-      child: AnimatedBuilder(
-        animation: player,
-        builder: (context, _) {
+      child: ValueListenableBuilder<String>(
+        valueListenable: player.nowPlayingToken,
+        builder: (context, _, _) {
           final active = player.currentSong?.hash == song.hash;
           final activeColor = colorScheme.primary;
           return InkWell(

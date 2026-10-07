@@ -281,6 +281,23 @@ class PlayerController extends ChangeNotifier {
   int seekRevision = 0;
   int? _androidAudioSessionId;
   bool get isScrubbing => _isScrubbing;
+
+  /// 「当前播放歌曲 + 播放状态」的轻量通知源。
+  ///
+  /// 歌曲行/迷你播放器等只关心这两项；若直接监听 [PlayerController]
+  /// （ChangeNotifier），会随播放进度每次 tick（~200ms）全量重建。
+  /// 一个 200 首的歌单就是 200 个行组件跟着重建，在弱 CPU 手表上代价很高。
+  final ValueNotifier<String> nowPlayingToken = ValueNotifier<String>('');
+
+  @override
+  void notifyListeners() {
+    final token =
+        '${currentSong?.hash ?? ''}|${currentSong?.id ?? ''}|$isPlaying';
+    if (nowPlayingToken.value != token) {
+      nowPlayingToken.value = token;
+    }
+    super.notifyListeners();
+  }
   bool get isAudioEffectsSupported => _audioEffects.isAudioEffectsSupported;
   bool get isBassBoostSupported => _audioEffects.isBassBoostSupported;
   String get audioEffectsLabel {
@@ -2217,6 +2234,7 @@ class PlayerController extends ChangeNotifier {
     );
     _audioHandler.detachTransportControls();
     _desktopLyrics.setVisibilityChangedHandler(null);
+    nowPlayingToken.dispose();
     unawaited(_audioHandler.close());
     unawaited(_desktopLyrics.hide());
     super.dispose();
