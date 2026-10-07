@@ -697,19 +697,6 @@ class MusicApi {
     return PlayUrl(url: url, hash: hash);
   }
 
-  /// 解析网易云 / QQ 音乐歌单分享链接，返回歌单名和歌曲名称列表。
-  Future<ExternalPlaylistParseResult> parseExternalPlaylist(
-    String sourceText,
-  ) async {
-    final json = asMap(
-      await _client.post(
-        '/playlist/external/parse',
-        body: {'sourceText': sourceText},
-      ),
-    );
-    return ExternalPlaylistParseResult.fromJson(json);
-  }
-
   Future<void> createPlaylist(String name, {bool private = false}) async {
     await _client.post(
       '/playlist/create',

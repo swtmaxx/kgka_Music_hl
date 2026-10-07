@@ -997,8 +997,6 @@ class _SearchResults extends StatelessWidget {
           itemBuilder: (context, index) {
             final song = songs[index];
             final liked = isLiked(song);
-            // 其他平台歌曲（如网易云）仅支持播放，不支持收藏等操作
-            final isExternal = song.source != SongSource.kugou;
             return ValueListenableBuilder<String>(
               valueListenable: player.nowPlayingToken,
               builder: (context, _, _) {
@@ -1083,98 +1081,70 @@ class _SearchResults extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(width: 10),
-                        if (!isExternal)
-                          IconButton(
-                            onPressed: () => onLikeTap(song),
-                            icon: Icon(
-                              liked
-                                  ? Icons.favorite_rounded
-                                  : Icons.favorite_border_rounded,
-                              color: liked
-                                  ? Colors.redAccent
-                                  : colorScheme.outline,
-                              size: 27,
-                            ),
-                            visualDensity: VisualDensity.compact,
+                        IconButton(
+                          onPressed: () => onLikeTap(song),
+                          icon: Icon(
+                            liked
+                                ? Icons.favorite_rounded
+                                : Icons.favorite_border_rounded,
+                            color: liked
+                                ? Colors.redAccent
+                                : colorScheme.outline,
+                            size: 27,
                           ),
-                        if (!isExternal)
-                          IconButton(
-                            tooltip: '更多',
-                            onPressed: () {
-                              showSongActionSheet(
-                                context: context,
-                                song: song,
-                                actions: [
-                                  SongSheetAction(
-                                    icon: Icons.queue_music_rounded,
-                                    title: '下一首播放',
-                                    onTap: () => addSongToQueueWithFeedback(
-                                      context: context,
-                                      player: player,
-                                      song: song,
-                                    ),
+                          visualDensity: VisualDensity.compact,
+                        ),
+                        IconButton(
+                          tooltip: '更多',
+                          onPressed: () {
+                            showSongActionSheet(
+                              context: context,
+                              song: song,
+                              actions: [
+                                SongSheetAction(
+                                  icon: Icons.queue_music_rounded,
+                                  title: '下一首播放',
+                                  onTap: () => addSongToQueueWithFeedback(
+                                    context: context,
+                                    player: player,
+                                    song: song,
                                   ),
-                                  SongSheetAction(
-                                    icon: Icons.playlist_add_rounded,
-                                    title: '添加到歌单',
-                                    onTap: () => showAddToPlaylistSheet(
-                                      context: context,
-                                      auth: auth,
-                                      song: song,
-                                    ),
-                                  ),
-                                  SongSheetAction(
-                                    icon: Icons.person_rounded,
-                                    title: '查看歌手',
-                                    onTap: () => onViewArtist(song),
-                                  ),
-                                  if (player.downloadController != null)
-                                    SongSheetAction(
-                                      icon:
-                                          player.downloadController!
-                                              .isDownloaded(song)
-                                          ? Icons.download_done_rounded
-                                          : Icons.download_rounded,
-                                      title:
-                                          player.downloadController!
-                                              .isDownloaded(song)
-                                          ? '已下载'
-                                          : '下载',
-                                      onTap: () => player.downloadController!
-                                          .download(song, player.audioQuality),
-                                    ),
-                                ],
-                              );
-                            },
-                            icon: const Icon(Icons.more_horiz_rounded),
-                            visualDensity: VisualDensity.compact,
-                          ),
-                        if (isExternal)
-                          Padding(
-                            padding: const EdgeInsets.only(right: 8),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 3,
-                              ),
-                              decoration: BoxDecoration(
-                                color: colorScheme.outlineVariant.withValues(
-                                  alpha: .5,
                                 ),
-                                borderRadius: BorderRadius.circular(AppRadius.xs),
-                              ),
-                              child: Text(
-                                song.source == SongSource.netease
-                                    ? '网易云'
-                                    : '外部',
-                                style: Theme.of(context).textTheme.labelSmall
-                                    ?.copyWith(
-                                      color: colorScheme.onSurfaceVariant,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                              ),
-                            ),
-                          ),
+                                SongSheetAction(
+                                  icon: Icons.playlist_add_rounded,
+                                  title: '添加到歌单',
+                                  onTap: () => showAddToPlaylistSheet(
+                                    context: context,
+                                    auth: auth,
+                                    song: song,
+                                  ),
+                                ),
+                                SongSheetAction(
+                                  icon: Icons.person_rounded,
+                                  title: '查看歌手',
+                                  onTap: () => onViewArtist(song),
+                                ),
+                                if (player.downloadController != null)
+                                  SongSheetAction(
+                                    icon:
+                                        player.downloadController!
+                                            .isDownloaded(song)
+                                        ? Icons.download_done_rounded
+                                        : Icons.download_rounded,
+                                    title:
+                                        player.downloadController!
+                                            .isDownloaded(song)
+                                        ? '已下载'
+                                        : '下载',
+                                    onTap: () => player.downloadController!
+                                        .download(song, player.audioQuality),
+                                  ),
+                              ],
+                            );
+                          },
+                          icon: const Icon(Icons.more_horiz_rounded),
+                          visualDensity: VisualDensity.compact,
+                        ),
                       ],
                     ),
                   ),

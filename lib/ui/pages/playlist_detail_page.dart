@@ -16,11 +16,10 @@ import '../../models/music_models.dart';
 import '../../services/cache_service.dart';
 import '../../services/music_api.dart';
 import '../widgets/artwork.dart';
-import '../widgets/import_playlist_sheet.dart';
+import '../widgets/toast.dart';
 import '../widgets/mini_player.dart';
 import '../widgets/now_playing_badge.dart';
 import '../widgets/song_action_sheets.dart';
-import '../widgets/toast.dart';
 import '../widgets/marquee_text.dart';
 import '../adaptive_layout.dart';
 import '../widgets/scroll_to_top_button.dart';
@@ -1092,16 +1091,6 @@ class _PlaylistDetailPageState extends State<PlaylistDetailPage> {
                       onPressed: _sharePlaylist,
                       icon: const Icon(Icons.share_rounded),
                     ),
-                    if (!widget.readOnly)
-                      IconButton(
-                        tooltip: '导入歌单',
-                        onPressed: () => showImportPlaylistSheet(
-                          context: context,
-                          api: widget.api,
-                          auth: widget.auth,
-                        ),
-                        icon: const Icon(Icons.playlist_add_rounded),
-                      ),
                     if (_isMutating)
                       const Padding(
                         padding: EdgeInsets.only(right: 10),

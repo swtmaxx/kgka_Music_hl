@@ -477,8 +477,6 @@ class PlayerController extends ChangeNotifier {
           throw Exception(
             song.isCloudDrive
                 ? '云盘歌曲暂时没有可播放地址'
-                : song.source == SongSource.netease
-                ? '网易云歌曲暂时没有可播放地址'
                 : '这首歌暂时没有可播放地址',
           );
         }
@@ -572,7 +570,6 @@ class PlayerController extends ChangeNotifier {
   /// 解析播放地址。
   ///
   /// - 云盘歌曲走 [MusicApi.cloudSongUrl]
-  /// - 网易云歌曲使用外链地址
   /// - 其它歌曲走 [MusicApi.songUrl]，开启智能音质时在网络请求失败
   ///   或返回空地址时自动降级重试（lossless -> high -> standard）。
   Future<PlayUrl> _resolvePlayUrl(Song song) async {
@@ -582,14 +579,6 @@ class PlayerController extends ChangeNotifier {
     if (song.isCloudDrive) {
       return _api.cloudSongUrl(song);
     }
-    if (song.source == SongSource.netease) {
-      // 网易云歌曲使用外链播放地址
-      return PlayUrl(
-        url: 'https://music.163.com/song/media/outer/url?id=${song.id}.mp3',
-        hash: song.hash,
-      );
-    }
-
     try {
       final playUrl = await _api.songUrl(
         song,
@@ -1262,11 +1251,6 @@ class PlayerController extends ChangeNotifier {
         final PlayUrl playUrl;
         if (song.isCloudDrive) {
           playUrl = await _api.cloudSongUrl(song);
-        } else if (song.source == SongSource.netease) {
-          playUrl = PlayUrl(
-            url: 'https://music.163.com/song/media/outer/url?id=${song.id}.mp3',
-            hash: song.hash,
-          );
         } else {
           playUrl = await _api.songUrl(
             song,
