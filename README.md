@@ -19,18 +19,13 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Platform-Android-3DDC84?logo=android&logoColor=white" alt="Android" />
-  <img src="https://img.shields.io/badge/Platform-iOS-000000?logo=apple&logoColor=white" alt="iOS" />
-  <img src="https://img.shields.io/badge/Platform-Windows-0078D6?logo=windows&logoColor=white" alt="Windows" />
-  <img src="https://img.shields.io/badge/Platform-macOS-000000?logo=apple&logoColor=white" alt="macOS" />
-  <img src="https://img.shields.io/badge/Platform-Linux-FCC624?logo=linux&logoColor=black" alt="Linux" />
-  <img src="https://img.shields.io/badge/Platform-Web-4285F4?logo=google-chrome&logoColor=white" alt="Web" />
 </p>
 
 ---
 
 ## 📖 简介
 
-KA Music 是一个功能丰富的 **第三方音乐播放器**，使用 Flutter 框架构建，支持 Android、iOS、Windows、macOS、Linux 及 Web 六大平台。它提供跨平台音乐搜索、在线播放、歌词展示、下载缓存等完整的音乐体验，并采用 Material You 设计语言，支持深色模式和高度自定义主题。
+KA Music 是一个功能丰富的 **第三方音乐播放器**，使用 Flutter 框架构建，**仅面向 Android（手表 / 手机）**。它内置酷狗 API 直连数据源，提供音乐搜索、在线播放、歌词展示、下载缓存等完整的音乐体验，并采用 Material You 设计语言，支持深色模式和高度自定义主题。
 
 > 🔌 该项目通过第三方 API 获取音乐数据，仅供学习交流使用。
 
@@ -182,14 +177,9 @@ cd kgka_music_hl
 # 安装依赖
 flutter pub get
 
-# 运行（选择目标平台）
+# 运行
 flutter run          # 自动检测设备
 flutter run -d android
-flutter run -d ios
-flutter run -d windows
-flutter run -d macos
-flutter run -d linux
-flutter run -d chrome
 ```
 
 ### 编译环境变量
