@@ -109,16 +109,21 @@ class KugouCrypto {
   /// 无填充 RSA（裸模幂），返回定长大写 hex（与 JS `cryptoRSAEncrypt` 一致）。
   ///
   /// `user_detail` / `login` 的 `p`/`pk` 参数使用这种方式（非 PKCS#1）。
+  /// 明文必须放在缓冲区开头、尾部补零到密钥长度（对应 JS 参考实现
+  /// `crypto.js` 的 `padded.set(buffer)`）；补零方向不可颠倒，否则服务端
+  /// 解出的明文错位，登录 / 资料接口会返回 error_code 20006。
   static String rsaEncryptRaw(List<int> data, pc.RSAPublicKey publicKey) {
     final keyLength = (publicKey.modulus!.bitLength + 7) ~/ 8;
     if (data.length > keyLength) {
       throw ArgumentError('数据长度超过 RSA 密钥长度');
     }
-    // 左侧补零到密钥长度
-    var value = BigInt.zero;
-    for (final b in data) {
-      value = (value << 8) | BigInt.from(b);
-    }
+    // 明文放缓冲区开头、尾部补零到密钥长度（对应 JS 参考实现
+    // crypto.js 的 padded.set(buffer)），再整体当作大整数做模幂。
+    // ⚠️ 补零方向必须与参考实现一致，否则服务端解出的明文错位，
+    // 登录 / 资料接口会返回 error_code 20006。
+    final padded = Uint8List(keyLength);
+    padded.setRange(0, data.length, data);
+    final value = _bytesToBigInt(padded);
     final encrypted = value.modPow(publicKey.exponent!, publicKey.modulus!);
     return encrypted
         .toRadixString(16)
