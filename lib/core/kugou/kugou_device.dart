@@ -3,7 +3,6 @@ import 'dart:io';
 
 import 'package:path_provider/path_provider.dart';
 
-import 'kugou_crypto.dart';
 import 'kugou_util.dart';
 
 /// 酷狗 API 设备身份（`device_config.js` / `device.rs` 的 Dart 移植）。
@@ -19,7 +18,6 @@ class KugouDevice {
 
   String? _dfid;
   String? _mid;
-  String? _uuid;
   String? _guid;
   String? _serverDev;
   String? _mac;
@@ -29,11 +27,16 @@ class KugouDevice {
 
   String get dfid => _dfid ?? '-';
   String get mid => _mid ?? '-';
-  String get uuid => _uuid ?? '-';
+
+  /// 设备 UUID。
+  ///
+  /// 上游参考实现（`util/request.js`）**恒传 `'-'`**（真实客户端才会带值），
+  /// 为保证行为一致，这里不自行生成。
+  String get uuid => '-';
+
   String get guid => _guid ?? '-';
   String get serverDev => _serverDev ?? '-';
   String get mac => _mac ?? '02:00:00:00:00:00';
-
   /// 是否已完成设备注册（拿到有效 dfid）。
   bool get hasDfid {
     final value = _dfid;
@@ -69,7 +72,6 @@ class KugouDevice {
 
     _guid = KugouUtil.getGuid();
     _mid = KugouUtil.calculateMid(_guid!);
-    _uuid = '-';
     _serverDev = KugouUtil.randomString(10);
     _mac = '02:00:00:00:00:00';
     await _persist();
@@ -78,29 +80,24 @@ class KugouDevice {
   /// 由 `/register/dev` 返回的 dfid 更新设备标识。
   Future<void> setDfid(String newDfid) async {
     _dfid = newDfid;
-    final currentMid = _mid ?? '-';
-    _uuid = KugouCrypto.md5Hex('$newDfid$currentMid');
     await _persist();
   }
 
   Future<void> setMid(String newMid) async {
     _mid = newMid;
-    _uuid = KugouCrypto.md5Hex('${dfid}$newMid');
     await _persist();
   }
 
-  /// 恢复历史 guid，并重算派生的 mid/uuid。
+  /// 恢复历史 guid，并重算派生的 mid。
   Future<void> setGuid(String newGuid) async {
     _guid = newGuid;
     _mid = KugouUtil.calculateMid(newGuid);
-    _uuid = KugouCrypto.md5Hex('${dfid}${_mid!}');
     await _persist();
   }
 
   void _ensureDefaults() {
     _guid ??= KugouUtil.getGuid();
     _mid ??= KugouUtil.calculateMid(_guid!);
-    _uuid ??= '-';
     _serverDev ??= KugouUtil.randomString(10);
     _mac ??= '02:00:00:00:00:00';
   }
@@ -149,7 +146,6 @@ class KugouDevice {
   void reset() {
     _dfid = null;
     _mid = null;
-    _uuid = null;
     _guid = null;
     _serverDev = null;
     _mac = null;

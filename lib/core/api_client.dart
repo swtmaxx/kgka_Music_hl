@@ -69,7 +69,9 @@ class ApiClient {
       _builtIn.setSession(token: token, t1: t1, userId: sessionId);
       try {
         final result = await _builtIn.handle(method, path, query);
-        return result;
+        // 酷狗原生响应多为 `{status, errcode, data: {...}}`，而外部服务器会
+        // 把 `data` 解包后返回。这里做同样处理，保证上层解析逻辑零改动。
+        return unwrapData(result);
       } on KugouUnsupportedRoute {
         // 路由未内置：回退到外部服务器
       } on KugouApiException catch (error) {
@@ -175,11 +177,9 @@ class ApiClient {
 }
 
 dynamic unwrapData(dynamic json) {
-  if (json is Map<String, dynamic>) {
-    final data = json['data'];
-    if (data != null) {
-      return data;
-    }
+  // 兼容 `Map<String, dynamic>`（jsonDecode 产物）与内置实现构造的 `Map<String, Object?>`。
+  if (json is Map && json['data'] != null) {
+    return json['data'];
   }
   return json;
 }

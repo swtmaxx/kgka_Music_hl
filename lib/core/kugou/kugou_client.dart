@@ -136,19 +136,7 @@ class KugouClient {
 
       // ===== 歌单 =====
       case '/playlist/detail':
-        return _forward(
-          method: 'POST',
-          url: '/v3/get_list_info',
-          data: {
-            'data': (query['ids']?.toString() ?? '')
-                .split(',')
-                .map((s) => {'global_collection_id': s})
-                .toList(),
-            'userid': _userId(),
-            'token': _token(),
-          },
-          headers: const {'x-router': 'pubsongs.kugou.com'},
-        );
+        return _playlistDetail(query);
       case '/playlist/track/all':
         return _forward(
           method: 'GET',
@@ -446,27 +434,7 @@ class KugouClient {
       case '/user/cloud':
         return _userCloud(query);
       case '/user/cloud/url':
-        return _forward(
-          method: 'GET',
-          url: '/bsstrackercdngz/v2/query_musicclound_url',
-          params: {
-            'hash': (query['hash']?.toString() ?? '').toLowerCase(),
-            'ssa_flag': 'is_fromtrack',
-            'version': '20102',
-            'ssl': 0,
-            'album_audio_id': query['album_audio_id'] ?? 0,
-            'pid': 20026,
-            'audio_id': query['audio_id'] ?? 0,
-            'kv_id': 2,
-            'key': KugouSignature.signCloudKey(
-              (query['hash']?.toString() ?? '').toLowerCase(),
-              '20026',
-            ),
-            'bucket': 'musicclound',
-            'name': query['name'] ?? '',
-            'with_res_tag': 0,
-          },
-        );
+        return _cloudSongUrl(query);
 
       // ===== 登录 =====
       case '/login/qr/key':
@@ -811,6 +779,70 @@ class KugouClient {
     } catch (_) {
       return text;
     }
+  }
+
+  /// 歌单详情（`module/playlist_detail.js`）。
+  ///
+  /// 酷狗返回 `data: [ {...} ]`，上层 `PlaylistSummary.fromDetail` 需要扁平对象，
+  /// 因此这里取首个元素（与外部服务器一致）。
+  Future<Object?> _playlistDetail(Map<String, Object?> q) async {
+    final raw = await _forward(
+      method: 'POST',
+      url: '/v3/get_list_info',
+      data: {
+        'data': (q['ids']?.toString() ?? '')
+            .split(',')
+            .map((s) => {'global_collection_id': s})
+            .toList(),
+        'userid': _userId(),
+        'token': _token(),
+      },
+      headers: const {'x-router': 'pubsongs.kugou.com'},
+    );
+    if (raw is Map) {
+      final data = raw['data'];
+      if (data is List && data.isNotEmpty) return data.first;
+      if (data is Map) return data;
+    }
+    return raw;
+  }
+
+  /// 云盘歌曲播放地址（`module/user_cloud_url.js`）。
+  ///
+  /// 酷狗原生 `data` 是 URL 字符串，而上层 `cloudSongUrl` 读的是
+  /// `json['url']` / `json['hash']`，因此这里整形为扁平对象。
+  Future<Object?> _cloudSongUrl(Map<String, Object?> q) async {
+    final hash = (q['hash']?.toString() ?? '').toLowerCase();
+    final raw = await _forward(
+      method: 'GET',
+      url: '/bsstrackercdngz/v2/query_musicclound_url',
+      params: {
+        'hash': hash,
+        'ssa_flag': 'is_fromtrack',
+        'version': '20102',
+        'ssl': 0,
+        'album_audio_id': q['album_audio_id'] ?? 0,
+        'pid': 20026,
+        'audio_id': q['audio_id'] ?? 0,
+        'kv_id': 2,
+        'key': KugouSignature.signCloudKey(hash, '20026'),
+        'bucket': 'musicclound',
+        'name': q['name'] ?? '',
+        'with_res_tag': 0,
+      },
+    );
+    if (raw is Map) {
+      final data = raw['data'];
+      if (data is String) {
+        return <String, Object?>{
+          'url': data,
+          'hash': data.isEmpty ? '' : hash,
+          'status': raw['status'],
+          'error_code': raw['error_code'],
+        };
+      }
+    }
+    return raw;
   }
 
   // ===== 通用转发 =====
