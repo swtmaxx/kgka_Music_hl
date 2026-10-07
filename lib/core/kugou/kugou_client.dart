@@ -12,9 +12,8 @@ import 'kugou_util.dart';
 
 /// 内置酷狗 API 的**路由调度器**。
 ///
-/// 目标是**复刻外部服务（music.api.hoilai.cn）的响应结构**，从而让上层
-/// `MusicApi` / 数据模型**零改动**。多数端点的响应就是酷狗原生 JSON
-/// （`ApiClient.unwrapData` 会自动解包 `data`），个别端点需要轻量整形。
+/// 每个路由直接请求酷狗对应端点，并把响应整形成上层 `MusicApi` /
+/// 数据模型期望的结构（多数就是酷狗原生 JSON，个别端点需轻量整形）。
 class KugouClient {
   KugouClient({KugouRequest? request}) : _request = request ?? KugouRequest();
 
@@ -1128,9 +1127,8 @@ class KugouClient {
 
   /// 解包酷狗原生的 `data` 字段。
   ///
-  /// 外部服务器（`music.api.hoilai.cn`）是**逐路由**决定是否解包的，
-  /// 上层 `MusicApi` 的解析代码也按各自情况编写。因此这里不能统一处理：
-  /// 需要解包的路由显式调用本方法，其余保持原始响应。
+  /// 各路由是否解包**不统一**：上层 `MusicApi` 的解析代码是按路由写的，
+  /// 所以这里不能一刀切，需要解包的路由显式调用本方法，其余保持原始响应。
   ///
   /// 例：`/search/hot` 要解包（上层读 `json['list']`）；
   /// 而 `/song/climax` / `/top/album` / `/playlist/similar` 不能解包

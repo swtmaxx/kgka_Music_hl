@@ -1,4 +1,4 @@
-package com.hoilai.mm.music
+package com.swtmaxx.kamusic
 
 import android.Manifest
 import android.app.DownloadManager

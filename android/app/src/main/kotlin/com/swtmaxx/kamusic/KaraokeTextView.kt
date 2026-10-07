@@ -1,4 +1,4 @@
-package com.hoilai.mm.music
+package com.swtmaxx.kamusic
 
 import android.content.Context
 import kotlin.math.abs

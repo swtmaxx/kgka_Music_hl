@@ -6,13 +6,10 @@
   对所有域名全局放开明文流量，任何 http 请求（含第三方 SDK、WebView）
   都可被中间人窃听/篡改。
 
-  实际只有酷狗的登录网关仍是 http：
+  本应用只直连酷狗（内置 API），其中只有登录网关仍是 http：
     - http://login.user.kugou.com/v7/send_mobile_code  （发送验证码）
     - http://login.user.kugou.com/v5/login_by_token    （token 刷新）
-  其余接口（gateway / userservice / openapi / trackercdn / 自建服务）均为 https。
-
-  说明：自建 API 服务器请使用 https；如需在内网用 http 自建服务，
-  把该主机的域名或 IP 追加到下面的 domain-config 即可。
+  其余接口（gateway / userservice / openapi / trackercdn / lyrics 等）均为 https。
 -->
 <network-security-config>
     <base-config cleartextTrafficPermitted="false">
@@ -23,7 +20,6 @@
 
     <domain-config cleartextTrafficPermitted="true">
         <domain includeSubdomains="true">kugou.com</domain>
-        <domain includeSubdomains="true">hoilai.cn</domain>
         <domain includeSubdomains="true">localhost</domain>
         <!-- lint 要求每个 <domain> 显式声明 includeSubdomains，IP 无子域。 -->
         <domain includeSubdomains="false">127.0.0.1</domain>

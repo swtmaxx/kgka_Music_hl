@@ -186,12 +186,11 @@ flutter run -d android
 
 | 变量 | 说明 | 默认值 |
 |---|---|---|
-| `KA_MUSIC_API_BASE_URL` | 自定义默认 API 地址 | `https://music.api.hoilai.cn` |
 | `KA_MUSIC_DEBUG_LYRICS` | 启用歌词调试日志 | `true` |
 
 ```bash
 # 编译时指定环境变量示例
-flutter run --dart-define=KA_MUSIC_API_BASE_URL=https://your-api.com
+flutter run --dart-define=KA_MUSIC_DEBUG_LYRICS=true
 ```
 
 ---

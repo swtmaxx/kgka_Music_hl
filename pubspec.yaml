@@ -23,7 +23,7 @@ dependencies:
   flutter_lyric: ^3.0.7
   permission_handler: ^13.0.1
   lpinyin: ^2.0.3
-  # 内置酷狗 API（替代外部 music.api.hoilai.cn）
+  # 内置酷狗 API 所需（MD5 / AES / RSA）
   crypto: ^3.0.6
   pointycastle: ^3.9.1
 
