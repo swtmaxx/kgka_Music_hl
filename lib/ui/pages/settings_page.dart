@@ -10,7 +10,6 @@ import '../../controllers/theme_controller.dart';
 import '../../controllers/local_music_controller.dart';
 import '../../services/cache_service.dart';
 import '../../services/music_api.dart';
-import '../widgets/audio_effects_sheet.dart';
 import '../widgets/audio_quality_sheet.dart';
 import '../widgets/toast.dart';
 import 'about_page.dart';
@@ -280,26 +279,6 @@ class SettingsPage extends StatelessWidget {
                       subtitle: '连接蓝牙或耳机时自动恢复播放',
                       value: player.autoPlayOnDeviceConnected,
                       onChanged: player.setAutoPlayOnDeviceConnected,
-                    ),
-                    _SettingsDivider(),
-                    _SettingsSwitchTile(
-                      icon: Icons.volume_up_rounded,
-                      iconColor: colorScheme.primary,
-                      title: '音量均衡',
-                      subtitle: '降低各首歌曲音量差异，自动控制音量',
-                      value: player.volumeNormalizationEnabled,
-                      onChanged: player.setVolumeNormalizationEnabled,
-                    ),
-                    _SettingsDivider(),
-                    _SettingsTile(
-                      icon: Icons.graphic_eq_rounded,
-                      iconColor: colorScheme.primary,
-                      title: '音效',
-                      subtitle: player.audioEffectsLabel,
-                      onTap: () => showAudioEffectsSheet(
-                        context: context,
-                        player: player,
-                      ),
                     ),
                     _SettingsDivider(),
                     _SettingsTile(

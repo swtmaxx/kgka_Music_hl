@@ -10,33 +10,19 @@ import 'package:just_audio/just_audio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/music_models.dart';
-import '../services/audio_effects_service.dart';
 import '../services/cache_service.dart';
 import '../services/music_api.dart';
 import '../services/music_audio_handler.dart';
 import '../services/playback_history_service.dart';
 import '../services/playback_stats_service.dart';
-import '../services/super_lyric_service.dart';
 import 'download_controller.dart';
 import 'local_music_controller.dart';
 
 enum PlaybackMode { playlistLoop, shuffle, singleLoop }
 
-class AudioEffectPreset {
-  const AudioEffectPreset({required this.name, required this.levels});
-
-  final String name;
-  final List<int> levels;
-}
-
 class PlayerController extends ChangeNotifier {
   static const _listenTimeSettingKey = 'settings.add_listening_time_enabled';
   static const _audioQualitySettingKey = 'settings.audio_quality';
-  static const _equalizerEnabledSettingKey = 'settings.equalizer_enabled';
-  static const _equalizerLevelsSettingKey = 'settings.equalizer_levels';
-  static const _equalizerPresetSettingKey = 'settings.equalizer_preset';
-  static const _bassBoostEnabledSettingKey = 'settings.bass_boost_enabled';
-  static const _bassBoostStrengthSettingKey = 'settings.bass_boost_strength';
   static const _audioInterruptionEnabledSettingKey =
       'settings.audio_interruption_enabled';
   static const _autoResumeAfterInterruptionSettingKey =
@@ -49,8 +35,6 @@ class PlayerController extends ChangeNotifier {
       'settings.resume_last_playlist_on_startup';
   static const _autoPlayOnDeviceConnectedSettingKey =
       'settings.auto_play_on_device_connected';
-  static const _volumeNormalizationEnabledSettingKey =
-      'settings.volume_normalization_enabled';
   static const _keepScreenOnSettingKey = 'settings.keep_screen_on';
   static const _queueKey = 'playback.queue';
   static const _currentSongKey = 'playback.current_song';
@@ -60,35 +44,6 @@ class PlayerController extends ChangeNotifier {
   static const _positionSaveInterval = Duration(seconds: 5);
   static const _listenTimeReportInterval = Duration(minutes: 30);
   static const _listenTimeCheckInterval = Duration(minutes: 1);
-  static const _defaultEqualizerLevels = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
-  static const equalizerPresets = [
-    AudioEffectPreset(name: '平直', levels: _defaultEqualizerLevels),
-    AudioEffectPreset(
-      name: '流行',
-      levels: [0, 250, 450, 350, 100, -100, 50, 300, 450, 500],
-    ),
-    AudioEffectPreset(
-      name: '摇滚',
-      levels: [500, 350, 150, -100, -250, -150, 150, 350, 550, 650],
-    ),
-    AudioEffectPreset(
-      name: '人声',
-      levels: [-250, -150, 0, 250, 500, 550, 350, 100, -100, -200],
-    ),
-    AudioEffectPreset(
-      name: '低音',
-      levels: [750, 650, 500, 250, 0, -100, -150, -200, -250, -300],
-    ),
-    AudioEffectPreset(
-      name: '古典',
-      levels: [350, 250, 100, 0, 150, 250, 300, 350, 250, 100],
-    ),
-    AudioEffectPreset(
-      name: '电子',
-      levels: [650, 450, 120, -120, -180, 100, 350, 550, 650, 700],
-    ),
-  ];
-
   /// 下载控制器（由 main.dart 在创建后注入，供 UI 访问下载功能）。
   DownloadController? downloadController;
 
@@ -100,7 +55,6 @@ class PlayerController extends ChangeNotifier {
 
   PlayerController(this._api, this._audioHandler) {
     unawaited(_restoreSettings());
-    unawaited(_superLyric.registerPublisher());
     _audioHandler.attachTransportControls(onNext: next, onPrevious: previous);
     _positionSub = audioPlayer.positionStream.listen((value) {
       if (!_isSeeking) {
@@ -108,7 +62,6 @@ class PlayerController extends ChangeNotifier {
       }
       _maybeCompleteFromPosition(value);
       _maybeStopClimaxPreview(value);
-      _syncSuperLyricFromPosition();
       notifyListeners();
     });
     _durationSub = audioPlayer.durationStream.listen((value) {
@@ -135,15 +88,6 @@ class PlayerController extends ChangeNotifier {
         }
       }
     });
-    _androidAudioSessionSub = audioPlayer.androidAudioSessionIdStream.listen((
-      sessionId,
-    ) {
-      _androidAudioSessionId = sessionId;
-      unawaited(_refreshEqualizerConfig());
-      unawaited(_applyEqualizer());
-      unawaited(_applyBassBoost());
-      unawaited(_applyVolumeNormalization());
-    });
     unawaited(_setupAudioSessionListeners());
   }
 
@@ -158,10 +102,8 @@ class PlayerController extends ChangeNotifier {
 
   /// 设置（含开机自启开关）从本地恢复完成的 Future。
   Future<void> get settingsRestored => _settingsRestored.future;
-  final AudioEffectsService _audioEffects = AudioEffectsService();
   final PlaybackHistoryService _historyService = PlaybackHistoryService();
   final PlaybackStatsService _statsService = PlaybackStatsService();
-  final SuperLyricService _superLyric = SuperLyricService();
 
   AudioPlayer get audioPlayer => _audioHandler.audioPlayer;
 
@@ -171,7 +113,6 @@ class PlayerController extends ChangeNotifier {
   late final StreamSubscription<Duration?> _durationSub;
   late final StreamSubscription<PlayerState> _stateSub;
   late final StreamSubscription<ProcessingState> _processingStateSub;
-  late final StreamSubscription<int?> _androidAudioSessionSub;
   StreamSubscription<AudioInterruptionEvent>? _interruptionSub;
   StreamSubscription<void>? _becomingNoisySub;
   StreamSubscription<Set<AudioDevice>>? _devicesSub;
@@ -232,18 +173,9 @@ class PlayerController extends ChangeNotifier {
   /// 手表的实体音量键往往缺失或不方便操作，这个控件提供屏内音量调节。
   /// 上限 1.0（不放大），避免削波失真；下限 0（静音）。
   double playbackVolume = 1.0;
-  bool equalizerEnabled = false;
-  List<int> equalizerLevels = List<int>.of(_defaultEqualizerLevels);
-  String equalizerPresetName = '平直';
-  EqualizerConfig equalizerConfig = EqualizerConfig.fallback(
-    _defaultEqualizerLevels,
-  );
-  bool bassBoostEnabled = false;
-  double bassBoostStrength = 0.45;
   bool audioInterruptionEnabled = true;
   bool autoResumeAfterInterruption = false;
   bool autoPlayOnDeviceConnected = false;
-  bool volumeNormalizationEnabled = false;
   Timer? _autoResumeTimer;
   Duration? sleepTimerRemaining;
   Timer? _sleepTimer;
@@ -252,7 +184,6 @@ class PlayerController extends ChangeNotifier {
   bool _sleepFinishCurrentSongOption = false;
   String? errorMessage;
   int seekRevision = 0;
-  int? _androidAudioSessionId;
   bool get isScrubbing => _isScrubbing;
 
   /// 「当前播放歌曲 + 播放状态」的轻量通知源。
@@ -271,21 +202,6 @@ class PlayerController extends ChangeNotifier {
     }
     super.notifyListeners();
   }
-  bool get isAudioEffectsSupported => _audioEffects.isAudioEffectsSupported;
-  bool get isBassBoostSupported => _audioEffects.isBassBoostSupported;
-  String get audioEffectsLabel {
-    if (!isAudioEffectsSupported) {
-      return '当前平台暂不支持';
-    }
-    if (equalizerEnabled) {
-      return '均衡器：$equalizerPresetName';
-    }
-    if (bassBoostEnabled) {
-      return 'Bass ${(bassBoostStrength * 100).round()}%';
-    }
-    return '关闭';
-  }
-
   String get playbackVolumeLabel => '${(playbackVolume * 100).round()}%';
 
   String get playbackSpeedLabel {
@@ -337,8 +253,7 @@ class PlayerController extends ChangeNotifier {
     if (lyrics.isEmpty) {
       return -1;
     }
-    // 二分查找：该 getter 在每次 position tick 会被多处调用（桌面歌词/
-    // SuperLyric/蓝牙歌词/卡拉OK进度），线性扫描在长歌词上是白做的开销。
+    // 二分查找：线性扫描在长歌词上是白做的开销。
     final target = smoothPosition;
     var low = 0;
     var high = lyrics.length - 1;
@@ -423,8 +338,6 @@ class PlayerController extends ChangeNotifier {
       this.queue = [song];
     }
     lyrics = const [];
-    _lastSuperLyricIndex = -1;
-    _lastSuperLyricPlaying = true;
     _saveQueueState();
     _startPositionSaving();
     notifyListeners();
@@ -724,16 +637,6 @@ class PlayerController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// 开关音量均衡功能。
-  Future<void> setVolumeNormalizationEnabled(bool enabled) async {
-    if (volumeNormalizationEnabled == enabled) return;
-    volumeNormalizationEnabled = enabled;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_volumeNormalizationEnabledSettingKey, enabled);
-    await _applyVolumeNormalization();
-    notifyListeners();
-  }
-
   /// 读取本地播放统计。
   Future<PlaybackStats> getPlaybackStats() => _statsService.getStats();
 
@@ -772,92 +675,6 @@ class PlayerController extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setDouble(_playbackVolumeSettingKey, clamped);
     notifyListeners();
-  }
-
-  Future<void> setBassBoostEnabled(bool enabled) async {
-    if (bassBoostEnabled == enabled) {
-      return;
-    }
-    bassBoostEnabled = enabled;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_bassBoostEnabledSettingKey, enabled);
-    await _applyBassBoost();
-    notifyListeners();
-  }
-
-  Future<void> setBassBoostStrength(
-    double strength, {
-    bool persist = true,
-  }) async {
-    final nextStrength = strength.clamp(0.0, 1.0);
-    if ((bassBoostStrength - nextStrength).abs() < 0.001) {
-      return;
-    }
-    bassBoostStrength = nextStrength;
-    if (bassBoostEnabled) {
-      unawaited(_applyBassBoost());
-    }
-    notifyListeners();
-
-    if (persist) {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setDouble(_bassBoostStrengthSettingKey, nextStrength);
-    }
-  }
-
-  Future<void> setEqualizerEnabled(bool enabled) async {
-    if (equalizerEnabled == enabled) {
-      return;
-    }
-    equalizerEnabled = enabled;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_equalizerEnabledSettingKey, enabled);
-    await _applyEqualizer();
-    notifyListeners();
-  }
-
-  Future<void> setEqualizerBandLevel(
-    int index,
-    int levelMillibels, {
-    bool persist = true,
-  }) async {
-    if (index < 0 || index >= equalizerLevels.length) {
-      return;
-    }
-    final clamped = levelMillibels.clamp(
-      equalizerConfig.minMillibels,
-      equalizerConfig.maxMillibels,
-    );
-    if (equalizerLevels[index] == clamped) {
-      return;
-    }
-    equalizerLevels = List<int>.of(equalizerLevels)..[index] = clamped;
-    equalizerPresetName = '自定义';
-    if (equalizerEnabled) {
-      unawaited(_applyEqualizer());
-    }
-    notifyListeners();
-
-    if (persist) {
-      await _persistEqualizer();
-    }
-  }
-
-  Future<void> applyEqualizerPreset(AudioEffectPreset preset) async {
-    equalizerPresetName = preset.name;
-    equalizerLevels = _levelsForBandCount(
-      preset.levels,
-      equalizerLevels.length,
-    );
-    await _persistEqualizer();
-    if (equalizerEnabled) {
-      await _applyEqualizer();
-    }
-    notifyListeners();
-  }
-
-  Future<void> resetEqualizer() async {
-    await applyEqualizerPreset(equalizerPresets.first);
   }
 
   Future<void> loadLyrics(Song song) async {
@@ -1352,73 +1169,6 @@ class PlayerController extends ChangeNotifier {
     notifyListeners();
   }
 
-  int _lastSuperLyricIndex = -1;
-  // 初始为 false：App 启动时通常处于暂停态，若初始为 true，
-  // 首个 position tick 就会向系统发送一次无意义的 stop/playstate 广播。
-  bool _lastSuperLyricPlaying = false;
-
-  void _syncSuperLyricFromPosition() {
-    if (currentSong == null) return;
-    if (lyrics.isEmpty) {
-      // 无歌词时仅处理播放状态变化
-      if (!isPlaying && _lastSuperLyricPlaying) {
-        _lastSuperLyricPlaying = false;
-        _lastSuperLyricIndex = -1;
-        unawaited(_superLyric.sendStop());
-      } else if (isPlaying && !_lastSuperLyricPlaying) {
-        _lastSuperLyricPlaying = true;
-      }
-      return;
-    }
-    final index = activeLyricIndex;
-    // 行变化且正在播放 → 发歌词
-    final lineChanged = isPlaying && (index != _lastSuperLyricIndex);
-    // 从暂停切到播放 → 重新发送当前行
-    final resumed = isPlaying && !_lastSuperLyricPlaying;
-    if (lineChanged || resumed) {
-      _lastSuperLyricIndex = index;
-      _lastSuperLyricPlaying = true;
-      final clampedIndex = index.clamp(0, lyrics.length - 1);
-      final line = lyrics[clampedIndex];
-      final lineEndTime = line.time +
-          (line.duration ?? _estimatedLineDuration(clampedIndex) ?? Duration.zero);
-      unawaited(
-        _superLyric.sendLyric(
-          song: currentSong!,
-          line: line,
-          lineEndTime: lineEndTime,
-        ),
-      );
-    } else if (!isPlaying && _lastSuperLyricPlaying) {
-      // 切到暂停：发送 stop
-      _lastSuperLyricPlaying = false;
-      unawaited(_superLyric.sendStop());
-    }
-  }
-
-  Duration? _estimatedLineDuration(int index) {
-    if (index < 0 || index >= lyrics.length) {
-      return null;
-    }
-    final explicit = lyrics[index].duration;
-    if (explicit != null && explicit > Duration.zero) {
-      return explicit;
-    }
-    if (index + 1 < lyrics.length) {
-      final nextDuration = lyrics[index + 1].time - lyrics[index].time;
-      if (nextDuration > Duration.zero) {
-        return nextDuration;
-      }
-    }
-    if (duration > lyrics[index].time) {
-      final tailDuration = duration - lyrics[index].time;
-      if (tailDuration > Duration.zero) {
-        return tailDuration;
-      }
-    }
-    return null;
-  }
-
   /// 应用是否在前台。供播放页的动画/Ticker 门控使用——
   /// 后台时停掉旋转动画与歌词 ticker，避免锁屏后持续耗 CPU 与电量。
   bool get isAppForeground => _isAppForeground;
@@ -1520,18 +1270,6 @@ class PlayerController extends ChangeNotifier {
     resumeLastPlaylistOnStartupEnabled =
         prefs.getBool(_resumeLastPlaylistOnStartupSettingKey) ??
         resumeLastPlaylistOnStartupEnabled;
-    equalizerEnabled =
-        prefs.getBool(_equalizerEnabledSettingKey) ?? equalizerEnabled;
-    equalizerPresetName =
-        prefs.getString(_equalizerPresetSettingKey) ?? equalizerPresetName;
-    equalizerLevels = _restoreEqualizerLevels(
-      prefs.getString(_equalizerLevelsSettingKey),
-    );
-    equalizerConfig = EqualizerConfig.fallback(equalizerLevels);
-    bassBoostEnabled =
-        prefs.getBool(_bassBoostEnabledSettingKey) ?? bassBoostEnabled;
-    bassBoostStrength =
-        prefs.getDouble(_bassBoostStrengthSettingKey) ?? bassBoostStrength;
     audioInterruptionEnabled =
         prefs.getBool(_audioInterruptionEnabledSettingKey) ??
         audioInterruptionEnabled;
@@ -1541,110 +1279,15 @@ class PlayerController extends ChangeNotifier {
     autoPlayOnDeviceConnected =
         prefs.getBool(_autoPlayOnDeviceConnectedSettingKey) ??
         autoPlayOnDeviceConnected;
-    volumeNormalizationEnabled =
-        prefs.getBool(_volumeNormalizationEnabledSettingKey) ??
-        volumeNormalizationEnabled;
     playbackSpeed = prefs.getDouble(_playbackSpeedSettingKey) ?? playbackSpeed;
     playbackVolume = prefs.getDouble(_playbackVolumeSettingKey) ?? playbackVolume;
     unawaited(audioPlayer.setSpeed(playbackSpeed));
     unawaited(audioPlayer.setVolume(playbackVolume));
     _syncListeningTimeTracker();
-    unawaited(_refreshEqualizerConfig());
-    unawaited(_applyEqualizer());
-    unawaited(_applyBassBoost());
-    unawaited(_applyVolumeNormalization());
     notifyListeners();
     if (!_settingsRestored.isCompleted) {
       _settingsRestored.complete();
     }
-  }
-
-  List<int> _restoreEqualizerLevels(String? raw) {
-    if (raw == null || raw.isEmpty) {
-      return List<int>.of(_defaultEqualizerLevels);
-    }
-    try {
-      final decoded = jsonDecode(raw);
-      if (decoded is List) {
-        final levels = decoded
-            .whereType<num>()
-            .map((value) => value.round())
-            .toList();
-        if (levels.isNotEmpty) {
-          return _levelsForBandCount(levels, _defaultEqualizerLevels.length);
-        }
-      }
-    } catch (_) {}
-    return List<int>.of(_defaultEqualizerLevels);
-  }
-
-  Future<void> _persistEqualizer() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_equalizerEnabledSettingKey, equalizerEnabled);
-    await prefs.setString(_equalizerPresetSettingKey, equalizerPresetName);
-    await prefs.setString(
-      _equalizerLevelsSettingKey,
-      jsonEncode(equalizerLevels),
-    );
-  }
-
-  Future<void> _refreshEqualizerConfig() async {
-    if (!isAudioEffectsSupported) {
-      return;
-    }
-    final config = await _audioEffects.equalizerConfig(
-      audioSessionId:
-          _androidAudioSessionId ?? audioPlayer.androidAudioSessionId,
-    );
-    if (config == null || config.bands.isEmpty) {
-      return;
-    }
-    equalizerConfig = config;
-    if (equalizerLevels.length != config.bands.length) {
-      equalizerLevels = _levelsForBandCount(
-        equalizerLevels,
-        config.bands.length,
-      );
-      unawaited(_persistEqualizer());
-    }
-    notifyListeners();
-  }
-
-  Future<void> _applyEqualizer() async {
-    if (!isAudioEffectsSupported) {
-      return;
-    }
-    await _audioEffects.configureEqualizer(
-      audioSessionId:
-          _androidAudioSessionId ?? audioPlayer.androidAudioSessionId,
-      enabled: equalizerEnabled,
-      levels: equalizerLevels,
-    );
-  }
-
-  Future<void> _applyBassBoost() async {
-    if (!isBassBoostSupported) {
-      return;
-    }
-
-    await _audioEffects.configureBassBoost(
-      audioSessionId:
-          _androidAudioSessionId ?? audioPlayer.androidAudioSessionId,
-      enabled: bassBoostEnabled,
-      strength: bassBoostStrength,
-    );
-  }
-
-  Future<void> _applyVolumeNormalization() async {
-    if (!isAudioEffectsSupported) {
-      return;
-    }
-
-    await _audioEffects.configureVolumeNormalization(
-      audioSessionId:
-          _androidAudioSessionId ?? audioPlayer.androidAudioSessionId,
-      enabled: volumeNormalizationEnabled,
-    );
   }
 
   void _syncListeningTimeTracker() {
@@ -1846,34 +1489,10 @@ class PlayerController extends ChangeNotifier {
     _durationSub.cancel();
     _stateSub.cancel();
     _processingStateSub.cancel();
-    _androidAudioSessionSub.cancel();
     _interruptionSub?.cancel();
     _becomingNoisySub?.cancel();
     _devicesSub?.cancel();
     _completionFallbackTimer?.cancel();
-    unawaited(
-      _audioEffects.configureEqualizer(
-        audioSessionId:
-            _androidAudioSessionId ?? audioPlayer.androidAudioSessionId,
-        enabled: false,
-        levels: equalizerLevels,
-      ),
-    );
-    unawaited(
-      _audioEffects.configureBassBoost(
-        audioSessionId:
-            _androidAudioSessionId ?? audioPlayer.androidAudioSessionId,
-        enabled: false,
-        strength: bassBoostStrength,
-      ),
-    );
-    unawaited(
-      _audioEffects.configureVolumeNormalization(
-        audioSessionId:
-            _androidAudioSessionId ?? audioPlayer.androidAudioSessionId,
-        enabled: false,
-      ),
-    );
     _audioHandler.detachTransportControls();
     nowPlayingToken.dispose();
     unawaited(_audioHandler.close());
@@ -1898,24 +1517,6 @@ class PlayerController extends ChangeNotifier {
       return duration;
     }
     return value;
-  }
-
-  List<int> _levelsForBandCount(List<int> source, int count) {
-    if (count <= 0) {
-      return const [];
-    }
-    if (source.length == count) {
-      return List<int>.of(source);
-    }
-    if (source.length == 1) {
-      return List<int>.filled(count, source.first);
-    }
-
-    return [
-      for (var index = 0; index < count; index++)
-        source[((index / math.max(1, count - 1)) * (source.length - 1))
-            .round()],
-    ];
   }
 
   // ===== 播放队列持久化 =====

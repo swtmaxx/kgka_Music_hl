@@ -65,21 +65,16 @@ android {
         applicationId = "com.swtmaxx.kamusic"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-        // 不能用 flutter.minSdkVersion（CI 的 Flutter 3.47.1 解析为 24）：
-        // 车载歌词依赖 SuperLyricApi 3.4 的 AAR 清单声明 minSdk 26（Android 8.0），
-        // 低于 26 会在 Manifest 合并阶段直接失败：
-        //   "uses-sdk:minSdkVersion 24 cannot be smaller than version 26 declared
-        //    in library com.github.HChenX:SuperLyricApi"
-        // Android 8.0（2017 年发布）覆盖 99%+ 活跃设备，直接提到 26。
+        // 目标设备只有 32 位手表（S100，armeabi-v7a），不再依赖 JitPack 上的
+        // SuperLyricApi（已删），minSdk 保留 26（Android 8.0）。
         minSdk = 26
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
         ndk {
             abiFilters.clear()
-            // 32 位手表（S100，armeabi-v7a）必须保留，否则安装时报
-            // INSTALL_FAILED_NO_MATCHING_ABIS。
-            abiFilters.addAll(listOf("arm64-v8a", "armeabi-v7a"))
+            // 只留 armeabi-v7a：手表是 32 位，去掉 arm64-v8a 可省约 40% 体积。
+            abiFilters.add("armeabi-v7a")
         }
     }
 
@@ -98,9 +93,8 @@ android {
             }
             ndk {
                 abiFilters.clear()
-                // 32 位手表（S100，armeabi-v7a）必须保留，否则安装时报
-                // INSTALL_FAILED_NO_MATCHING_ABIS。
-                abiFilters.addAll(listOf("arm64-v8a", "armeabi-v7a"))
+                // 只留 armeabi-v7a（同上）。
+                abiFilters.add("armeabi-v7a")
             }
             isMinifyEnabled = false
             // Flutter Gradle 插件在 apply 阶段（早于本脚本体执行）会默认打开
@@ -139,14 +133,6 @@ configurations.all {
 }
 
 dependencies {
-    // SuperLyricApi（https://github.com/HChenX/SuperLyricApi 3.4）
-    // AAR 通过 JitPack 发布。JitPack 是"首次请求时才在服务器端懒构建"，
-    // 所以把该依赖标记为 `changing = true`，配合上面的
-    // `cacheChangingModulesFor(0 seconds)` 让 Gradle 不会永远缓存首次 404。
-    // 同时在 CI workflow 里做了 JitPack 冷启动失败 → sleep 90s → 重试的兜底。
-    implementation("com.github.HChenX:SuperLyricApi:3.4") {
-        isChanging = true
-    }
 }
 
 flutter {

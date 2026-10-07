@@ -17,7 +17,6 @@ import '../../controllers/player_controller.dart';
 import '../../controllers/theme_controller.dart';
 import '../../models/music_models.dart';
 import '../../services/lyric_converter.dart';
-import '../widgets/audio_effects_sheet.dart';
 import '../widgets/audio_quality_sheet.dart';
 import '../widgets/blurred_lyric_view.dart';
 import '../widgets/artwork.dart';
@@ -545,12 +544,6 @@ class _TopBar extends StatelessWidget {
           subtitle: player.audioQuality.badge,
           isGrid: true,
           onTap: () => _showAudioQualityPicker(context, player),
-        ),
-        SongSheetAction(
-          icon: Icons.graphic_eq_rounded,
-          title: '音效',
-          isGrid: true,
-          onTap: () => showAudioEffectsSheet(context: context, player: player),
         ),
         SongSheetAction(
           icon: Icons.volume_up_rounded,
