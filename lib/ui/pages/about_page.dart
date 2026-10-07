@@ -144,11 +144,9 @@ class _AboutPageState extends State<AboutPage> {
                       label: '作者',
                       value: '小埋-XiaoMai，其他Github开发者',
                     ),
-                    _InfoRow(
+                    const _InfoRow(
                       label: '服务地址',
-                      value: AppConfig.hasCustomBaseUrl
-                          ? AppConfig.customBaseUrl!
-                          : AppConfig.apiBaseUrl,
+                      value: '内置酷狗 API（直连，无外部服务器）',
                     ),
                     _InfoLinkRow(
                       label: 'GitHub',

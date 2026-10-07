@@ -1,20 +1,13 @@
-import 'package:shared_preferences/shared_preferences.dart';
-
+/// 全局静态配置。
+///
+/// 本应用**只直连酷狗**（内置 API，见 `lib/core/kugou/`），
+/// 不再支持外部 / 自建 API 服务器，因此这里没有任何网络地址相关配置。
 class AppConfig {
   const AppConfig._();
 
   static const appName = 'KA Music';
   static const appVersion = '3.1.0';
   static const appVersionCode = '310';
-
-  static const _defaultApiBaseUrl = 'https://music.api.hoilai.cn';
-  static const _customBaseUrlKey = 'settings.custom_api_base_url';
-  static const _useBuiltInApiKey = 'settings.use_built_in_api';
-
-  static const apiBaseUrl = String.fromEnvironment(
-    'KA_MUSIC_API_BASE_URL',
-    defaultValue: _defaultApiBaseUrl,
-  );
 
   static const debugLyrics = bool.fromEnvironment(
     'KA_MUSIC_DEBUG_LYRICS',
@@ -37,72 +30,4 @@ class AppConfig {
 
   /// 下载并发数
   static const maxConcurrentDownloads = 3;
-
-  /// User-configured API base URL override. When non-null, takes precedence
-  /// over the compile-time `apiBaseUrl`.
-  static String? _customBaseUrl;
-
-  /// The effective API base URL (custom if set, otherwise the default).
-  static String get effectiveBaseUrl => _customBaseUrl ?? apiBaseUrl;
-
-  /// Whether the user has set a custom API base URL.
-  static bool get hasCustomBaseUrl => _customBaseUrl != null;
-
-  /// The custom API base URL, or null if using the default.
-  static String? get customBaseUrl => _customBaseUrl;
-
-  /// The default (built-in) API base URL.
-  static String get defaultApiBaseUrl => apiBaseUrl;
-
-  /// 加载持久化设置（自定义 API 地址 + 内置 API 开关）。
-  static Future<void> loadSettings() async {
-    final prefs = await SharedPreferences.getInstance();
-    final stored = prefs.getString(_customBaseUrlKey);
-    if (stored != null && stored.trim().isNotEmpty) {
-      _customBaseUrl = stored.trim();
-    }
-    // 内置 API 开关（默认开启）
-    _useBuiltInApi = prefs.getBool(_useBuiltInApiKey) ?? true;
-  }
-
-  /// 是否使用**内置酷狗 API**（直连酷狗，无需外部服务器）。
-  static bool _useBuiltInApi = true;
-
-  static bool get useBuiltInApi => _useBuiltInApi;
-  /// 保存内置 API 开关。
-  static Future<void> saveUseBuiltInApi(bool enabled) async {
-    _useBuiltInApi = enabled;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_useBuiltInApiKey, enabled);
-  }
-
-  /// Save a custom API base URL. Pass `null` or empty to reset to default.
-  static Future<void> saveCustomBaseUrl(String? url) async {
-    final prefs = await SharedPreferences.getInstance();
-    final trimmed = url?.trim();
-    if (trimmed == null || trimmed.isEmpty || trimmed == apiBaseUrl) {
-      _customBaseUrl = null;
-      await prefs.remove(_customBaseUrlKey);
-    } else {
-      _customBaseUrl = trimmed;
-      await prefs.setString(_customBaseUrlKey, trimmed);
-    }
-  }
-
-  static Uri apiUri(String path, [Map<String, Object?> query = const {}]) {
-    final base = Uri.parse(effectiveBaseUrl);
-    final cleanPath = path.startsWith('/') ? path.substring(1) : path;
-    final normalizedBasePath = base.path.endsWith('/')
-        ? base.path
-        : '${base.path}/';
-
-    return base.replace(
-      path: '$normalizedBasePath$cleanPath',
-      queryParameters: {
-        for (final entry in query.entries)
-          if (entry.value != null && entry.value.toString().isNotEmpty)
-            entry.key: entry.value.toString(),
-      },
-    );
-  }
 }

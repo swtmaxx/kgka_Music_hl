@@ -36,9 +36,6 @@ class SearchPage extends StatefulWidget {
   State<SearchPage> createState() => _SearchPageState();
 }
 
-/// 搜索平台。
-enum _SearchPlatform { kugou, netease }
-
 /// 搜索类型。
 enum _SearchType { song, album }
 
@@ -55,7 +52,6 @@ class _SearchPageState extends State<SearchPage> {
   List<ArtistAlbum> _albums = const [];
   bool _loading = false;
   bool _searched = false;
-  _SearchPlatform _platform = _SearchPlatform.kugou;
   _SearchType _type = _SearchType.song;
 
   // 搜索历史
@@ -157,9 +153,7 @@ class _SearchPageState extends State<SearchPage> {
           });
         }
       } else {
-        final songs = _platform == _SearchPlatform.netease
-            ? await widget.api.searchNetEaseSongs(keywords)
-            : await widget.api.searchSongs(keywords);
+        final songs = await widget.api.searchSongs(keywords);
         if (mounted) {
           setState(() {
             _results = songs;
@@ -190,16 +184,6 @@ class _SearchPageState extends State<SearchPage> {
       TextPosition(offset: keyword.length),
     );
     _search(keyword);
-  }
-
-  void _switchPlatform(_SearchPlatform platform) {
-    if (_platform == platform) return;
-    setState(() => _platform = platform);
-    // 如果已有搜索关键词，切换平台后自动重新搜索
-    final text = _controller.text.trim();
-    if (text.isNotEmpty && _searched) {
-      _search(text);
-    }
   }
 
   void _switchType(_SearchType type) {
@@ -408,13 +392,9 @@ class _SearchPageState extends State<SearchPage> {
 
     return Column(
       children: [
-        // 类型/平台切换栏（仅搜索状态下显示）
-        if (text.isNotEmpty || _searched) ...[
+        // 类型切换栏（仅搜索状态下显示）
+        if (text.isNotEmpty || _searched)
           _TypeSelector(type: _type, onChanged: _switchType),
-          // 专辑搜索目前仅酷狗源支持，歌曲搜索才显示平台切换
-          if (_type == _SearchType.song)
-            _PlatformSelector(platform: _platform, onChanged: _switchPlatform),
-        ],
         Expanded(child: _buildContent(context, text)),
       ],
     );
@@ -558,51 +538,6 @@ class _TypeSelector extends StatelessWidget {
                       ? (isDark ? Colors.white : colorScheme.primary)
                       : colorScheme.onSurfaceVariant,
                   fontWeight: type == t ? FontWeight.w800 : FontWeight.w600,
-                ),
-              ),
-            ),
-            const SizedBox(width: 10),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-/// 平台切换选择器。
-class _PlatformSelector extends StatelessWidget {
-  const _PlatformSelector({required this.platform, required this.onChanged});
-
-  final _SearchPlatform platform;
-  final ValueChanged<_SearchPlatform> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(10, 8, 18, 4),
-      child: Row(
-        children: [
-          for (final p in _SearchPlatform.values) ...[
-            LiquidGlassCapsule(
-              isActive: platform == p,
-              onTap: () => onChanged(p),
-              padding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 7,
-              ),
-              child: Text(
-                p == _SearchPlatform.kugou ? '酷狗' : '网易云',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: platform == p
-                      ? (Theme.of(context).brightness == Brightness.dark
-                          ? Colors.white
-                          : colorScheme.primary)
-                      : colorScheme.onSurfaceVariant,
-                  fontWeight: platform == p
-                      ? FontWeight.w800
-                      : FontWeight.w600,
                 ),
               ),
             ),
