@@ -19,7 +19,6 @@ import '../widgets/scroll_to_top_button.dart';
 import '../adaptive_layout.dart';
 import 'artist_detail_page.dart';
 import 'playlist_detail_page.dart';
-import 'dart:math' as math;
 
 class SearchPage extends StatefulWidget {
   const SearchPage({
@@ -258,145 +257,9 @@ class _SearchPageState extends State<SearchPage> {
     );
   }
 
-  Widget _buildCarSearchHeader(BuildContext context, ColorScheme colorScheme) {
-    return Row(
-      children: [
-        IconButton(
-          onPressed: () => Navigator.of(context).pop(),
-          icon: const Icon(Icons.arrow_back_ios_new_rounded),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Container(
-            height: 46,
-            decoration: BoxDecoration(
-              color: colorScheme.surfaceContainerHighest.withValues(alpha: .54),
-              borderRadius: BorderRadius.circular(AppRadius.xxl),
-            ),
-            child: Stack(
-              alignment: Alignment.centerLeft,
-              children: [
-                TextField(
-                  controller: _controller,
-                  focusNode: _focusNode,
-                  textInputAction: TextInputAction.search,
-                  onSubmitted: (_) => _onSubmit(),
-                  textAlignVertical: TextAlignVertical.center,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                    color: (!_focusNode.hasFocus && _controller.text.isNotEmpty)
-                        ? Colors.transparent
-                        : colorScheme.onSurface,
-                  ),
-                  decoration: InputDecoration(
-                    isDense: true,
-                    prefixIconConstraints: const BoxConstraints(
-                      minWidth: 46,
-                      minHeight: 46,
-                    ),
-                    prefixIcon: Icon(
-                      Icons.search_rounded,
-                      color: colorScheme.onSurfaceVariant,
-                    ),
-                    suffixIconConstraints: const BoxConstraints(
-                      minWidth: 46,
-                      minHeight: 46,
-                    ),
-                    suffixIcon: _controller.text.isNotEmpty
-                        ? IconButton(
-                            icon: const Icon(Icons.close_rounded),
-                            padding: EdgeInsets.zero,
-                            onPressed: () {
-                              _controller.clear();
-                              _focusNode.requestFocus();
-                            },
-                          )
-                        : null,
-                    hintText: '搜索歌曲、歌手、专辑',
-                    hintStyle: TextStyle(color: colorScheme.onSurfaceVariant),
-                    filled: false,
-                    border: InputBorder.none,
-                    enabledBorder: InputBorder.none,
-                    focusedBorder: InputBorder.none,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 4),
-                  ),
-                ),
-                if (!_focusNode.hasFocus && _controller.text.isNotEmpty)
-                  Positioned.fill(
-                    left: 46,
-                    right: 46,
-                    child: GestureDetector(
-                      behavior: HitTestBehavior.translucent,
-                      onTap: () => _focusNode.requestFocus(),
-                      child: Align(
-                        alignment: Alignment.centerLeft,
-                        child: IgnorePointer(
-                          child: MarqueeText(
-                            text: _controller.text,
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
-                              color: colorScheme.onSurface,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(width: 12),
-        ElevatedButton(
-          onPressed: _onSubmit,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: colorScheme.primary,
-            foregroundColor: colorScheme.onPrimary,
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(AppRadius.xxl),
-            ),
-          ),
-          child: const Text(
-            '搜索',
-            style: TextStyle(fontWeight: FontWeight.bold),
-          ),
-        ),
-      ],
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
-    final size = MediaQuery.sizeOf(context);
-    final isLandscape = size.width > size.height;
     final colorScheme = Theme.of(context).colorScheme;
-    // 车机式搜索栏仅在车机模式开启时使用，普通横屏用标准布局。
-    final isCarMode = isLandscape && false;
-
-    if (isCarMode) {
-      return Scaffold(
-        body: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
-            child: Column(
-              children: [
-                _buildCarSearchHeader(context, colorScheme),
-                const SizedBox(height: 10),
-                Expanded(
-                  child: AnimatedBuilder(
-                    animation: widget.auth,
-                    builder: (context, _) => _buildBody(context),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
-    }
 
     return LiquidGlassBackground(
       child: Scaffold(
@@ -589,84 +452,6 @@ class _SearchPageState extends State<SearchPage> {
     if (text.isEmpty) {
       if (_hotLoading) {
         return const _HotSearchSkeleton();
-      }
-
-      final size = MediaQuery.sizeOf(context);
-      final isLandscape = size.width > size.height;
-      // 三列热搜布局是车机专属，普通横屏走下面的标准布局。
-      final isCarMode = isLandscape && false;
-
-      if (isCarMode) {
-        return ListView(
-          padding: const EdgeInsets.fromLTRB(0, 8, 0, 16),
-          children: [
-            if (_searchHistory.isNotEmpty) ...[
-              Row(
-                children: [
-                  Text(
-                    '搜索历史',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w900,
-                      fontSize: 13,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  GestureDetector(
-                    onTap: () async {
-                      await _historyService.clear();
-                      _loadSearchHistory();
-                      if (mounted) {
-                        Toast.show('已清空搜索历史', type: ToastType.info);
-                      }
-                    },
-                    child: Icon(
-                      Icons.delete_outline_rounded,
-                      size: 20,
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: _searchHistory.map((keyword) {
-                  return _HistoryChip(
-                    keyword: keyword,
-                    onTap: () => _onKeywordTap(keyword),
-                    onDelete: () async {
-                      await _historyService.remove(keyword);
-                      _loadSearchHistory();
-                    },
-                  );
-                }).toList(),
-              ),
-              const SizedBox(height: 12),
-            ],
-            if (_hotCategories.isNotEmpty) ...[
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  for (
-                    var i = 0;
-                    i < math.min(3, _hotCategories.length);
-                    i++
-                  ) ...[
-                    Expanded(
-                      child: _CarHotSearchColumn(
-                        category: _hotCategories[i],
-                        onTap: _onKeywordTap,
-                      ),
-                    ),
-                    if (i < math.min(3, _hotCategories.length) - 1)
-                      const SizedBox(width: 12),
-                  ],
-                ],
-              ),
-            ],
-          ],
-        );
       }
 
       // 历史记录 + 热搜面板共存于一个可滚动列表
@@ -1279,9 +1064,9 @@ class _SearchResults extends StatelessWidget {
             final liked = isLiked(song);
             // 其他平台歌曲（如网易云）仅支持播放，不支持收藏等操作
             final isExternal = song.source != SongSource.kugou;
-            return AnimatedBuilder(
-              animation: player,
-              builder: (context, _) {
+            return ValueListenableBuilder<String>(
+              valueListenable: player.nowPlayingToken,
+              builder: (context, _, _) {
                 final active = player.currentSong?.hash == song.hash;
                 final activeColor = colorScheme.primary;
                 return InkWell(
@@ -1549,73 +1334,6 @@ class _HistoryChip extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-class _CarHotSearchColumn extends StatelessWidget {
-  const _CarHotSearchColumn({required this.category, required this.onTap});
-
-  final SearchHotCategory category;
-  final ValueChanged<String> onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          category.name,
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w900,
-            color: colorScheme.onSurface,
-          ),
-        ),
-        const SizedBox(height: 12),
-        ListView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: math.min(6, category.keywords.length),
-          itemBuilder: (context, index) {
-            final item = category.keywords[index];
-            final rank = index + 1;
-            return InkWell(
-              onTap: () => onTap(item.keyword),
-              borderRadius: BorderRadius.circular(AppRadius.sm),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
-                child: Row(
-                  children: [
-                    SizedBox(
-                      width: 24,
-                      child: Text(
-                        '$rank',
-                        style: TextStyle(
-                          fontWeight: rank <= 3
-                              ? FontWeight.bold
-                              : FontWeight.normal,
-                          color: rank <= 3
-                              ? Colors.redAccent
-                              : colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ),
-                    Expanded(
-                      child: Text(
-                        item.keyword,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontWeight: FontWeight.w500),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
-        ),
-      ],
     );
   }
 }

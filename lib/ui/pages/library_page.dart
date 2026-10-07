@@ -72,11 +72,6 @@ class _LibraryPageState extends State<LibraryPage> {
     );
   }
 
-  bool _isLandscape(BuildContext ctx) {
-    final size = MediaQuery.sizeOf(ctx);
-    return size.width > size.height;
-  }
-
   void _openSettings() {
     Navigator.of(context).push(
       MaterialPageRoute(
@@ -312,12 +307,11 @@ class _LibraryPageState extends State<LibraryPage> {
                             onPressed: _showCreatePlaylistDialog,
                             icon: const Icon(Icons.add_rounded),
                           ),
-                          if (!(_isLandscape(context) && false))
-                            IconButton(
-                              tooltip: '设置',
-                              onPressed: _openSettings,
-                              icon: const Icon(Icons.settings_rounded),
-                            ),
+                          IconButton(
+                            tooltip: '设置',
+                            onPressed: _openSettings,
+                            icon: const Icon(Icons.settings_rounded),
+                          ),
                         ],
                       ),
                     ),

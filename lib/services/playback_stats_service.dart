@@ -88,6 +88,13 @@ class PlaybackStats {
 class PlaybackStatsService {
   static const _key = 'playback_stats';
 
+  /// 歌手/歌曲计数表的条目上限。
+  ///
+  /// 原实现无上限：每次 recordPlay 都会把整张表 JSON 化写盘，
+  /// 长期使用后表会持续膨胀（千条以上），在 1GB RAM 手表上
+  /// 既拖慢写盘也拉高内存。超出时按计数保留 Top N。
+  static const _maxEntries = 200;
+
   /// 读取当前统计；无数据时返回空的 [PlaybackStats]。
   Future<PlaybackStats> getStats() async {
     final prefs = await SharedPreferences.getInstance();
@@ -116,11 +123,19 @@ class PlaybackStatsService {
     final updated = PlaybackStats(
       totalPlays: stats.totalPlays + 1,
       totalListenTime: stats.totalListenTime,
-      artistPlayCount: artistCount,
-      songPlayCount: songCount,
+      artistPlayCount: _trimToTop(artistCount),
+      songPlayCount: _trimToTop(songCount),
       firstPlayDate: stats.firstPlayDate ?? DateTime.now(),
     );
     await _save(updated);
+  }
+
+  /// 超出上限时保留计数最高的 [_maxEntries] 项（按计数降序）。
+  Map<String, int> _trimToTop(Map<String, int> counts) {
+    if (counts.length <= _maxEntries) return counts;
+    final entries = counts.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+    return Map<String, int>.fromEntries(entries.take(_maxEntries));
   }
 
   /// 累加听歌时长。

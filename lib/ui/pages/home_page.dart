@@ -542,10 +542,8 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     final size = MediaQuery.sizeOf(context);
     final bottomInset = MediaQuery.paddingOf(context).bottom;
-    final isLandscape = size.width > size.height;
-    final isCarMode = isLandscape && false;
-    final useNavRail = size.width >= 720;
-    final hasBottomBar = !isCarMode && !useNavRail;
+    // 手表专用：底部有页码圆点条，超宽屏（>=720）才收起避让空间。
+    final hasBottomBar = size.width < 720;
     final buttonBottom = bottomInset + (hasBottomBar ? 84.0 : 20.0);
 
     return Stack(
@@ -723,17 +721,6 @@ class _RecommendHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final size = MediaQuery.sizeOf(context);
-    final isLandscape = size.width > size.height;
-    // 车机模式专属样式仅在开启时生效，普通横屏不受影响。
-    final isCarMode = isLandscape && false;
-    // 车机宽屏：三个快捷入口在卡片右侧；车机非宽屏：入口在卡片下方。
-    final isUltraWide =
-        isCarMode &&
-        size.width >= 1150 &&
-        size.height >= 600 &&
-        (size.width / size.height) > 2.0;
-
     return SafeArea(
       bottom: false,
       child: Padding(
@@ -741,22 +728,20 @@ class _RecommendHeader extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              if (!isCarMode) ...[
-                Padding(
-                  padding: const EdgeInsets.only(right: 10),
-                  child: _TopTabs(
-                    auth: auth,
-                    index: sectionIndex,
-                    onChanged: onSectionChanged,
-                    onSettingsTap: onSettingsTap,
-                  ),
+              Padding(
+                padding: const EdgeInsets.only(right: 10),
+                child: _TopTabs(
+                  auth: auth,
+                  index: sectionIndex,
+                  onChanged: onSectionChanged,
+                  onSettingsTap: onSettingsTap,
                 ),
-                const SizedBox(height: 10),
-                Padding(
-                  padding: const EdgeInsets.only(right: 10),
-                  child: _SmartSearch(api: api, auth: auth, player: player),
-                ),
-              ],
+              ),
+              const SizedBox(height: 10),
+              Padding(
+                padding: const EdgeInsets.only(right: 10),
+                child: _SmartSearch(api: api, auth: auth, player: player),
+              ),
               if (updateVersion != null) ...[
                 const SizedBox(height: 10),
                 Padding(
@@ -770,50 +755,14 @@ class _RecommendHeader extends StatelessWidget {
               ],
               if (sectionIndex == 0) ...[
                 const SizedBox(height: 8),
-                if (isUltraWide)
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        flex: 6,
-                        child: _FeatureShelf(
-                          albums: albums,
-                          player: player,
-                          onPersonalFmPlay: onPersonalFmPlay,
-                          isPersonalFmLoading: isPersonalFmLoading,
-                          personalFmPreviewSong: personalFmPreviewSong,
-                          onAlbumTap: onAlbumTap,
-                        ),
-                      ),
-                      Expanded(
-                        flex: 4,
-                        child: _CarQuickStatsPills(
-                          auth: auth,
-                          player: player,
-                          onSwitchToMyTab: () => onSectionChanged(-1),
-                          api: api,
-                          isSideBySide: true,
-                        ),
-                      ),
-                    ],
-                  )
-                else ...[
-                  _FeatureShelf(
-                    albums: albums,
-                    player: player,
-                    onPersonalFmPlay: onPersonalFmPlay,
-                    isPersonalFmLoading: isPersonalFmLoading,
-                    personalFmPreviewSong: personalFmPreviewSong,
-                    onAlbumTap: onAlbumTap,
-                  ),
-                  if (isCarMode)
-                    _CarQuickStatsPills(
-                      auth: auth,
-                      player: player,
-                      onSwitchToMyTab: () => onSectionChanged(-1),
-                      api: api,
-                    ),
-                ],
+                _FeatureShelf(
+                  albums: albums,
+                  player: player,
+                  onPersonalFmPlay: onPersonalFmPlay,
+                  isPersonalFmLoading: isPersonalFmLoading,
+                  personalFmPreviewSong: personalFmPreviewSong,
+                  onAlbumTap: onAlbumTap,
+                ),
               ],
             ],
           ),
@@ -985,9 +934,9 @@ class _FeatureShelf extends StatelessWidget {
             child: Row(
               children: [
                 Expanded(
-                  child: AnimatedBuilder(
-                    animation: player,
-                    builder: (context, _) {
+                  child: ValueListenableBuilder<String>(
+                    valueListenable: player.nowPlayingToken,
+                    builder: (context, _, _) {
                       final currentFmSong = player.isPersonalFmActive
                           ? player.currentSong
                           : personalFmPreviewSong;
@@ -1895,7 +1844,11 @@ class _RadioSection extends StatefulWidget {
 }
 
 class _RadioSectionState extends State<_RadioSection> {
-  static Future<_RadioData>? _cachedFuture;
+  /// 页面内缓存。
+  ///
+  /// 原为 `static`：会把**失败结果永久缓存**（切走再回来依旧报错、无法重试），
+  /// 且跨页面实例共享陈旧数据。改为实例级，且只在成功时缓存。
+  Future<_RadioData>? _cachedFuture;
 
   late Future<_RadioData> _future;
   String? _loadingStationId;
@@ -1903,7 +1856,13 @@ class _RadioSectionState extends State<_RadioSection> {
   @override
   void initState() {
     super.initState();
-    _future = _cachedFuture ??= _load();
+    _future = _cachedFuture ?? _load();
+    _future.then((data) {
+      _cachedFuture = Future<_RadioData>.value(data);
+    }).catchError((Object _) {
+      // 失败不缓存，下次进入页面可重试。
+      _cachedFuture = null;
+    });
   }
 
   Future<_RadioData> _load() async {
@@ -1945,7 +1904,11 @@ class _RadioSectionState extends State<_RadioSection> {
     setState(() {
       _future = future;
     });
-    await future;
+    // 刷新失败同样不缓存，避免把错误结果固定住。
+    await future.catchError((Object _) {
+      _cachedFuture = null;
+      return _RadioData.empty;
+    });
   }
 
   Future<void> _playStation(FmStation station) async {
@@ -1979,11 +1942,6 @@ class _RadioSectionState extends State<_RadioSection> {
 
   @override
   Widget build(BuildContext context) {
-    final screenSize = MediaQuery.sizeOf(context);
-    final isLandscape = screenSize.width > screenSize.height;
-    // 电台双卡+网格布局是车机专属，普通横屏用原布局。
-    final isCarMode = isLandscape && false;
-
     return FutureBuilder<_RadioData>(
       future: _future,
       builder: (context, snapshot) {
@@ -2001,103 +1959,6 @@ class _RadioSectionState extends State<_RadioSection> {
           );
         }
         final radio = data ?? _RadioData.empty;
-
-        if (isCarMode) {
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
-                  child: _SectionHeader(
-                    title: '推荐电台',
-                    action: IconButton.filledTonal(
-                      tooltip: '刷新',
-                      onPressed: _refresh,
-                      icon: const Icon(Icons.refresh_rounded),
-                      style: IconButton.styleFrom(
-                        fixedSize: const Size.square(42),
-                        shape: const CircleBorder(),
-                      ),
-                    ),
-                  ),
-                ),
-                if (radio.recommended.isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 10),
-                    child: SizedBox(
-                      height: 80,
-                      child: radio.recommended.length >= 2
-                          // 有两个及以上推荐时，并排展示两张大卡
-                          ? Row(
-                              children: [
-                                Expanded(
-                                  child: _RadioHeroCard(
-                                    station: radio.recommended[0],
-                                    loading:
-                                        _loadingStationId ==
-                                        radio.recommended[0].id,
-                                    onTap: () =>
-                                        _playStation(radio.recommended[0]),
-                                  ),
-                                ),
-                                const SizedBox(width: 14),
-                                Expanded(
-                                  child: _RadioHeroCard(
-                                    station: radio.recommended[1],
-                                    loading:
-                                        _loadingStationId ==
-                                        radio.recommended[1].id,
-                                    onTap: () =>
-                                        _playStation(radio.recommended[1]),
-                                  ),
-                                ),
-                              ],
-                            )
-                          : _RadioHeroCard(
-                              station: radio.recommended.first,
-                              loading:
-                                  _loadingStationId ==
-                                  radio.recommended.first.id,
-                              onTap: () =>
-                                  _playStation(radio.recommended.first),
-                            ),
-                    ),
-                  ),
-                if (radio.recommended.length > 2) ...[
-                  const SizedBox(height: 8),
-                  _RadioStationGrid(
-                    stations: radio.recommended.skip(2).toList(),
-                    loadingStationId: _loadingStationId,
-                    onTap: _playStation,
-                  ),
-                ],
-                for (final group in radio.groups) ...[
-                  const SizedBox(height: 10),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 10),
-                    child: _SectionHeader(
-                      title: group.name,
-                      action: Icon(
-                        Icons.radio_rounded,
-                        color: Theme.of(context).colorScheme.onSurface,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  _RadioStationGrid(
-                    stations: group.stations,
-                    loadingStationId: _loadingStationId,
-                    onTap: _playStation,
-                  ),
-                ],
-                if (radio.recommended.isEmpty && radio.groups.isEmpty)
-                  const _RadioEmpty(),
-              ],
-            ),
-          );
-        }
 
         return Padding(
           padding: const EdgeInsets.fromLTRB(10, 0, 10, 16),
@@ -2273,45 +2134,6 @@ class _RadioStationRail extends StatelessWidget {
           );
         },
       ),
-    );
-  }
-}
-
-class _RadioStationGrid extends StatelessWidget {
-  const _RadioStationGrid({
-    required this.stations,
-    required this.loadingStationId,
-    required this.onTap,
-  });
-
-  final List<FmStation> stations;
-  final String? loadingStationId;
-  final ValueChanged<FmStation> onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    if (stations.isEmpty) {
-      return const SizedBox.shrink();
-    }
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      padding: const EdgeInsets.symmetric(horizontal: 10),
-      itemCount: stations.length,
-      gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-        maxCrossAxisExtent: 160,
-        mainAxisSpacing: 8,
-        crossAxisSpacing: 8,
-        childAspectRatio: 0.72,
-      ),
-      itemBuilder: (context, index) {
-        final station = stations[index];
-        return _RadioStationCard(
-          station: station,
-          loading: loadingStationId == station.id,
-          onTap: () => onTap(station),
-        );
-      },
     );
   }
 }
@@ -2498,44 +2320,6 @@ class _RadioEmpty extends StatelessWidget {
   }
 }
 
-// ignore: unused_element
-class _RadioUnsupported extends StatelessWidget {
-  const _RadioUnsupported();
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 16, 12, 90),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.radio_rounded,
-            size: 42,
-            color: colorScheme.primary.withValues(alpha: .72),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            '电台暂不支持',
-            style: Theme.of(
-              context,
-            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            '等接口准备好后再接入这个频道。',
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: colorScheme.onSurfaceVariant,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _HomeSkeleton extends StatelessWidget {
   const _HomeSkeleton();
 
@@ -2671,180 +2455,6 @@ String _playCount(int? value) {
     return '${(value / 10000).toStringAsFixed(1)} 万次播放';
   }
   return '$value 次播放';
-}
-
-class _CarQuickStatsPills extends StatefulWidget {
-  const _CarQuickStatsPills({
-    required this.auth,
-    required this.player,
-    required this.onSwitchToMyTab,
-    required this.api,
-    this.isSideBySide = false,
-  });
-
-  final AuthController auth;
-  final PlayerController player;
-  final VoidCallback onSwitchToMyTab;
-  final MusicApi api;
-  final bool isSideBySide;
-
-  @override
-  State<_CarQuickStatsPills> createState() => _CarQuickStatsPillsState();
-}
-
-class _CarQuickStatsPillsState extends State<_CarQuickStatsPills> {
-  int _historyCount = 0;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadHistoryCount();
-  }
-
-  Future<void> _loadHistoryCount() async {
-    try {
-      final count = await widget.player.getPlaybackHistoryCount();
-      if (mounted) {
-        setState(() {
-          _historyCount = count;
-        });
-      }
-    } catch (_) {}
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(top: widget.isSideBySide ? 0 : 10, right: 10),
-      child: Row(
-        children: [
-          Expanded(
-            child: _PillCard(
-              title: '已播歌曲',
-              value: '$_historyCount',
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => PlaybackHistoryPage(
-                    api: widget.api,
-                    auth: widget.auth,
-                    player: widget.player,
-                  ),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: _PillCard(
-              title: '收藏歌曲',
-              value: '${widget.auth.likedCount}',
-              onTap: () {
-                if (widget.auth.likedPlaylist != null) {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => PlaylistDetailPage(
-                        api: widget.api,
-                        auth: widget.auth,
-                        player: widget.player,
-                        playlist: widget.auth.likedPlaylist!,
-                      ),
-                    ),
-                  );
-                } else {
-                  Toast.info('暂无收藏歌单');
-                }
-              },
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: _PillCard(
-              title: '自建歌单',
-              value: '${widget.auth.createdPlaylists.length}',
-              onTap: widget.onSwitchToMyTab,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _PillCard extends StatelessWidget {
-  const _PillCard({
-    required this.title,
-    required this.value,
-    required this.onTap,
-  });
-
-  final String title;
-  final String value;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return Material(
-      color: isDark
-          ? colorScheme.surfaceContainer
-          : Colors.white.withValues(alpha: 0.9),
-      borderRadius: BorderRadius.circular(28),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-          child: Row(
-            children: [
-              Container(
-                width: 36,
-                height: 36,
-                decoration: const BoxDecoration(
-                  color: Color(0xFF1DB954), // Spotify Green
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.play_arrow_rounded,
-                  color: Colors.white,
-                  size: 22,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: colorScheme.onSurfaceVariant,
-                        fontSize: 13,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      value,
-                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        fontWeight: FontWeight.w900,
-                        color: colorScheme.onSurface,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 }
 
 Map<String, dynamic> _topAlbumToCache(TopAlbumItem album) => {

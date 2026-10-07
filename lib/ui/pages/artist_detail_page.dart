@@ -299,9 +299,9 @@ class _ArtistDetailPageState extends State<ArtistDetailPage> {
                       // 底部留白：播放中时为 MiniPlayer 预留空间，
                       // 防止卡片遮挡导致用户点不到最底部的几首歌。
                       SliverToBoxAdapter(
-                        child: AnimatedBuilder(
-                          animation: widget.player,
-                          builder: (context, _) {
+                        child: ValueListenableBuilder<String>(
+                          valueListenable: widget.player.nowPlayingToken,
+                          builder: (context, _, _) {
                             final hasSong = widget.player.currentSong != null;
                             return SizedBox(height: hasSong ? miniPlayerSpace : 0);
                           },
@@ -576,9 +576,9 @@ class _ArtistSongRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
 
-    return AnimatedBuilder(
-      animation: player,
-      builder: (context, _) {
+    return ValueListenableBuilder<String>(
+      valueListenable: player.nowPlayingToken,
+      builder: (context, _, _) {
         final active = player.currentSong?.hash == song.hash;
         final activeColor = colorScheme.primary;
 

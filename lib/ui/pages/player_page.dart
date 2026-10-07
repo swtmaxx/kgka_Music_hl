@@ -125,9 +125,9 @@ class _PlayerPageState extends State<PlayerPage> {
       showDragHandle: true,
       backgroundColor: Theme.of(context).colorScheme.surface,
       builder: (context) {
-        return AnimatedBuilder(
-          animation: widget.player,
-          builder: (context, _) {
+        return ValueListenableBuilder<String>(
+          valueListenable: widget.player.nowPlayingToken,
+          builder: (context, _, _) {
             return ListView.builder(
               itemCount: widget.player.queue.length,
               itemBuilder: (context, index) {
@@ -223,8 +223,6 @@ class _PlayerBodyState extends State<_PlayerBody> {
     final size = MediaQuery.sizeOf(context);
     final landscape = size.width > size.height;
     _syncSystemUi(landscape);
-    // 横屏分栏布局是车机专属，普通横屏仍用竖屏的翻页布局。
-    final isCarLayout = landscape && false;
     // 小屏手表（如 S100 240x284 DPR 1.0）使用专属布局参数。
     final isSmallWatch = ThemeController.instance.isSmallWatchDevice;
 
@@ -242,8 +240,7 @@ class _PlayerBodyState extends State<_PlayerBody> {
               // 竖屏已由外层 Scaffold 处理，这里对所有方向统一保留 SafeArea。
               child: Column(
                 children: [
-                  if (!isCarLayout)
-                    _TopBar(
+                  _TopBar(
                       player: widget.player,
                       auth: widget.auth,
                       song: widget.song,
@@ -251,48 +248,31 @@ class _PlayerBodyState extends State<_PlayerBody> {
                       onArtistTap: _openArtist,
                     ),
                   Expanded(
-                    child: isCarLayout
-                        ? ExcludeSemantics(
-                            child: _LandscapePlayerContent(
-                              player: widget.player,
-                              auth: widget.auth,
-                              song: widget.song,
-                              onClose: widget.onClose,
-                              onQueue: widget.onQueue,
-                              onArtistTap: _openArtist,
-                            ),
-                          )
-                        : NotificationListener<ScrollNotification>(
-                            onNotification: _handlePageScrollNotification,
-                            child: PageView(
-                              controller: _pageController,
-                              allowImplicitScrolling: true,
-                              onPageChanged: (value) =>
-                                  _setPageState(page: value),
-                              children: [
-                                _PosterPlayerPage(
-                                  key: const PageStorageKey(
-                                    'poster-player-page',
-                                  ),
-                                  player: widget.player,
-                                  song: widget.song,
-                                  onQueue: widget.onQueue,
-                                  isPageVisible: _page == 0 || _pageScrolling,
-                                ),
-                                _LyricPlayerPage(
-                                  key: const PageStorageKey(
-                                    'lyric-player-page',
-                                  ),
-                                  player: widget.player,
-                                  song: widget.song,
-                                  isPageVisible: _lyricPageVisible,
-                                ),
-                              ],
-                            ),
+                    child: NotificationListener<ScrollNotification>(
+                      onNotification: _handlePageScrollNotification,
+                      child: PageView(
+                        controller: _pageController,
+                        allowImplicitScrolling: true,
+                        onPageChanged: (value) => _setPageState(page: value),
+                        children: [
+                          _PosterPlayerPage(
+                            key: const PageStorageKey('poster-player-page'),
+                            player: widget.player,
+                            song: widget.song,
+                            onQueue: widget.onQueue,
+                            isPageVisible: _page == 0 || _pageScrolling,
                           ),
+                          _LyricPlayerPage(
+                            key: const PageStorageKey('lyric-player-page'),
+                            player: widget.player,
+                            song: widget.song,
+                            isPageVisible: _lyricPageVisible,
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
-                  if (!isCarLayout &&
-                      MediaQuery.sizeOf(context).height >= 250)
+                  if (MediaQuery.sizeOf(context).height >= 250)
                     _PageDots(page: _page),
                 ],
               ),
@@ -456,684 +436,6 @@ class _FallbackBackground extends StatelessWidget {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [Color(0xFF153D35), Color(0xFF061219), Color(0xFF2C1320)],
-        ),
-      ),
-    );
-  }
-}
-
-class _LandscapePlayerContent extends StatelessWidget {
-  const _LandscapePlayerContent({
-    required this.player,
-    required this.auth,
-    required this.song,
-    required this.onClose,
-    required this.onQueue,
-    required this.onArtistTap,
-  });
-
-  final PlayerController player;
-  final AuthController auth;
-  final Song song;
-  final VoidCallback onClose;
-  final VoidCallback onQueue;
-  final ValueChanged<Song> onArtistTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final compact = constraints.maxHeight < 350;
-        final tiny = constraints.maxHeight < 320 || constraints.maxWidth < 320;
-        return Padding(
-          padding: EdgeInsets.fromLTRB(
-            tiny ? 6 : (compact ? 14 : 24),
-            tiny ? 2 : (compact ? 4 : 10),
-            tiny ? 8 : (compact ? 16 : 30),
-            tiny ? 4 : (compact ? 24 : 36),
-          ),
-          child: Column(
-            children: [
-              _LandscapeHeader(
-                player: player,
-                auth: auth,
-                song: song,
-                onClose: onClose,
-                compact: compact || tiny,
-                onArtistTap: onArtistTap,
-              ),
-              SizedBox(height: tiny ? 2 : (compact ? 2 : 10)),
-              Expanded(
-                child: Row(
-                  children: [
-                    Expanded(
-                      flex: 9,
-                      child: _LandscapeArtworkShowcase(
-                        player: player,
-                        song: song,
-                        compact: compact,
-                      ),
-                    ),
-                    SizedBox(width: tiny ? 8 : (compact ? 18 : 34)),
-                    Expanded(
-                      flex: 12,
-                      child: _LandscapeRightPanel(
-                        player: player,
-                        auth: auth,
-                        onQueue: onQueue,
-                        compact: compact,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-}
-
-class _LandscapeHeader extends StatelessWidget {
-  const _LandscapeHeader({
-    required this.player,
-    required this.auth,
-    required this.song,
-    required this.onClose,
-    required this.compact,
-    required this.onArtistTap,
-  });
-
-  final PlayerController player;
-  final AuthController auth;
-  final Song song;
-  final VoidCallback onClose;
-  final bool compact;
-  final ValueChanged<Song> onArtistTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: auth,
-      builder: (context, _) {
-        final liked = auth.isLiked(song);
-        return SizedBox(
-          height: compact ? 40 : 48,
-          child: Row(
-            children: [
-              _LandscapeHeaderButton(
-                tooltip: '返回',
-                size: compact ? 38 : 44,
-                iconSize: compact ? 30 : 34,
-                onPressed: onClose,
-                icon: Icons.keyboard_arrow_left_rounded,
-              ),
-              SizedBox(width: compact ? 10 : 18),
-              Expanded(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    MarqueeText(
-                      text: song.title,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: Colors.white.withValues(alpha: .92),
-                        fontSize: compact ? 14 : 16,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                    if (!compact)
-                      ClickableArtistText(
-                        song: song,
-                        api: player.api,
-                        auth: auth,
-                        player: player,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: Colors.white.withValues(alpha: .7),
-                              fontWeight: FontWeight.w700,
-                            ),
-                      ),
-                  ],
-                ),
-              ),
-              _LandscapeHeaderButton(
-                tooltip: liked ? '取消喜欢' : '喜欢',
-                size: compact ? 38 : 44,
-                iconSize: compact ? 22 : 24,
-                onPressed: song.source == SongSource.kugou
-                    ? () => auth.toggleLike(song)
-                    : null,
-                icon: liked
-                    ? Icons.favorite_rounded
-                    : Icons.favorite_border_rounded,
-              ),
-              SizedBox(width: compact ? 6 : 8),
-              _LandscapeHeaderButton(
-                tooltip: '更多',
-                size: compact ? 38 : 44,
-                iconSize: compact ? 22 : 24,
-                onPressed: () => _showMoreSheet(context),
-                icon: Icons.more_horiz_rounded,
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  void _showMoreSheet(BuildContext context) {
-    showSongActionSheet(
-      context: context,
-      song: song,
-      actions: [
-        SongSheetAction(
-          icon: Icons.speed_rounded,
-          title: '倍速播放',
-          subtitle: player.playbackSpeedLabel,
-          onTap: () => showPlaybackSpeedSheet(context: context, player: player),
-        ),
-        SongSheetAction(
-          icon: Icons.high_quality_rounded,
-          title: '音质：${player.audioQuality.label}',
-          subtitle: '切换当前播放音质',
-          onTap: () => _showAudioQualityPicker(context, player),
-        ),
-        SongSheetAction(
-          icon: Icons.volume_up_rounded,
-          title: '音量：${player.playbackVolumeLabel}',
-          subtitle: '调整播放音量',
-          onTap: () => showPlaybackVolumeSheet(context: context, player: player),
-        ),
-        SongSheetAction(
-          icon: Icons.auto_awesome_rounded,
-          title: '试听高潮',
-          subtitle: '播放歌曲高潮片段',
-          onTap: () async {
-            final ok = await player.playClimaxPreview();
-            if (!ok) Toast.error('暂无高潮片段');
-          },
-        ),
-        SongSheetAction(
-          icon: Icons.graphic_eq_rounded,
-          title: '音效',
-          subtitle: player.audioEffectsLabel,
-          onTap: () => showAudioEffectsSheet(context: context, player: player),
-        ),
-        if (song.source == SongSource.kugou)
-          SongSheetAction(
-            icon: Icons.playlist_add_rounded,
-            title: '添加到歌单',
-            onTap: () =>
-                showAddToPlaylistSheet(context: context, auth: auth, song: song),
-          ),
-        SongSheetAction(
-          icon: Icons.bedtime_rounded,
-          title: '定时播放',
-          subtitle: player.isSleepTimerActive
-              ? '剩余 ${_formatSleepRemaining(player.sleepTimerRemaining)}'
-              : player.isSleepFinishCurrentSong
-                  ? '播完歌曲后停止'
-                  : null,
-          onTap: () => showSleepTimerSheet(context: context, player: player),
-        ),
-        if (player.isDesktopLyricsSupported) ...[
-          SongSheetAction(
-            icon: player.desktopLyricsEnabled
-                ? Icons.lyrics_rounded
-                : Icons.lyrics_outlined,
-            title: '桌面歌词',
-            subtitle: player.desktopLyricsEnabled ? '已开启' : '已关闭',
-            onTap: () async {
-              Navigator.of(context).pop();
-              await player.setDesktopLyricsEnabled(!player.desktopLyricsEnabled);
-            },
-          ),
-          if (player.desktopLyricsEnabled)
-            SongSheetAction(
-              icon: Icons.tune_rounded,
-              title: '歌词设置',
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => DesktopLyricsSettingsPage(player: player),
-                ),
-              ),
-            ),
-        ],
-      ],
-    );
-  }
-}
-
-class _LandscapeHeaderButton extends StatelessWidget {
-  const _LandscapeHeaderButton({
-    required this.tooltip,
-    required this.size,
-    required this.iconSize,
-    required this.onPressed,
-    required this.icon,
-  });
-
-  final String tooltip;
-  final double size;
-  final double iconSize;
-  final VoidCallback? onPressed;
-  final IconData icon;
-
-  @override
-  Widget build(BuildContext context) {
-    return Tooltip(
-      message: tooltip,
-      child: Material(
-        color: Colors.white.withValues(alpha: .12),
-        shape: const CircleBorder(),
-        clipBehavior: Clip.antiAlias,
-        child: SizedBox.square(
-          dimension: size,
-          child: IconButton(
-            color: Colors.white,
-            iconSize: iconSize,
-            padding: EdgeInsets.zero,
-            constraints: BoxConstraints.tightFor(width: size, height: size),
-            onPressed: onPressed,
-            icon: Icon(icon),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _LandscapeArtworkShowcase extends StatefulWidget {
-  const _LandscapeArtworkShowcase({
-    required this.player,
-    required this.song,
-    required this.compact,
-  });
-
-  final PlayerController player;
-  final Song song;
-  final bool compact;
-
-  @override
-  State<_LandscapeArtworkShowcase> createState() =>
-      _LandscapeArtworkShowcaseState();
-}
-
-class _LandscapeArtworkShowcaseState extends State<_LandscapeArtworkShowcase>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _rotationController;
-
-  @override
-  void initState() {
-    super.initState();
-    _rotationController = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 32),
-    );
-    widget.player.addListener(_syncRotation);
-    _syncRotation();
-  }
-
-  @override
-  void didUpdateWidget(covariant _LandscapeArtworkShowcase oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.player != widget.player) {
-      oldWidget.player.removeListener(_syncRotation);
-      widget.player.addListener(_syncRotation);
-    }
-    if (oldWidget.song.hash != widget.song.hash) {
-      _rotationController.value = 0;
-    }
-    _syncRotation();
-  }
-
-  @override
-  void dispose() {
-    widget.player.removeListener(_syncRotation);
-    _rotationController.dispose();
-    super.dispose();
-  }
-
-  void _syncRotation() {
-    if (widget.player.isPlaying) {
-      if (!_rotationController.isAnimating) {
-        _rotationController.repeat();
-      }
-    } else if (_rotationController.isAnimating) {
-      _rotationController.stop(canceled: false);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onHorizontalDragEnd: (details) {
-        final velocity = details.primaryVelocity ?? 0.0;
-        if (velocity < -200) {
-          widget.player.next();
-        } else if (velocity > 200) {
-          widget.player.previous();
-        }
-      },
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final available = math.min(constraints.maxWidth, constraints.maxHeight);
-          final tiny = available < 280;
-          final discSize = (available * (tiny ? .68 : (widget.compact ? .84 : .9)))
-              .clamp(tiny ? 60.0 : 150.0, 330.0)
-              .toDouble();
-          final coverSize = discSize * (tiny ? .50 : (widget.compact ? .58 : .70));
-
-          return Center(
-            // 旋转唱片是纯装饰动画，排除语义树防止 Windows AXTree 竞态崩溃，并外包 RepaintBoundary 隔离图层
-            child: RepaintBoundary(
-              child: ExcludeSemantics(
-                child: SizedBox.square(
-                dimension: discSize,
-                child: AnimatedBuilder(
-                  animation: _rotationController,
-                  builder: (context, child) {
-                    return Transform.rotate(
-                      angle: _rotationController.value * math.pi * 2,
-                      child: child,
-                    );
-                  },
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      DecoratedBox(
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: RadialGradient(
-                            colors: [
-                              Colors.white.withValues(alpha: .88),
-                              Colors.white.withValues(alpha: .58),
-                              Colors.white.withValues(alpha: .22),
-                            ],
-                            stops: const [0, .62, 1],
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: .26),
-                              blurRadius: 10,
-                              offset: const Offset(0, 18),
-                            ),
-                          ],
-                        ),
-                        child: const SizedBox.expand(),
-                      ),
-                      for (final ratio in const [.36, .52, .68, .82])
-                        SizedBox.square(
-                          dimension: discSize * ratio,
-                          child: DecoratedBox(
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: Colors.white.withValues(alpha: .16),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ClipOval(
-                        child: Artwork(
-                          url: widget.song.coverUrl,
-                          size: coverSize,
-                          borderRadius: coverSize,
-                        ),
-                      ),
-                      SizedBox.square(
-                        dimension: discSize * .08,
-                        child: DecoratedBox(
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: Colors.white.withValues(alpha: .82),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-        );
-        },
-      ),
-    );
-  }
-}
-
-class _LandscapeRightPanel extends StatelessWidget {
-  const _LandscapeRightPanel({
-    required this.player,
-    required this.auth,
-    required this.onQueue,
-    required this.compact,
-  });
-
-  final PlayerController player;
-  final AuthController auth;
-  final VoidCallback onQueue;
-  final bool compact;
-
-  @override
-  Widget build(BuildContext context) {
-    final song = player.currentSong;
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final veryTight = constraints.maxHeight < 250;
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            if (song != null)
-              Padding(
-                padding: EdgeInsets.only(
-                  bottom: veryTight ? 6.0 : 12.0,
-                  top: veryTight ? 2.0 : 6.0,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    MarqueeText(
-                      text: song.title,
-                      textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            color: Colors.white.withValues(alpha: .92),
-                            fontSize: compact ? 18 : 22,
-                            fontWeight: FontWeight.w900,
-                          ),
-                    ),
-                    const SizedBox(height: 4),
-                    ClickableArtistText(
-                      song: song,
-                      api: player.api,
-                      auth: auth,
-                      player: player,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: Colors.white.withValues(alpha: .6),
-                            fontWeight: FontWeight.w600,
-                          ),
-                    ),
-                  ],
-                ),
-              ),
-            Expanded(
-              child: _LandscapeLyricPanel(
-                player: player,
-                songHash: song?.hash ?? '',
-                lyrics: player.lyrics,
-                compact: compact || veryTight,
-              ),
-            ),
-            SizedBox(height: veryTight ? 2 : 6),
-            _Progress(player: player, bright: true, compact: true),
-            SizedBox(height: veryTight ? 0 : 4),
-            _Controls(
-              player: player,
-              bright: true,
-              onQueue: onQueue,
-              compactOverride: true,
-              denseOverride: veryTight,
-            ),
-          ],
-        );
-      },
-    );
-  }
-}
-
-class _LandscapeLyricPanel extends StatefulWidget {
-  const _LandscapeLyricPanel({
-    required this.player,
-    required this.songHash,
-    required this.lyrics,
-    required this.compact,
-  });
-
-  final PlayerController player;
-  final String songHash;
-  final List<LyricLine> lyrics;
-  final bool compact;
-
-  @override
-  State<_LandscapeLyricPanel> createState() => _LandscapeLyricPanelState();
-}
-
-class _LandscapeLyricPanelState extends State<_LandscapeLyricPanel>
-    with WidgetsBindingObserver {
-  late final LyricController _lyricController;
-  late final Ticker _ticker;
-  bool _isUserSelecting = false;
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addObserver(this);
-    _lyricController = LyricController();
-    _lyricController.setOnTapLineCallback((position) {
-      widget.player.seek(position);
-    });
-    _lyricController.isSelectingNotifier.addListener(_onSelectingChanged);
-    _syncLyrics();
-    _ticker = Ticker(_onTick);
-    _syncTicker();
-  }
-
-  @override
-  void didUpdateWidget(covariant _LandscapeLyricPanel oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.songHash != widget.songHash ||
-        oldWidget.lyrics != widget.lyrics) {
-      _syncLyrics();
-    }
-    _syncTicker();
-  }
-
-  @override
-  void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    _lyricController.isSelectingNotifier.removeListener(_onSelectingChanged);
-    _ticker.dispose();
-    _lyricController.dispose();
-    super.dispose();
-  }
-
-  void _onSelectingChanged() {
-    _isUserSelecting = _lyricController.isSelectingNotifier.value;
-    _syncTicker();
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    // 前/后台切换时重同步 ticker：后台时停掉，避免锁屏后每帧 setState。
-    _syncTicker();
-  }
-
-  void _syncLyrics() {
-    final lyrics = widget.lyrics;
-    if (lyrics.isNotEmpty) {
-      final model = convertToFlutterLyricModel(lyrics);
-      _lyricController.loadLyricModel(model);
-    }
-  }
-
-  void _syncTicker() {
-    // 仅在应用前台的监听时机才推进 ticker；页面不可见时不应
-    // 每帧触发 setState，否则会在锁屏/后台持续耗 CPU。
-    final shouldTick =
-        widget.player.isPlaying &&
-        widget.lyrics.isNotEmpty &&
-        !widget.player.isScrubbing &&
-        !_isUserSelecting &&
-        widget.player.isAppForeground;
-    if (shouldTick && !_ticker.isActive) {
-      _ticker.start();
-    } else if (!shouldTick && _ticker.isActive) {
-      _ticker.stop();
-    }
-  }
-
-  void _onTick(Duration elapsed) {
-    if (!mounted || widget.player.isScrubbing) {
-      return;
-    }
-    _lyricController.setProgress(widget.player.smoothPosition);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final player = widget.player;
-    final lyrics = widget.lyrics;
-    if (lyrics.isEmpty) {
-      return Align(
-        alignment: Alignment.centerLeft,
-        child: Text(
-          player.isPreparing ? '正在准备音乐...' : '暂无歌词',
-          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-            color: Colors.white.withValues(alpha: .82),
-            fontWeight: FontWeight.w900,
-          ),
-        ),
-      );
-    }
-
-    final fontSize = widget.compact ? 26.0 : 34.0;
-    final inactiveFontSize = widget.compact ? 18.0 : 24.0;
-
-    return ExcludeSemantics(
-      // 歌词视图高频更新会触发 Windows AXTree 竞态崩溃，排除语义树
-      child: LyricView(
-        controller: _lyricController,
-        style: LyricStyles.default1.copyWith(
-          textStyle: Theme.of(context).textTheme.titleLarge!.copyWith(
-            color: Colors.white.withValues(alpha: .34),
-            fontSize: inactiveFontSize,
-            height: 1.18,
-            fontWeight: FontWeight.w800,
-          ),
-          activeStyle: Theme.of(context).textTheme.headlineMedium!.copyWith(
-            color: Colors.white.withValues(alpha: .34),
-            fontSize: fontSize,
-            height: 1.18,
-            fontWeight: FontWeight.w900,
-          ),
-          lineGap: widget.compact ? 10 : 16,
-          contentPadding: EdgeInsets.symmetric(
-            horizontal: 24,
-            vertical: widget.compact ? 20 : 40,
-          ),
-          fadeRange: FadeRange(top: 40, bottom: 40),
-          textAlign: TextAlign.left,
-          contentAlignment: CrossAxisAlignment.start,
-          activeHighlightColor: Colors.white,
         ),
       ),
     );
@@ -1500,7 +802,7 @@ class _PosterLyricPreviewState extends State<_PosterLyricPreview>
   }
 
   void _syncTicker() {
-    // 同 [_LandscapeLyricPanelState._syncTicker]：后台时停 ticker。
+    // 与其他歌词视图一致：后台时停 ticker，避免每帧 setState。
     final shouldTick =
         widget.isPageVisible &&
         widget.player.isPlaying &&
@@ -1992,7 +1294,7 @@ class _LyricViewportState extends State<_LyricViewport> {
   }
 
   void _syncTicker() {
-    // 与 [_LandscapeLyricPanelState] / [_PosterLyricPreviewState] 保持一致：
+    // 与 [_PosterLyricPreviewState] 保持一致：
     // 必须同时检查 isAppForeground，否则应用切到后台（锁屏/回到表盘）后
     // ticker 仍会以每帧 60fps 空转，白白耗电。
     final shouldTick =
@@ -2471,25 +1773,21 @@ class _ControlsState extends State<_Controls> {
     final color = widget.bright
         ? Colors.white
         : Theme.of(context).colorScheme.onSurface;
-    final size = MediaQuery.sizeOf(context);
-    final isLandscape = size.width > size.height;
 
     return LayoutBuilder(
       builder: (context, constraints) {
         final compact = widget.compactOverride || constraints.maxWidth < 360;
         final dense = widget.denseOverride;
         final tiny = widget.tinyOverride;
-        // 超大按钮仅在车机模式开启时使用，普通横屏用标准尺寸。
-        final isCar = isLandscape && false;
         // 手表(tiny)按 Wear OS 媒体控制规范放大触控目标：
         // 5 键合计 ≈ 210px，在 240px 宽度内仍留出边距。
-        final edgeButtonSize = tiny ? 34.0 : (dense ? 34.0 : (isCar ? 56.0 : (compact ? 40.0 : 44.0)));
-        final edgeIconSize = tiny ? 18.0 : (dense ? 21.0 : (isCar ? 34.0 : (compact ? 24.0 : 27.0)));
-        final skipButtonSize = tiny ? 40.0 : (dense ? 42.0 : (isCar ? 72.0 : (compact ? 50.0 : 56.0)));
-        final skipIconSize = tiny ? 26.0 : (dense ? 33.0 : (isCar ? 54.0 : (compact ? 40.0 : 46.0)));
-        final playButtonSize = tiny ? 50.0 : (dense ? 58.0 : (isCar ? 96.0 : (compact ? 72.0 : 82.0)));
-        final playIconSize = tiny ? 32.0 : (dense ? 46.0 : (isCar ? 72.0 : (compact ? 56.0 : 64.0)));
-        final gap = tiny ? 3.0 : (dense ? 3.0 : (isCar ? 24.0 : (compact ? 5.0 : 9.0)));
+        final edgeButtonSize = tiny ? 34.0 : (dense ? 34.0 : (compact ? 40.0 : 44.0));
+        final edgeIconSize = tiny ? 18.0 : (dense ? 21.0 : (compact ? 24.0 : 27.0));
+        final skipButtonSize = tiny ? 40.0 : (dense ? 42.0 : (compact ? 50.0 : 56.0));
+        final skipIconSize = tiny ? 26.0 : (dense ? 33.0 : (compact ? 40.0 : 46.0));
+        final playButtonSize = tiny ? 50.0 : (dense ? 58.0 : (compact ? 72.0 : 82.0));
+        final playIconSize = tiny ? 32.0 : (dense ? 46.0 : (compact ? 56.0 : 64.0));
+        final gap = tiny ? 3.0 : (dense ? 3.0 : (compact ? 5.0 : 9.0));
 
         return Row(
           mainAxisAlignment: MainAxisAlignment.center,

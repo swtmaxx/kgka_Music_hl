@@ -364,12 +364,19 @@ class PlayerController extends ChangeNotifier {
     if (lyrics.isEmpty) {
       return -1;
     }
+    // 二分查找：该 getter 在每次 position tick 会被多处调用（桌面歌词/
+    // SuperLyric/蓝牙歌词/卡拉OK进度），线性扫描在长歌词上是白做的开销。
+    final target = smoothPosition;
+    var low = 0;
+    var high = lyrics.length - 1;
     var index = 0;
-    for (var i = 0; i < lyrics.length; i++) {
-      if (smoothPosition >= lyrics[i].time) {
-        index = i;
+    while (low <= high) {
+      final mid = (low + high) >> 1;
+      if (lyrics[mid].time <= target) {
+        index = mid;
+        low = mid + 1;
       } else {
-        break;
+        high = mid - 1;
       }
     }
     return index;
@@ -2331,8 +2338,11 @@ class PlayerController extends ChangeNotifier {
   }
 
   /// 同步保存当前播放状态（用于 dispose 时紧急保存）。
+  ///
+  /// 注意：SharedPreferences 无同步写 API，这里为**尽力而为**的异步写入；
+  /// 正常情况下每 5 秒的定时保存已保证数据不会丢失太多。
   void persistCurrentStateSync() {
-    _persistQueueState();
+    unawaited(_persistQueueState());
     _saveCurrentPosition();
   }
 

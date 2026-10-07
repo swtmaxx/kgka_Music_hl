@@ -82,15 +82,9 @@ class _MiniPlayerState extends State<MiniPlayer>
 
   @override
   Widget build(BuildContext context) {
-    final size = MediaQuery.sizeOf(context);
-    final isLandscape = size.width > size.height;
-    // 手表专用版为竖屏，这里保留判断仅作防御。
-    if (isLandscape && false) {
-      return const SizedBox.shrink();
-    }
-
     final scheme = Theme.of(context).colorScheme;
 
+    // 保留整个 player 监听：迷你播放器的环形进度需要跟随播放位置每帧更新。
     return RepaintBoundary(
       child: AnimatedBuilder(
         animation: widget.player,

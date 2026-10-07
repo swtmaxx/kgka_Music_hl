@@ -54,8 +54,8 @@ class AppConfig {
   /// The default (built-in) API base URL.
   static String get defaultApiBaseUrl => apiBaseUrl;
 
-  /// Load the custom API base URL from persistent storage.
-  static Future<void> loadCustomBaseUrl() async {
+  /// 加载持久化设置（自定义 API 地址 + 内置 API 开关）。
+  static Future<void> loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
     final stored = prefs.getString(_customBaseUrlKey);
     if (stored != null && stored.trim().isNotEmpty) {
@@ -69,7 +69,6 @@ class AppConfig {
   static bool _useBuiltInApi = true;
 
   static bool get useBuiltInApi => _useBuiltInApi;
-
   /// 保存内置 API 开关。
   static Future<void> saveUseBuiltInApi(bool enabled) async {
     _useBuiltInApi = enabled;

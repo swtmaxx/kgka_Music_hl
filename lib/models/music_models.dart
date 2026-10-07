@@ -1249,7 +1249,11 @@ class PlayUrl {
   final String hash;
 
   factory PlayUrl.fromJson(Map<String, dynamic> json) {
-    final urls = asList(json['url']).whereType<String>().toList();
+    // 兼容 url 为数组（酷狗原生 /v5/url）或单个字符串（部分整形/自建服务）。
+    final raw = json['url'];
+    final urls = raw is String
+        ? (raw.isEmpty ? const <String>[] : <String>[raw])
+        : asList(raw).whereType<String>().toList();
     return PlayUrl(
       url: urls.isNotEmpty ? urls.first : '',
       hash: asString(json['hash']) ?? '',
@@ -1806,7 +1810,11 @@ Duration? durationFromMilliseconds(Object? value) {
   return milliseconds == null ? null : Duration(milliseconds: milliseconds);
 }
 
-String? normalizeImageUrl(String? url, {int size = 480}) {
+/// 图片 URL 尺寸占位符的默认替换值。
+///
+/// 手表屏幕仅 240 逻辑像素宽，请求 240px 源图即可 1:1 显示；
+/// 原值 480 会多下载/解码约 4 倍像素量。
+String? normalizeImageUrl(String? url, {int size = 240}) {
   if (url == null) {
     return null;
   }

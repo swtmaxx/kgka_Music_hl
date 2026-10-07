@@ -102,14 +102,17 @@ class ApiClient {
       'Content-Type': 'application/json',
     };
 
-    if (token case final value?) {
-      headers['X-Kg-Session-Id'] = value;
+    // 后端会话 key：sessionId 优先（它才是服务端下发的真实 session），
+    // token 作为扫码/登录早期的兼容兼容值。原实现两次写同一个 header，
+    // 后者覆盖前者，容易让人误以为两者都会被发送。
+    final session = sessionId?.isNotEmpty == true
+        ? sessionId
+        : (token?.isNotEmpty == true ? token : null);
+    if (session != null) {
+      headers['X-Kg-Session-Id'] = session;
     }
     if (t1 case final value?) {
       headers['t1'] = value;
-    }
-    if (sessionId case final value?) {
-      headers['X-Kg-Session-Id'] = value;
     }
 
     return headers;

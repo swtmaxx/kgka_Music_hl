@@ -256,7 +256,12 @@ class _LocalSongsPageState extends State<LocalSongsPage> {
       ),
       body: AdaptiveContentPadding(
         child: AnimatedBuilder(
-          animation: Listenable.merge([widget.localMusic, widget.player]),
+          animation: Listenable.merge([
+            widget.localMusic,
+            // 用轻量通知源代替整个 PlayerController：否则整页（含全部本地歌曲行）
+            // 会随播放进度每 tick 全量重建。
+            widget.player.nowPlayingToken,
+          ]),
           builder: (context, _) {
             // 非 Android 平台提示不支持
             if (!Platform.isAndroid) {

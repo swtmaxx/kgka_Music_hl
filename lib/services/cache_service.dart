@@ -44,6 +44,9 @@ class CacheService {
   ];
 
   /// 读取缓存。无缓存返回 null。
+  ///
+  /// 注意：TTL 仅通过 [CacheResult.isStale] 上报，**不会**阻止返回数据。
+  /// 调用方如需“过期就不算命中”，必须自行检查 isStale。
   Future<CacheResult<T>?> read<T>(
     String key, {
     required T Function(Map<String, dynamic> json) decode,
@@ -125,7 +128,9 @@ class CacheService {
         .length;
   }
 
-  /// 清除所有数据缓存（保留用户歌单索引等必要数据）。
+  /// 清空所有数据缓存（保留用户歌单索引等必要数据）。
+  ///
+  /// 同时移除 CacheService 自己的索引键，避免清理后旧索引残留。
   Future<void> clearAllCache() async {
     final prefs = await SharedPreferences.getInstance();
     final keys = prefs.getKeys().toList();

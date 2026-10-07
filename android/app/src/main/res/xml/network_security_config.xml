@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  网络安全配置：默认禁止明文（HTTP），仅对确实需要明文的上游放行。
+
+  背景：原 AndroidManifest 使用 `android:usesCleartextTraffic="true"`，
+  对所有域名全局放开明文流量，任何 http 请求（含第三方 SDK、WebView）
+  都可被中间人窃听/篡改。
+
+  实际只有酷狗的登录网关仍是 http：
+    - http://login.user.kugou.com/v7/send_mobile_code  （发送验证码）
+    - http://login.user.kugou.com/v5/login_by_token    （token 刷新）
+  其余接口（gateway / userservice / openapi / trackercdn / 自建服务）均为 https。
+
+  说明：自建 API 服务器请使用 https；如需在内网用 http 自建服务，
+  把该主机的域名或 IP 追加到下面的 domain-config 即可。
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">kugou.com</domain>
+        <domain includeSubdomains="true">hoilai.cn</domain>
+        <domain includeSubdomains="true">localhost</domain>
+        <domain>127.0.0.1</domain>
+    </domain-config>
+</network-security-config>

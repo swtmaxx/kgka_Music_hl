@@ -94,12 +94,8 @@ class _AlbumShopPageState extends State<AlbumShopPage> {
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.paddingOf(context).bottom;
     final size = MediaQuery.sizeOf(context);
-    // 多列自适应是车机横屏专属；普通横屏/竖屏保持原项目固定 2 列。
-    final isCarLandscape =
-        size.width > size.height && false;
-    final crossAxisCount = isCarLandscape
-        ? (size.width / 180).floor().clamp(2, 5)
-        : 2;
+    // 手表专用：固定 2 列（原车机横屏的多列自适应已随车机模式移除）。
+    const crossAxisCount = 2;
 
     return Scaffold(
       extendBody: true,

@@ -421,9 +421,9 @@ class _CloudSongRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
 
-    return AnimatedBuilder(
-      animation: player,
-      builder: (context, _) {
+    return ValueListenableBuilder<String>(
+      valueListenable: player.nowPlayingToken,
+      builder: (context, _, _) {
         final active = player.currentSong?.hash == song.hash;
         final activeColor = colorScheme.primary;
         return InkWell(

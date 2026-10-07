@@ -59,8 +59,6 @@ class ThemeController extends ChangeNotifier {
 
   // 小屏手表：手表专用版恒为真（见 isSmallWatchDevice）。
 
-  bool? _lastAppliedIsTablet;
-
   Color get seedColor => _seedColor;
   ThemeMode get themeMode => _themeMode;
   String get themeModeLabel => switch (_themeMode) {
@@ -180,9 +178,11 @@ class ThemeController extends ChangeNotifier {
   }
 
   /// 手表专用版：强制竖屏锁定。
+  ///
+  /// 原实现用 `_lastAppliedIsTablet` 做一次性门控，但调用方在 load() 与
+  /// setLandscapeEnabled() 都会传不同参数，该标志实际使后续调用全部失效
+  /// （且与“恒竖屏”语义矛盾）。直接每次下发即可，幂等且开销极小。
   void applyOrientations(bool isTablet) {
-    if (_lastAppliedIsTablet == true) return;
-    _lastAppliedIsTablet = true;
     SystemChrome.setPreferredOrientations(const [
       DeviceOrientation.portraitUp,
     ]);

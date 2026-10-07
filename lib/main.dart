@@ -28,7 +28,7 @@ Future<void> main() async {
   // Flutter 默认缓存 1000 张 / 100MB，在 1GB RAM 设备上会挤爆内存。
   PaintingBinding.instance.imageCache.maximumSize = 80;
   PaintingBinding.instance.imageCache.maximumSizeBytes = 24 << 20; // 24MB
-  await AppConfig.loadCustomBaseUrl();
+  await AppConfig.loadSettings();
   // 应用内置 API 开关（可在设置中切换）
   ApiClient.useBuiltInApi = AppConfig.useBuiltInApi;
 
