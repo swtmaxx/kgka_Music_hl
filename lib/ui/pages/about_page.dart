@@ -117,7 +117,7 @@ class _AboutPageState extends State<AboutPage> {
                     ),
                     const _InfoRow(
                       label: '服务地址',
-                      value: '内置酷狗 API（直连，无外部服务器）',
+                      value: '自建 API 服务器（可在设置中切换为内置酷狗直连）',
                     ),
                     _InfoLinkRow(
                       label: 'GitHub',

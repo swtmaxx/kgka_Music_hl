@@ -28,10 +28,15 @@ Future<void> main() async {
   // Flutter 默认缓存 1000 张 / 100MB，在 1GB RAM 设备上会挤爆内存。
   PaintingBinding.instance.imageCache.maximumSize = 80;
   PaintingBinding.instance.imageCache.maximumSizeBytes = 24 << 20; // 24MB
+  await AppConfig.loadSettings();
+  // 应用内置 API 开关（可在设置中切换）；默认 false → 走外置服务器。
+  ApiClient.useBuiltInApi = AppConfig.useBuiltInApi;
 
   final client = ApiClient();
-  // 内置 API 预热：后台完成设备注册，避免首次请求等待。
-  unawaited(client.builtIn.warmUp());
+  // 内置 API 预热：后台完成设备注册，避免首次请求等待（仅内置模式需要）。
+  if (ApiClient.useBuiltInApi) {
+    unawaited(client.builtIn.warmUp());
+  }
   final api = MusicApi(client);
   final audioHandler = await AudioService.init(
     builder: MusicAudioHandler.new,
