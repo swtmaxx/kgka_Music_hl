@@ -22,15 +22,16 @@ class MusicApi {
       _client.token = null;
       _client.t1 = null;
       _client.sessionId = null;
+      _client.userId = null;
       return;
     }
     _client.token = session.token;
     _client.t1 = session.t1;
-    // 扫码/手机号登录返回的 session 不携带 sessionId，
-    // 此时 _client.sessionId 已由 ApiClient._processResponse 从
-    // 登录请求的响应 header (X-Kg-Session-Id) 中保存。
-    // 不能用 null 覆盖，否则后续请求无法关联到后端 session，
-    // 导致 /user/detail、/user/playlist 等接口拿不到登录态。
+    // 酷狗 userid：内置 API 的所有登录态请求都依赖它，
+    // 缺失时服务端会以 userid=0 处理并拒绝（20006/20010）。
+    _client.userId = session.userId;
+    // sessionId 是旧外部服务器的会话 key，仅在有值时保留，
+    // 不能用 null 覆盖（部分登录路径依赖已有值）。
     final sid = session.sessionId;
     if (sid != null && sid.isNotEmpty) {
       _client.sessionId = sid;
