@@ -1,20 +1,15 @@
 package com.swtmaxx.kamusic
 
 import android.Manifest
-import android.app.DownloadManager
-import android.content.BroadcastReceiver
 import android.content.ContentUris
 import android.content.Context
 import android.content.Intent
-import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.database.Cursor
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
-import android.os.Environment
 import android.provider.MediaStore
-import android.provider.Settings
 import android.util.Log
 import android.media.audiofx.BassBoost
 import android.media.audiofx.Equalizer
@@ -22,7 +17,6 @@ import android.media.audiofx.DynamicsProcessing
 import android.view.WindowManager
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import androidx.core.content.FileProvider
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 import com.ryanheise.audioservice.AudioServiceActivity
@@ -30,13 +24,8 @@ import com.hchen.superlyricapi.SuperLyricHelper
 import com.hchen.superlyricapi.SuperLyricData
 import com.hchen.superlyricapi.SuperLyricLine
 import com.hchen.superlyricapi.SuperLyricWord
-import java.io.File
 
 class MainActivity : AudioServiceActivity() {
-    private val updateDownloads = mutableMapOf<Long, String>()
-    private var downloadReceiverRegistered = false
-    private var lyricsStateReceiverRegistered = false
-    private var desktopLyricsChannel: MethodChannel? = null
     private var superLyricChannel: MethodChannel? = null
     private var superLyricRegistered = false
     private var bassBoost: BassBoost? = null
@@ -50,38 +39,6 @@ class MainActivity : AudioServiceActivity() {
     companion object {
         private const val REQUEST_READ_AUDIO = 1001
         private const val TAG_SUPER_LYRIC = "SuperLyricPublisher"
-        private const val TAG_BLUETOOTH_LYRICS = "BluetoothLyrics"
-    }
-
-    private val downloadReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context, intent: Intent) {
-            val downloadId = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1L)
-            val fileName = updateDownloads.remove(downloadId) ?: return
-            if (isDownloadSuccessful(downloadId)) {
-                installDownloadedApk(fileName)
-            }
-        }
-    }
-
-    private val lyricsStateReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context, intent: Intent) {
-            if (intent.action != LyricsOverlayService.ACTION_VISIBILITY_CHANGED) {
-                return
-            }
-            desktopLyricsChannel?.invokeMethod(
-                "onVisibilityChanged",
-                mapOf(
-                    "visible" to intent.getBooleanExtra(
-                        LyricsOverlayService.EXTRA_VISIBLE,
-                        false
-                    ),
-                    "userClosed" to intent.getBooleanExtra(
-                        LyricsOverlayService.EXTRA_USER_CLOSED,
-                        false
-                    )
-                )
-            )
-        }
     }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
@@ -98,29 +55,6 @@ class MainActivity : AudioServiceActivity() {
                             window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
                         }
                         result.success(null)
-                    }
-                    else -> result.notImplemented()
-                }
-            }
-
-        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "kgka_music_hl/update")
-            .setMethodCallHandler { call, result ->
-                when (call.method) {
-                    "downloadAndInstallApk" -> {
-                        val url = call.argument<String>("url")
-                        val fileName = call.argument<String>("fileName") ?: "ka_music_update.apk"
-                        if (url.isNullOrBlank()) {
-                            result.error("invalid_url", "APK download url is empty", null)
-                            return@setMethodCallHandler
-                        }
-
-                        runCatching {
-                            enqueueApkDownload(url, fileName)
-                        }.onSuccess {
-                            result.success(null)
-                        }.onFailure { error ->
-                            result.error("download_failed", error.message, null)
-                        }
                     }
                     else -> result.notImplemented()
                 }
@@ -243,119 +177,6 @@ class MainActivity : AudioServiceActivity() {
                 }
             }
 
-        desktopLyricsChannel = MethodChannel(
-            flutterEngine.dartExecutor.binaryMessenger,
-            "kgka_music_hl/desktop_lyrics"
-        )
-        registerLyricsStateReceiver()
-        desktopLyricsChannel?.setMethodCallHandler { call, result ->
-                when (call.method) {
-                    "checkPermission" -> {
-                        result.success(Settings.canDrawOverlays(this))
-                    }
-                    "requestPermission" -> {
-                        val intent = Intent(
-                            Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                            Uri.parse("package:$packageName")
-                        )
-                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                        startActivity(intent)
-                        result.success(null)
-                    }
-                    "show" -> {
-                        if (!Settings.canDrawOverlays(this)) {
-                            result.error("no_permission", "No overlay permission", null)
-                            return@setMethodCallHandler
-                        }
-                        val title = call.argument<String>("title") ?: ""
-                        val artist = call.argument<String>("artist") ?: ""
-                        val intent = Intent(this, LyricsOverlayService::class.java).apply {
-                            action = LyricsOverlayService.ACTION_UPDATE_LYRICS
-                            putExtra(LyricsOverlayService.EXTRA_TITLE, title)
-                            putExtra(LyricsOverlayService.EXTRA_ARTIST, artist)
-                            putExtra(LyricsOverlayService.EXTRA_CURRENT_LYRIC, "")
-                            putExtra(LyricsOverlayService.EXTRA_NEXT_LYRIC, "")
-                        }
-                        startService(intent)
-                        result.success(null)
-                    }
-                    "hide" -> {
-                        val intent = Intent(this, LyricsOverlayService::class.java).apply {
-                            action = LyricsOverlayService.ACTION_HIDE
-                        }
-                        startService(intent)
-                        result.success(null)
-                    }
-                    "updateLyrics" -> {
-                        val current = call.argument<String>("current") ?: ""
-                        val next = call.argument<String>("next") ?: ""
-                        val intent = Intent(this, LyricsOverlayService::class.java).apply {
-                            action = LyricsOverlayService.ACTION_UPDATE_LYRICS
-                            putExtra(LyricsOverlayService.EXTRA_CURRENT_LYRIC, current)
-                            putExtra(LyricsOverlayService.EXTRA_NEXT_LYRIC, next)
-                        }
-                        startService(intent)
-                        result.success(null)
-                    }
-                    "updatePlayState" -> {
-                        val isPlaying = call.argument<Boolean>("isPlaying") ?: false
-                        val intent = Intent(this, LyricsOverlayService::class.java).apply {
-                            action = LyricsOverlayService.ACTION_UPDATE_PLAY_STATE
-                            putExtra(LyricsOverlayService.EXTRA_IS_PLAYING, isPlaying)
-                        }
-                        startService(intent)
-                        result.success(null)
-                    }
-                    "isVisible" -> {
-                        result.success(LyricsOverlayService.isRunning(this))
-                    }
-                    "updateKaraokeProgress" -> {
-                        val progress = call.argument<Double>("progress")?.toFloat() ?: 0f
-                        val lineDurationMs = call.argument<Int>("lineDurationMs") ?: 0
-                        val isPlaying = call.argument<Boolean>("isPlaying") ?: false
-                        val intent = Intent(this, LyricsOverlayService::class.java).apply {
-                            action = LyricsOverlayService.ACTION_UPDATE_KARAOKE
-                            putExtra(LyricsOverlayService.EXTRA_PROGRESS, progress)
-                            putExtra(LyricsOverlayService.EXTRA_LINE_DURATION_MS, lineDurationMs)
-                            putExtra(LyricsOverlayService.EXTRA_IS_PLAYING, isPlaying)
-                        }
-                        startService(intent)
-                        result.success(null)
-                    }
-                    "updateSettings" -> {
-                        val opacity = call.argument<Double>("opacity")?.toFloat() ?: 0.8f
-                        val locked = call.argument<Boolean>("locked") ?: false
-                        val passthrough = call.argument<Boolean>("passthrough") ?: false
-                        // 颜色值小于 2^31 时经 MethodChannel 到达为 Integer，需经 Number 转换
-                        val textColorLong =
-                            (call.argument<Number>("textColor"))?.toLong() ?: 0xFFFFFFFFL
-                        val backgroundColorLong =
-                            (call.argument<Number>("backgroundColor"))?.toLong() ?: 0xFF1A1A2EL
-                        val fontSize = call.argument<Double>("fontSize")?.toFloat() ?: 16f
-                        val intent = Intent(this, LyricsOverlayService::class.java).apply {
-                            action = LyricsOverlayService.ACTION_UPDATE_SETTINGS
-                            putExtra(LyricsOverlayService.EXTRA_OPACITY, opacity)
-                            putExtra(LyricsOverlayService.EXTRA_LOCKED, locked)
-                            putExtra(LyricsOverlayService.EXTRA_PASSTHROUGH, passthrough)
-                            putExtra(LyricsOverlayService.EXTRA_TEXT_COLOR, textColorLong.toInt())
-                            putExtra(LyricsOverlayService.EXTRA_BACKGROUND_COLOR, backgroundColorLong.toInt())
-                            putExtra(LyricsOverlayService.EXTRA_FONT_SIZE, fontSize)
-                        }
-                        startService(intent)
-                        result.success(null)
-                    }
-                    "setAppForeground" -> {
-                        val isForeground = call.argument<Boolean>("isForeground") ?: false
-                        val intent = Intent(this, LyricsOverlayService::class.java).apply {
-                            action = LyricsOverlayService.ACTION_SET_APP_FOREGROUND
-                            putExtra(LyricsOverlayService.EXTRA_IS_FOREGROUND, isForeground)
-                        }
-                        startService(intent)
-                        result.success(null)
-                    }
-                    else -> result.notImplemented()
-                }
-            }
 
         // SuperLyricApi 歌词发布到系统服务
         superLyricChannel = MethodChannel(
@@ -502,126 +323,6 @@ class MainActivity : AudioServiceActivity() {
             }
         }
 
-        // 车载蓝牙歌词广播
-        val btLyricChannel = MethodChannel(
-            flutterEngine.dartExecutor.binaryMessenger,
-            "kgka_music_hl/bluetooth_lyrics"
-        )
-        btLyricChannel.setMethodCallHandler { call, result ->
-            when (call.method) {
-                "broadcastMetaChanged" -> {
-                    runCatching {
-                        val title = call.argument<String>("title") ?: ""
-                        val artist = call.argument<String>("artist") ?: ""
-                        val album = call.argument<String>("album") ?: ""
-                        val lyric = call.argument<String>("lyric") ?: ""
-                        val positionMs = (call.argument<Number>("positionMs") ?: 0).toLong()
-                        val durationMs = (call.argument<Number>("durationMs") ?: 0).toLong()
-                        val playing = call.argument<Boolean>("playing") ?: false
-                        val track = (call.argument<Number>("track") ?: 0).toInt()
-                        val listSize = (call.argument<Number>("listSize") ?: 0).toInt()
-
-                        val extras = Bundle().apply {
-                            putString("track", title)
-                            putString("artist", artist)
-                            putString("album", album)
-                            putString("id", "")
-                            putLong("position", positionMs)
-                            putLong("duration", durationMs)
-                            putBoolean("playing", playing)
-                            putInt("ListSize", listSize)
-                            putInt("trackPos", track)
-                            putString("lyric", lyric)
-                            // 网易云/部分车机额外字段
-                            putString("currentLyric", lyric)
-                            putString("DISPLAY_NAME", title)
-                        }
-
-                        // 标准 Android 音乐元数据变化广播
-                        sendOrderedBroadcast(Intent("com.android.music.metachanged").apply {
-                            putExtras(extras)
-                            setPackage(null)
-                        }, null)
-
-                        // 注意：per-line 元数据广播只发 metachanged 系。
-                        // 严禁在此发送 playbackcomplete / queuechanged /
-                        // playstatechanged——这些是"播放完成/队列变化/状态切换"
-                        // 语义信号，随歌词逐句误发会导致车机、仪表盘误判切歌
-                        // 或清空状态；真实状态变化由 broadcastPlayStateChanged
-                        // 专用通道发送。
-
-                        // QQMusic / Netease 自定义广播（很多车机 App 监听）
-                        sendBroadcast(Intent("com.netease.cloudmusic.metachanged").apply {
-                            putExtras(Bundle(extras))
-                            setPackage(null)
-                        })
-                        sendBroadcast(Intent("com.tencent.qqmusic.metachanged").apply {
-                            putExtras(Bundle(extras))
-                            setPackage(null)
-                        })
-                        // KuGou/KuWo 广播
-                        sendBroadcast(Intent("com.kugou.android.metachanged").apply {
-                            putExtras(Bundle(extras))
-                            setPackage(null)
-                        })
-                        sendBroadcast(Intent("cn.kuwo.player.metachanged").apply {
-                            putExtras(Bundle(extras))
-                            setPackage(null)
-                        })
-
-                        Log.d(
-                            TAG_BLUETOOTH_LYRICS,
-                            "metaChanged ok: \"$title\"/\"$artist\", lyric=\"${lyric.take(24)}\", " +
-                                "pos=${positionMs}ms, playing=$playing, track=$track/$listSize, 5 actions sent"
-                        )
-                        result.success(true)
-                    }.onFailure { error ->
-                        Log.w(TAG_BLUETOOTH_LYRICS, "broadcastMetaChanged failed: ${error.message}")
-                        result.success(false)
-                    }
-                }
-                "broadcastPlayStateChanged" -> {
-                    runCatching {
-                        val title = call.argument<String>("title") ?: ""
-                        val artist = call.argument<String>("artist") ?: ""
-                        val album = call.argument<String>("album") ?: ""
-                        val positionMs = (call.argument<Number>("positionMs") ?: 0).toLong()
-                        val durationMs = (call.argument<Number>("durationMs") ?: 0).toLong()
-                        val playing = call.argument<Boolean>("playing") ?: false
-
-                        val extras = Bundle().apply {
-                            putString("track", title)
-                            putString("artist", artist)
-                            putString("album", album)
-                            putLong("position", positionMs)
-                            putLong("duration", durationMs)
-                            putBoolean("playing", playing)
-                        }
-                        sendBroadcast(Intent("com.android.music.playstatechanged").apply {
-                            putExtras(extras)
-                            setPackage(null)
-                        })
-                        sendBroadcast(Intent("com.netease.cloudmusic.playstatechanged").apply {
-                            putExtras(Bundle(extras))
-                            setPackage(null)
-                        })
-                        sendBroadcast(Intent("com.tencent.qqmusic.playstatechanged").apply {
-                            putExtras(extras)
-                            setPackage(null)
-                        })
-                        Log.d(
-                            TAG_BLUETOOTH_LYRICS,
-                            "playStateChanged ok: \"$title\", playing=$playing, pos=${positionMs}ms"
-                        )
-                        result.success(true)
-                    }.onFailure { error ->
-                        Log.w(TAG_BLUETOOTH_LYRICS, "broadcastPlayStateChanged failed: ${error.message}")
-                        result.success(false)
-                    }
-                }
-                else -> result.notImplemented()
-            }
-        }
     }
 
     private fun readAudioPermission(): String {
@@ -736,20 +437,6 @@ class MainActivity : AudioServiceActivity() {
         }
 
         return songs
-    }
-
-    private fun registerLyricsStateReceiver() {
-        if (lyricsStateReceiverRegistered) {
-            return
-        }
-        val filter = IntentFilter(LyricsOverlayService.ACTION_VISIBILITY_CHANGED)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            registerReceiver(lyricsStateReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
-        } else {
-            @Suppress("DEPRECATION")
-            registerReceiver(lyricsStateReceiver, filter)
-        }
-        lyricsStateReceiverRegistered = true
     }
 
     private fun equalizerConfig(audioSessionId: Int?): Map<String, Any>? {
@@ -940,81 +627,6 @@ class MainActivity : AudioServiceActivity() {
         dynamicsProcessingSessionId = null
     }
 
-    private fun enqueueApkDownload(url: String, fileName: String) {
-        val request = DownloadManager.Request(Uri.parse(url))
-            .setTitle("KA Music 更新包")
-            .setDescription("正在下载新版本")
-            .setMimeType("application/vnd.android.package-archive")
-            .setAllowedOverMetered(true)
-            .setAllowedOverRoaming(true)
-            .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-            .setDestinationInExternalFilesDir(this, Environment.DIRECTORY_DOWNLOADS, fileName)
-
-        val downloadManager = getSystemService(DOWNLOAD_SERVICE) as DownloadManager
-        val downloadId = downloadManager.enqueue(request)
-        updateDownloads[downloadId] = fileName
-        registerDownloadReceiver()
-    }
-
-    private fun registerDownloadReceiver() {
-        if (downloadReceiverRegistered) {
-            return
-        }
-        val filter = IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            registerReceiver(downloadReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
-        } else {
-            @Suppress("DEPRECATION")
-            registerReceiver(downloadReceiver, filter)
-        }
-        downloadReceiverRegistered = true
-    }
-
-    private fun isDownloadSuccessful(downloadId: Long): Boolean {
-        val downloadManager = getSystemService(DOWNLOAD_SERVICE) as DownloadManager
-        val query = DownloadManager.Query().setFilterById(downloadId)
-        var cursor: Cursor? = null
-        return try {
-            cursor = downloadManager.query(query)
-            cursor != null &&
-                cursor.moveToFirst() &&
-                cursor.getInt(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS)) ==
-                DownloadManager.STATUS_SUCCESSFUL
-        } finally {
-            cursor?.close()
-        }
-    }
-
-    private fun installDownloadedApk(fileName: String) {
-        val apkFile = File(getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), fileName)
-        if (!apkFile.exists()) {
-            return
-        }
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
-            !packageManager.canRequestPackageInstalls()
-        ) {
-            startActivity(
-                Intent(
-                    Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
-                    Uri.parse("package:$packageName")
-                ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            )
-            return
-        }
-
-        val apkUri = FileProvider.getUriForFile(
-            this,
-            "$packageName.fileprovider",
-            apkFile
-        )
-        val installIntent = Intent(Intent.ACTION_VIEW)
-            .setDataAndType(apkUri, "application/vnd.android.package-archive")
-            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-        startActivity(installIntent)
-    }
-
     private fun getAlbumArtBytes(albumId: Long): ByteArray? {
         val uri = ContentUris.withAppendedId(
             Uri.parse("content://media/external/audio/albumart"),
@@ -1046,14 +658,6 @@ class MainActivity : AudioServiceActivity() {
         if (superLyricRegistered) {
             runCatching { SuperLyricHelper.unregisterPublisher() }
             superLyricRegistered = false
-        }
-        if (downloadReceiverRegistered) {
-            unregisterReceiver(downloadReceiver)
-            downloadReceiverRegistered = false
-        }
-        if (lyricsStateReceiverRegistered) {
-            unregisterReceiver(lyricsStateReceiver)
-            lyricsStateReceiverRegistered = false
         }
         super.onDestroy()
     }

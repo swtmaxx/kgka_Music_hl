@@ -5,9 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../config/app_config.dart';
-import '../../services/app_update_service.dart';
 import '../../services/music_api.dart';
-import '../widgets/app_update_widgets.dart';
 import '../widgets/toast.dart';
 import '../adaptive_layout.dart';
 
@@ -103,33 +101,6 @@ class _AboutPageState extends State<AboutPage> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: AppUpdateService.isSupportedPlatform
-                              ? FilledButton.icon(
-                                  onPressed: () => checkAppUpdateManually(
-                                    context: context,
-                                    api: widget.api,
-                                  ),
-                                  icon: const Icon(
-                                    Icons.system_update_alt_rounded,
-                                  ),
-                                  label: const Text('检查更新'),
-                                )
-                              : OutlinedButton.icon(
-                                  onPressed: null,
-                                  icon: const Icon(
-                                    Icons.system_update_alt_rounded,
-                                  ),
-                                  label: const Text('暂不支持检查更新'),
-                                ),
-                        ),
-                      ],
-                    ),
-                  ),
                 ],
               ),
             ),

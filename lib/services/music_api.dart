@@ -4,7 +4,6 @@ import 'package:flutter/foundation.dart';
 
 import '../config/app_config.dart';
 import '../core/api_client.dart';
-import '../models/app_version.dart';
 import '../models/music_models.dart';
 
 class MusicApi {
@@ -307,17 +306,6 @@ class MusicApi {
     return cards.whereType<RecommendedSongCard>().toList();
   }
 
-  Future<List<AlbumShopItem>> albumShop({int page = 1, int pageSize = 30}) async {
-    final json = asMap(
-      await _client.get('/album/shop', {'page': page, 'pagesize': pageSize}),
-    );
-    return asList(json['album_list'])
-        .whereType<Map<String, dynamic>>()
-        .map(AlbumShopItem.fromJson)
-        .where((item) => item.mediaId > 0)
-        .toList();
-  }
-
   Future<List<FmStation>> fmRecommendedStations() async {
     final raw = await _client.get('/fm/recommend');
     final items = raw is List ? raw : asList(asMap(raw)['data']);
@@ -410,15 +398,6 @@ class MusicApi {
 
   Future<void> addListeningTime() async {
     await _client.post('/listen/timeadd');
-  }
-
-  Future<AppVersionInfo> latestAppVersion(AppUpdatePlatform platform) async {
-    final json = asMap(
-      await _client.get('/mobile/app/versions/latest', {
-        'platform': platform.apiValue,
-      }),
-    );
-    return AppVersionInfo.fromJson(json);
   }
 
   /// 获取歌手专辑列表。

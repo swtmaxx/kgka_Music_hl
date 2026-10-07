@@ -6,17 +6,14 @@ import 'dart:math' as math;
 import 'package:audio_session/audio_session.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/painting.dart';
-import 'package:flutter/scheduler.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/music_models.dart';
 import '../services/audio_effects_service.dart';
 import '../services/cache_service.dart';
-import '../services/desktop_lyrics_service.dart';
 import '../services/music_api.dart';
 import '../services/music_audio_handler.dart';
-import '../services/bluetooth_lyrics_service.dart';
 import '../services/playback_history_service.dart';
 import '../services/playback_stats_service.dart';
 import '../services/super_lyric_service.dart';
@@ -46,9 +43,6 @@ class PlayerController extends ChangeNotifier {
       'settings.auto_resume_after_interruption';
   static const _playbackSpeedSettingKey = 'settings.playback_speed';
   static const _playbackVolumeSettingKey = 'settings.playback_volume';
-  static const _desktopLyricsEnabledSettingKey =
-      'settings.desktop_lyrics_enabled';
-  static const _desktopLyricsSettingsKey = 'settings.desktop_lyrics_settings';
   static const _smartQualitySettingKey = 'settings.smart_quality_enabled';
   static const _autoPlayOnStartupSettingKey = 'settings.auto_play_on_startup';
   static const _resumeLastPlaylistOnStartupSettingKey =
@@ -57,8 +51,6 @@ class PlayerController extends ChangeNotifier {
       'settings.auto_play_on_device_connected';
   static const _volumeNormalizationEnabledSettingKey =
       'settings.volume_normalization_enabled';
-  static const _bluetoothLyricsEnabledSettingKey =
-      'settings.bluetooth_lyrics_enabled';
   static const _keepScreenOnSettingKey = 'settings.keep_screen_on';
   static const _queueKey = 'playback.queue';
   static const _currentSongKey = 'playback.current_song';
@@ -110,26 +102,14 @@ class PlayerController extends ChangeNotifier {
     unawaited(_restoreSettings());
     unawaited(_superLyric.registerPublisher());
     _audioHandler.attachTransportControls(onNext: next, onPrevious: previous);
-    _desktopLyrics.setVisibilityChangedHandler(_handleDesktopLyricsVisibility);
     _positionSub = audioPlayer.positionStream.listen((value) {
       if (!_isSeeking) {
         _setPositionBase(value, playing: isPlaying);
       }
       _maybeCompleteFromPosition(value);
       _maybeStopClimaxPreview(value);
-      _maybeSyncDesktopLyricFromPosition();
       _syncSuperLyricFromPosition();
-      _syncBluetoothLyricsFromPosition();
       notifyListeners();
-    });
-    // Send timing anchors; Android animates karaoke progress at display refresh.
-    SchedulerBinding.instance.addPersistentFrameCallback((_) {
-      if (_shouldShowDesktopLyrics &&
-          isPlaying &&
-          lyrics.isNotEmpty &&
-          !_isScrubbing) {
-        _syncDesktopKaraokeProgress();
-      }
     });
     _durationSub = audioPlayer.durationStream.listen((value) {
       duration = value ?? Duration.zero;
@@ -180,11 +160,9 @@ class PlayerController extends ChangeNotifier {
   /// 设置（含开机自启开关）从本地恢复完成的 Future。
   Future<void> get settingsRestored => _settingsRestored.future;
   final AudioEffectsService _audioEffects = AudioEffectsService();
-  final DesktopLyricsService _desktopLyrics = DesktopLyricsService();
   final PlaybackHistoryService _historyService = PlaybackHistoryService();
   final PlaybackStatsService _statsService = PlaybackStatsService();
   final SuperLyricService _superLyric = SuperLyricService();
-  final BluetoothLyricsService _bluetoothLyrics = BluetoothLyricsService();
 
   AudioPlayer get audioPlayer => _audioHandler.audioPlayer;
 
@@ -225,7 +203,6 @@ class PlayerController extends ChangeNotifier {
   int _personalFmRequestSerial = 0;
   String? _completedSongHash;
   bool _isAppForeground = true;
-  bool _desktopLyricsPreviewVisible = false;
 
   Song? currentSong;
   List<Song> queue = const [];
@@ -268,9 +245,6 @@ class PlayerController extends ChangeNotifier {
   bool autoResumeAfterInterruption = false;
   bool autoPlayOnDeviceConnected = false;
   bool volumeNormalizationEnabled = false;
-  bool bluetoothLyricsEnabled = false;
-  bool desktopLyricsEnabled = false;
-  DesktopLyricsSettings desktopLyricsSettings = const DesktopLyricsSettings();
   Timer? _autoResumeTimer;
   Duration? sleepTimerRemaining;
   Timer? _sleepTimer;
@@ -450,17 +424,13 @@ class PlayerController extends ChangeNotifier {
       this.queue = [song];
     }
     lyrics = const [];
-    _lastDesktopLyricIndex = -1;
     _lastSuperLyricIndex = -1;
     _lastSuperLyricPlaying = true;
-    _lastBluetoothLyricIndex = -1;
-    _lastBluetoothPlaying = true;
     _saveQueueState();
     _startPositionSaving();
     notifyListeners();
     // 预缓存封面图，避免打开播放页时出现纯色背景闪烁
     _precacheCover(song);
-    unawaited(_syncDesktopLyricsVisibility());
     unawaited(_loadClimax(song));
 
     try {
@@ -765,38 +735,6 @@ class PlayerController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// 车载蓝牙歌词功能是否受支持（仅 Android）。
-  bool get isBluetoothLyricsSupported => BluetoothLyricsService.isSupportedPlatform;
-
-  /// 开关车载蓝牙歌词功能。
-  Future<void> setBluetoothLyricsEnabled(bool enabled) async {
-    if (bluetoothLyricsEnabled == enabled) return;
-    bluetoothLyricsEnabled = enabled;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_bluetoothLyricsEnabledSettingKey, enabled);
-    // 关闭时，清理残留广播
-    if (!enabled && currentSong != null) {
-      unawaited(
-        _bluetoothLyrics.broadcastMetaChanged(
-          title: currentSong!.title,
-          artist: currentSong!.artist,
-          album: currentSong!.albumName,
-          lyric: '',
-          position: position,
-          duration: currentSong!.duration ?? Duration.zero,
-          playing: isPlaying,
-          trackIndex: currentIndex,
-          listSize: queue.length,
-        ),
-      );
-      _audioHandler.updateLyricMetadata(lyricText: null);
-    } else if (enabled) {
-      // 打开时立即推送一次当前状态
-      _pushBluetoothLyricForCurrentLine(force: true);
-    }
-    notifyListeners();
-  }
-
   /// 读取本地播放统计。
   Future<PlaybackStats> getPlaybackStats() => _statsService.getStats();
 
@@ -947,7 +885,6 @@ class PlayerController extends ChangeNotifier {
           if (currentSong?.hash == song.hash) {
             lyrics = lines;
             notifyListeners();
-            _syncDesktopLyrics();
           }
           return;
         }
@@ -963,7 +900,6 @@ class PlayerController extends ChangeNotifier {
           if (currentSong?.hash == song.hash) {
             lyrics = lines;
             notifyListeners();
-            _syncDesktopLyrics();
           }
           return;
         }
@@ -974,7 +910,6 @@ class PlayerController extends ChangeNotifier {
       if (currentSong?.hash == song.hash) {
         lyrics = const [];
         notifyListeners();
-        _syncDesktopLyrics();
       }
       return;
     }
@@ -995,7 +930,6 @@ class PlayerController extends ChangeNotifier {
             currentSong?.hash == song.hash) {
           lyrics = cached.data;
           notifyListeners();
-          _syncDesktopLyrics();
         }
       } catch (_) {}
     }
@@ -1021,9 +955,6 @@ class PlayerController extends ChangeNotifier {
         lyrics = const [];
         notifyListeners();
       }
-    }
-    if (currentSong?.hash == song.hash) {
-      _syncDesktopLyrics();
     }
   }
 
@@ -1422,93 +1353,6 @@ class PlayerController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> setDesktopLyricsEnabled(bool enabled) async {
-    if (desktopLyricsEnabled == enabled) return;
-    desktopLyricsEnabled = enabled;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_desktopLyricsEnabledSettingKey, enabled);
-    notifyListeners();
-
-    if (enabled) {
-      final hasPermission = await _desktopLyrics.checkPermission();
-      if (!hasPermission) {
-        desktopLyricsEnabled = false;
-        await prefs.setBool(_desktopLyricsEnabledSettingKey, false);
-        notifyListeners();
-        await _desktopLyrics.requestPermission();
-        return;
-      }
-      final song = currentSong;
-      if (song != null) {
-        await _syncDesktopLyricsVisibility();
-      }
-    } else {
-      await _desktopLyrics.hide();
-    }
-  }
-
-  bool get _shouldShowDesktopLyrics {
-    return desktopLyricsEnabled &&
-        currentSong != null &&
-        (!_isAppForeground || _desktopLyricsPreviewVisible);
-  }
-
-  Future<void> _syncDesktopLyricsVisibility() async {
-    if (!_shouldShowDesktopLyrics) {
-      await _desktopLyrics.hide();
-      return;
-    }
-
-    final song = currentSong;
-    if (song == null) return;
-    final shown = await _desktopLyrics.show(
-      title: song.title,
-      artist: song.artist,
-    );
-    if (shown) {
-      _syncDesktopLyrics();
-      _syncDesktopPlayState();
-      _syncDesktopKaraokeProgress();
-    }
-  }
-
-  void _syncDesktopLyrics() {
-    if (!_shouldShowDesktopLyrics) return;
-    final index = activeLyricIndex;
-    if (lyrics.isEmpty) {
-      _desktopLyrics.updateLyrics(current: '', next: '');
-      return;
-    }
-    final current = lyrics[index.clamp(0, lyrics.length - 1)].text;
-    final nextIndex = index + 1;
-    final next = nextIndex < lyrics.length ? lyrics[nextIndex].text : '';
-    _desktopLyrics.updateLyrics(current: current, next: next);
-  }
-
-  void _syncDesktopPlayState() {
-    if (!_shouldShowDesktopLyrics) return;
-    _desktopLyrics.updatePlayState(isPlaying: isPlaying);
-  }
-
-  int _lastDesktopLyricIndex = -1;
-  int _lastSuperLyricIndex = -1;
-  // 初始为 false：App 启动时通常处于暂停态，若初始为 true，
-  // 首个 position tick 就会向系统发送一次无意义的 stop/playstate 广播。
-  bool _lastSuperLyricPlaying = false;
-  int _lastBluetoothLyricIndex = -1;
-  bool _lastBluetoothPlaying = false;
-
-  void _maybeSyncDesktopLyricFromPosition() {
-    if (!_shouldShowDesktopLyrics || lyrics.isEmpty) return;
-    final index = activeLyricIndex;
-    if (index != _lastDesktopLyricIndex) {
-      _lastDesktopLyricIndex = index;
-      _syncDesktopLyrics();
-    }
-    // Karaoke progress for current line
-    _syncDesktopKaraokeProgress();
-  }
-
   void _syncSuperLyricFromPosition() {
     if (currentSong == null) return;
     if (lyrics.isEmpty) {
@@ -1548,141 +1392,6 @@ class PlayerController extends ChangeNotifier {
     }
   }
 
-  /// 位置流中的车载蓝牙歌词同步入口。
-  void _syncBluetoothLyricsFromPosition() {
-    if (!bluetoothLyricsEnabled) return;
-    if (currentSong == null) return;
-    final index = lyrics.isEmpty ? -1 : activeLyricIndex;
-    final lineChanged = index != _lastBluetoothLyricIndex;
-    final playingChanged = isPlaying != _lastBluetoothPlaying;
-    // 状态或行变化时推送
-    if (lineChanged || playingChanged) {
-      _pushBluetoothLyricForCurrentLine(
-        index: index,
-        forcePlayState: playingChanged,
-      );
-    }
-  }
-
-  /// 推送当前行歌词到车载蓝牙（MediaSession extras + 系统广播）。
-  ///
-  /// - [force]：忽略行/状态缓存直接发送一次（用于用户刚打开开关时）
-  /// - [index]：当前歌词行索引，-1 表示无歌词；默认取 activeLyricIndex
-  /// - [forcePlayState]：即使行未变也发送 playStateChanged 广播
-  void _pushBluetoothLyricForCurrentLine({
-    bool force = false,
-    int? index,
-    bool forcePlayState = false,
-  }) {
-    if (!bluetoothLyricsEnabled || currentSong == null) return;
-    final song = currentSong!;
-    final resolvedIndex = index ?? (lyrics.isEmpty ? -1 : activeLyricIndex);
-    // 行变化判定基准快照（下方 if/else 会更新 _lastBluetoothLyricIndex）
-    final prevIndex = _lastBluetoothLyricIndex;
-
-    final String lyricText;
-    final String? translationText;
-    final String? romanizationText;
-    if (lyrics.isEmpty || resolvedIndex < 0) {
-      lyricText = '';
-      translationText = null;
-      romanizationText = null;
-      _lastBluetoothLyricIndex = -1;
-    } else {
-      final clampedIndex = resolvedIndex.clamp(0, lyrics.length - 1);
-      final line = lyrics[clampedIndex];
-      lyricText = line.text;
-      translationText = line.translation;
-      romanizationText = line.romanization;
-      _lastBluetoothLyricIndex = clampedIndex;
-    }
-
-    _lastBluetoothPlaying = isPlaying;
-
-    // 1. MediaSession extras 歌词字段（部分 App/Xposed 读取 MediaSession）
-    _audioHandler.updateLyricMetadata(
-      lyricText: lyricText.isEmpty ? null : lyricText,
-      translationText: translationText,
-      romanizationText: romanizationText,
-    );
-
-    // 2. 系统广播 + 各 App 自定义广播
-    // 行变化判定必须用快照对比：不能用恒真的 lyricText.isNotEmpty，
-    // 否则 lineChanged 恒真、forcePlayState 分支永远无法执行，
-    // 播放/暂停状态广播会被静默吞掉。
-    final lineChanged = force || prevIndex != _lastBluetoothLyricIndex;
-    if (lineChanged) {
-      unawaited(
-        _bluetoothLyrics.broadcastMetaChanged(
-          title: song.title,
-          artist: song.artist,
-          album: song.albumName,
-          lyric: lyricText,
-          position: position,
-          duration: song.duration ?? Duration.zero,
-          playing: isPlaying,
-          trackIndex: currentIndex,
-          listSize: queue.length,
-        ),
-      );
-    }
-    // 播放/暂停状态变化独立发送，不依赖行是否变化。
-    if (forcePlayState) {
-      unawaited(
-        _bluetoothLyrics.broadcastPlayStateChanged(
-          title: song.title,
-          artist: song.artist,
-          album: song.albumName,
-          position: position,
-          duration: song.duration ?? Duration.zero,
-          playing: isPlaying,
-        ),
-      );
-    }
-  }
-
-  void _syncDesktopKaraokeProgress() {
-    if (!_shouldShowDesktopLyrics || lyrics.isEmpty) return;
-    final index = activeLyricIndex;
-    final line = lyrics[index.clamp(0, lyrics.length - 1)];
-    final position = smoothPosition;
-    final lineDuration = line.duration ?? _estimatedLineDuration(index);
-
-    if (line.words.isEmpty) {
-      // No word-level data: estimate progress from line duration
-      final lineStart = line.time.inMilliseconds;
-      final lineDurationMs = lineDuration?.inMilliseconds ?? 0;
-      if (lineDurationMs > 0) {
-        final elapsed = position.inMilliseconds - lineStart;
-        final progress = (elapsed / lineDurationMs).clamp(0.0, 1.0);
-        _desktopLyrics.updateKaraokeProgress(
-          progress: progress,
-          lineDuration: lineDuration,
-          isPlaying: isPlaying,
-        );
-      } else {
-        _desktopLyrics.updateKaraokeProgress(
-          progress: 1.0,
-          lineDuration: null,
-          isPlaying: isPlaying,
-        );
-      }
-    } else {
-      // Word-level: find active word and compute progress
-      final lineStart = line.time.inMilliseconds;
-      final lineDurationMs = lineDuration?.inMilliseconds ?? 0;
-      if (lineDurationMs > 0) {
-        final elapsed = position.inMilliseconds - lineStart;
-        final progress = (elapsed / lineDurationMs).clamp(0.0, 1.0);
-        _desktopLyrics.updateKaraokeProgress(
-          progress: progress,
-          lineDuration: lineDuration,
-          isPlaying: isPlaying,
-        );
-      }
-    }
-  }
-
   Duration? _estimatedLineDuration(int index) {
     if (index < 0 || index >= lyrics.length) {
       return null;
@@ -1706,21 +1415,6 @@ class PlayerController extends ChangeNotifier {
     return null;
   }
 
-  Future<void> updateDesktopLyricsSettings(
-    DesktopLyricsSettings settings,
-  ) async {
-    desktopLyricsSettings = settings;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(
-      _desktopLyricsSettingsKey,
-      jsonEncode(settings.toMap()),
-    );
-    notifyListeners();
-    await _desktopLyrics.updateSettings(settings);
-  }
-
-  bool get isDesktopLyricsSupported => DesktopLyricsService.isSupportedPlatform;
-
   /// 应用是否在前台。供播放页的动画/Ticker 门控使用——
   /// 后台时停掉旋转动画与歌词 ticker，避免锁屏后持续耗 CPU 与电量。
   bool get isAppForeground => _isAppForeground;
@@ -1728,37 +1422,7 @@ class PlayerController extends ChangeNotifier {
   void setAppForeground(bool isForeground) {
     if (_isAppForeground == isForeground) return;
     _isAppForeground = isForeground;
-    if (desktopLyricsEnabled) {
-      _desktopLyrics.setAppForeground(isForeground: isForeground);
-      unawaited(_syncDesktopLyricsVisibility());
-    }
   }
-
-  Future<void> setDesktopLyricsPreviewVisible(bool visible) async {
-    if (_desktopLyricsPreviewVisible == visible) return;
-    _desktopLyricsPreviewVisible = visible;
-    await _syncDesktopLyricsVisibility();
-  }
-
-  Future<void> _handleDesktopLyricsVisibility({
-    required bool visible,
-    required bool userClosed,
-  }) async {
-    if (!userClosed || !desktopLyricsEnabled) {
-      return;
-    }
-    desktopLyricsEnabled = false;
-    _desktopLyricsPreviewVisible = false;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_desktopLyricsEnabledSettingKey, false);
-    notifyListeners();
-  }
-
-  Future<bool> checkDesktopLyricsPermission() =>
-      _desktopLyrics.checkPermission();
-
-  Future<void> requestDesktopLyricsPermission() =>
-      _desktopLyrics.requestPermission();
 
   bool get isSleepTimerActive =>
       sleepTimerRemaining != null && sleepTimerRemaining! > Duration.zero;
@@ -1876,27 +1540,10 @@ class PlayerController extends ChangeNotifier {
     volumeNormalizationEnabled =
         prefs.getBool(_volumeNormalizationEnabledSettingKey) ??
         volumeNormalizationEnabled;
-    bluetoothLyricsEnabled =
-        prefs.getBool(_bluetoothLyricsEnabledSettingKey) ??
-            bluetoothLyricsEnabled;
     playbackSpeed = prefs.getDouble(_playbackSpeedSettingKey) ?? playbackSpeed;
     playbackVolume = prefs.getDouble(_playbackVolumeSettingKey) ?? playbackVolume;
-    desktopLyricsEnabled =
-        prefs.getBool(_desktopLyricsEnabledSettingKey) ?? desktopLyricsEnabled;
-    final dlSettingsRaw = prefs.getString(_desktopLyricsSettingsKey);
-    if (dlSettingsRaw != null && dlSettingsRaw.isNotEmpty) {
-      try {
-        final map = jsonDecode(dlSettingsRaw);
-        if (map is Map<String, dynamic>) {
-          desktopLyricsSettings = DesktopLyricsSettings.fromMap(map);
-        }
-      } catch (_) {}
-    }
     unawaited(audioPlayer.setSpeed(playbackSpeed));
     unawaited(audioPlayer.setVolume(playbackVolume));
-    if (desktopLyricsEnabled) {
-      unawaited(_desktopLyrics.updateSettings(desktopLyricsSettings));
-    }
     _syncListeningTimeTracker();
     unawaited(_refreshEqualizerConfig());
     unawaited(_applyEqualizer());
@@ -2224,10 +1871,8 @@ class PlayerController extends ChangeNotifier {
       ),
     );
     _audioHandler.detachTransportControls();
-    _desktopLyrics.setVisibilityChangedHandler(null);
     nowPlayingToken.dispose();
     unawaited(_audioHandler.close());
-    unawaited(_desktopLyrics.hide());
     super.dispose();
   }
 

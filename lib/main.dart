@@ -162,9 +162,7 @@ class _KaMusicAppState extends State<KaMusicApp> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
-    // 前/后台标记与「桌面歌词是否开启」无关：播放页的旋转动画与歌词 Ticker
-    // 依赖它做后台停表。原先这里用 desktopLyricsEnabled 做短路，导致桌面歌词
-    // 关闭（默认）时该标记永远为 true，门控形同虚设。
+    // 前/后台标记：播放页的旋转动画与歌词 Ticker 依赖它做后台停表。
     _player.setAppForeground(state == AppLifecycleState.resumed);
   }
 

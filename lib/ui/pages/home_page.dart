@@ -12,17 +12,13 @@ import '../design_tokens.dart';
 import '../../config/app_config.dart';
 import '../../controllers/auth_controller.dart';
 import '../../controllers/player_controller.dart';
-import '../../models/app_version.dart';
 import '../../models/music_models.dart';
-import '../../services/app_update_service.dart';
 import '../../services/cache_service.dart';
 import '../../services/music_api.dart';
-import '../widgets/app_update_widgets.dart';
 import '../widgets/artwork.dart';
 import '../widgets/now_playing_badge.dart';
 import '../widgets/song_action_sheets.dart';
 import '../widgets/toast.dart';
-import 'album_shop_page.dart';
 import 'artist_detail_page.dart';
 import 'playlist_detail_page.dart';
 import 'search_page.dart';
@@ -66,11 +62,7 @@ class _HomePageState extends State<HomePage> {
 
   final _scrollController = ScrollController();
   Future<_HomeData>? _future;
-  late final AppUpdateService _updateService;
-  AppVersionInfo? _availableUpdate;
   var _sectionIndex = 0;
-  var _updateBannerDismissed = false;
-  var _autoUpdateDialogShown = false;
   var _isStartingPersonalFm = false;
   var _isLoadingPersonalFmPreview = false;
   var _hasRequestedPersonalFmPreview = false;
@@ -80,7 +72,6 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
     _sectionIndex = widget.sectionIndex;
-    _updateService = AppUpdateService(widget.api);
     final cached = _cachedData;
     if (cached != null) {
       _future = Future.value(cached);
@@ -96,9 +87,6 @@ class _HomePageState extends State<HomePage> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadPersonalFmPreview();
     });
-    if (AppUpdateService.isSupportedPlatform) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => _checkForUpdates());
-    }
   }
 
   @override
@@ -334,48 +322,6 @@ class _HomePageState extends State<HomePage> {
     await Future.wait([future, fmFuture]);
   }
 
-  Future<void> _checkForUpdates() async {
-    try {
-      final version = await _updateService.checkForUpdate();
-      if (!mounted || version == null) {
-        return;
-      }
-
-      if (version.forceUpdate) {
-        if (_autoUpdateDialogShown) {
-          return;
-        }
-        _autoUpdateDialogShown = true;
-        await showAppUpdateDialog(
-          context: context,
-          service: _updateService,
-          version: version,
-          force: true,
-        );
-        return;
-      }
-
-      if (!_updateBannerDismissed) {
-        setState(() => _availableUpdate = version);
-      }
-    } catch (_) {
-      // The automatic check should stay quiet; manual checks surface errors.
-    }
-  }
-
-  Future<void> _showUpdateDetails() {
-    final version = _availableUpdate;
-    if (version == null) {
-      return Future.value();
-    }
-    return showAppUpdateDialog(
-      context: context,
-      service: _updateService,
-      version: version,
-      force: false,
-    );
-  }
-
   void _openPlaylist(PlaylistSummary playlist) {
     Navigator.of(context).push(
       MaterialPageRoute(
@@ -509,19 +455,6 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  void _openAlbumShop() {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => AlbumShopPage(
-          api: widget.api,
-          auth: widget.auth,
-          player: widget.player,
-          initialAlbums: _cachedData?.albums ?? [],
-        ),
-      ),
-    );
-  }
-
   void _openSettings() {
     Navigator.of(context).push(
       MaterialPageRoute(
@@ -604,18 +537,8 @@ class _HomePageState extends State<HomePage> {
                           personalFmPreviewSong: _personalFmPreviewSongs.isEmpty
                               ? null
                               : _personalFmPreviewSongs.first,
-                          onAlbumTap: _openAlbumShop,
                           api: widget.api,
                           player: widget.player,
-                          updateVersion: _updateBannerDismissed
-                              ? null
-                              : _availableUpdate,
-                          onUpdateTap: () {
-                            _showUpdateDetails();
-                          },
-                          onUpdateClose: () {
-                            setState(() => _updateBannerDismissed = true);
-                          },
                           onSettingsTap: _openSettings,
                         ),
                       ),
@@ -695,12 +618,8 @@ class _RecommendHeader extends StatelessWidget {
     required this.onPersonalFmPlay,
     required this.isPersonalFmLoading,
     required this.personalFmPreviewSong,
-    required this.onAlbumTap,
     required this.api,
     required this.player,
-    required this.updateVersion,
-    required this.onUpdateTap,
-    required this.onUpdateClose,
     required this.onSettingsTap,
   });
 
@@ -711,12 +630,8 @@ class _RecommendHeader extends StatelessWidget {
   final VoidCallback onPersonalFmPlay;
   final bool isPersonalFmLoading;
   final Song? personalFmPreviewSong;
-  final VoidCallback onAlbumTap;
   final MusicApi api;
   final PlayerController player;
-  final AppVersionInfo? updateVersion;
-  final VoidCallback onUpdateTap;
-  final VoidCallback onUpdateClose;
   final VoidCallback onSettingsTap;
 
   @override
@@ -742,17 +657,6 @@ class _RecommendHeader extends StatelessWidget {
                 padding: const EdgeInsets.only(right: 10),
                 child: _SmartSearch(api: api, auth: auth, player: player),
               ),
-              if (updateVersion != null) ...[
-                const SizedBox(height: 10),
-                Padding(
-                  padding: const EdgeInsets.only(right: 10),
-                  child: AppUpdateBanner(
-                    version: updateVersion!,
-                    onTap: onUpdateTap,
-                    onClose: onUpdateClose,
-                  ),
-                ),
-              ],
               if (sectionIndex == 0) ...[
                 const SizedBox(height: 8),
                 _FeatureShelf(
@@ -761,7 +665,6 @@ class _RecommendHeader extends StatelessWidget {
                   onPersonalFmPlay: onPersonalFmPlay,
                   isPersonalFmLoading: isPersonalFmLoading,
                   personalFmPreviewSong: personalFmPreviewSong,
-                  onAlbumTap: onAlbumTap,
                 ),
               ],
             ],
@@ -912,7 +815,6 @@ class _FeatureShelf extends StatelessWidget {
     required this.onPersonalFmPlay,
     required this.isPersonalFmLoading,
     required this.personalFmPreviewSong,
-    required this.onAlbumTap,
   });
 
   final List<AlbumShopItem> albums;
@@ -920,7 +822,6 @@ class _FeatureShelf extends StatelessWidget {
   final VoidCallback onPersonalFmPlay;
   final bool isPersonalFmLoading;
   final Song? personalFmPreviewSong;
-  final VoidCallback onAlbumTap;
 
   @override
   Widget build(BuildContext context) {
@@ -971,7 +872,7 @@ class _FeatureShelf extends StatelessWidget {
                             Color(0xFF454A92),
                             Color(0xFF78CAFF),
                           ],
-                          onTap: onAlbumTap,
+                          onTap: () {},
                         )
                       : _FeatureCard(
                           title: '新碟上架',

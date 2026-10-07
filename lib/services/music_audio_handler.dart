@@ -73,40 +73,6 @@ class MusicAudioHandler extends BaseAudioHandler
     }
   }
 
-  /// 更新当前播放歌曲的 MediaSession Metadata，写入歌词字段。
-  ///
-  /// 大多数车机系统不会直接读 AVRCP 里的歌词，但通过 media_item extras
-  /// 写入 `lyric / currentLyric` 字段后，SuperLyric 模块或第三方车载 App 可从
-  /// MediaSession 元数据里取出歌词并展示。
-  ///
-  /// 当 [lyricText] 为 `null` 时表示清空歌词（暂停/切歌前）。
-  void updateLyricMetadata({
-    String? lyricText,
-    String? translationText,
-    String? romanizationText,
-  }) {
-    final song = _currentSong;
-    if (song == null) return;
-    final Map<String, dynamic> extras = {
-      'hash': song.hash,
-      'songId': song.id,
-      'lyric': ?lyricText,
-      'currentLyric': ?lyricText,
-      'translationLyric': ?translationText,
-      'romanLyric': ?romanizationText,
-    };
-    final updated = MediaItem(
-      id: song.hash.isEmpty ? song.id : song.hash,
-      album: song.albumName,
-      title: song.title,
-      artist: song.artist,
-      duration: song.duration,
-      artUri: song.coverUrl == null ? null : Uri.tryParse(song.coverUrl!),
-      extras: extras,
-    );
-    mediaItem.add(updated);
-  }
-
   @override
   Future<void> play() async {
     unawaited(audioPlayer.play());

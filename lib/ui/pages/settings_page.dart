@@ -8,7 +8,6 @@ import '../../controllers/download_controller.dart';
 import '../../controllers/player_controller.dart';
 import '../../controllers/theme_controller.dart';
 import '../../controllers/local_music_controller.dart';
-import '../../services/app_update_service.dart';
 import '../../services/cache_service.dart';
 import '../../services/music_api.dart';
 import '../widgets/audio_effects_sheet.dart';
@@ -16,7 +15,6 @@ import '../widgets/audio_quality_sheet.dart';
 import '../widgets/toast.dart';
 import 'about_page.dart';
 import 'audio_interruption_settings_page.dart';
-import 'desktop_lyrics_settings_page.dart';
 import 'personalization_settings_page.dart';
 import 'vip_info_page.dart';
 import 'playback_history_page.dart';
@@ -283,17 +281,6 @@ class SettingsPage extends StatelessWidget {
                       value: player.autoPlayOnDeviceConnected,
                       onChanged: player.setAutoPlayOnDeviceConnected,
                     ),
-                    if (player.isBluetoothLyricsSupported) ...[
-                      _SettingsDivider(),
-                      _SettingsSwitchTile(
-                        icon: Icons.directions_car_rounded,
-                        iconColor: colorScheme.primary,
-                        title: '车载蓝牙歌词',
-                        subtitle: '将实时歌词推送到车机或第三方车载歌词 App 显示',
-                        value: player.bluetoothLyricsEnabled,
-                        onChanged: player.setBluetoothLyricsEnabled,
-                      ),
-                    ],
                     _SettingsDivider(),
                     _SettingsSwitchTile(
                       icon: Icons.volume_up_rounded,
@@ -373,36 +360,6 @@ class SettingsPage extends StatelessWidget {
                       value: player.keepScreenOnEnabled,
                       onChanged: player.setKeepScreenOnEnabled,
                     ),
-                    if (player.isDesktopLyricsSupported) ...[
-                      _SettingsDivider(),
-                      _SettingsSwitchTile(
-                        icon: Icons.lyrics_rounded,
-                        iconColor: colorScheme.primary,
-                        title: '桌面歌词',
-                        subtitle: '在其他应用上方显示歌词悬浮窗',
-                        value: player.desktopLyricsEnabled,
-                        onChanged: (value) async {
-                          await player.setDesktopLyricsEnabled(value);
-                          if (!player.desktopLyricsEnabled && value) {
-                            Toast.error('需要悬浮窗权限才能使用桌面歌词');
-                          }
-                        },
-                      ),
-                      if (player.desktopLyricsEnabled) ...[
-                        _SettingsDivider(),
-                        _SettingsTile(
-                          icon: Icons.tune_rounded,
-                          iconColor: colorScheme.primary,
-                          title: '歌词设置',
-                          subtitle: '透明度、颜色、锁定位置等',
-                          onTap: () => Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => DesktopLyricsSettingsPage(player: player),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ],
                   ],
                   ),
                 ),
@@ -467,9 +424,7 @@ class SettingsPage extends StatelessWidget {
                       icon: Icons.info_outline_rounded,
                       iconColor: colorScheme.primary,
                       title: '关于',
-                      subtitle: AppUpdateService.isSupportedPlatform
-                          ? '版本、更新日志与检查更新'
-                          : '版本与更新日志',
+                      subtitle: '版本与更新日志',
                       onTap: () => Navigator.of(context).push(
                         MaterialPageRoute(
                           builder: (_) => AboutPage(api: api),

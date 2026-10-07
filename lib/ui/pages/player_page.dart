@@ -29,8 +29,6 @@ import '../widgets/toast.dart';
 import '../widgets/marquee_text.dart';
 import '../widgets/clickable_artist_text.dart';
 import 'comment_page.dart';
-import 'desktop_lyrics_settings_page.dart';
-import 'rhythm_game/rhythm_game_page.dart';
 
 class PlayerPage extends StatefulWidget {
   const PlayerPage({
@@ -577,30 +575,6 @@ class _TopBar extends StatelessWidget {
           onTap: () => showSleepTimerSheet(context: context, player: player),
         ),
 
-        if (player.isDesktopLyricsSupported) ...[
-          SongSheetAction(
-            icon: player.desktopLyricsEnabled
-                ? Icons.lyrics_rounded
-                : Icons.lyrics_outlined,
-            title: '桌面歌词',
-            isGrid: true,
-            onTap: () async {
-              Navigator.of(context).pop();
-              await player.setDesktopLyricsEnabled(!player.desktopLyricsEnabled);
-            },
-          ),
-          if (player.desktopLyricsEnabled)
-            SongSheetAction(
-              icon: Icons.tune_rounded,
-              title: '歌词设置',
-              isGrid: true,
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => DesktopLyricsSettingsPage(player: player),
-                ),
-              ),
-            ),
-        ],
         SongSheetAction(
           icon: Icons.queue_music_rounded,
           title: '下一首',
@@ -1962,31 +1936,6 @@ class _CommentEntry extends StatelessWidget {
                 ),
               ),
             ),
-
-          if (song.source == SongSource.kugou) const SizedBox(width: 4),
-
-          // 音乐游戏按钮（在评论按钮右侧）
-          Material(
-            color: Colors.transparent,
-            child: InkWell(
-              borderRadius: BorderRadius.circular(AppRadius.sm),
-              onTap: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => RhythmGamePage(player: player),
-                  ),
-                );
-              },
-              child: const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                child: Icon(
-                  Icons.sports_esports_outlined,
-                  size: 22,
-                  color: Colors.white54,
-                ),
-              ),
-            ),
-          ),
         ],
       ),
       ),

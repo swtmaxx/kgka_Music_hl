@@ -8,16 +8,13 @@ import '../../controllers/theme_controller.dart';
 import '../../services/cache_service.dart';
 import '../../services/music_api.dart';
 import '../pages/about_page.dart';
-import '../pages/album_shop_page.dart';
 import '../pages/audio_interruption_settings_page.dart';
 import '../pages/cloud_drive_page.dart';
-import '../pages/desktop_lyrics_settings_page.dart';
 import '../pages/downloaded_songs_page.dart';
 import '../pages/local_songs_page.dart';
 import '../pages/personalization_settings_page.dart';
 import '../pages/playback_history_page.dart';
 import '../pages/playback_stats_page.dart';
-import '../pages/rhythm_game/rhythm_game_page.dart';
 import '../pages/vip_info_page.dart';
 import 'watch_layout.dart';
 import 'watch_tokens.dart';
@@ -58,10 +55,6 @@ class WatchFeatureMenu extends StatelessWidget {
     final entries = <_MenuEntry>[
       _MenuEntry(Icons.workspace_premium_rounded, 'VIP 会员',
           (c) => _push(c, VipInfoPage(api: api, auth: auth))),
-      _MenuEntry(Icons.album_rounded, '专辑商城',
-          (c) => _push(c, AlbumShopPage(api: api, auth: auth, player: player, initialAlbums: const []))),
-      _MenuEntry(Icons.videogame_asset_rounded, '节奏游戏',
-          (c) => _push(c, RhythmGamePage(player: player))),
       _MenuEntry(Icons.bar_chart_rounded, '播放统计',
           (c) => _push(c, PlaybackStatsPage(player: player))),
       _MenuEntry(Icons.history_rounded, '播放历史',
@@ -74,8 +67,6 @@ class WatchFeatureMenu extends StatelessWidget {
           (c) => _push(c, LocalSongsPage(player: player, localMusic: localMusic))),
       _MenuEntry(Icons.palette_rounded, '个性化',
           (c) => _push(c, PersonalizationSettingsPage(themeController: theme))),
-      _MenuEntry(Icons.subtitles_rounded, '桌面歌词',
-          (c) => _push(c, DesktopLyricsSettingsPage(player: player))),
       _MenuEntry(Icons.headphones_rounded, '音频中断',
           (c) => _push(c, AudioInterruptionSettingsPage(player: player))),
       _MenuEntry(Icons.info_outline_rounded, '关于',
