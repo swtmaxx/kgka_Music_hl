@@ -1119,8 +1119,21 @@ class KugouClient {
       // 解密失败保留原始响应
     }
     // 登录接口的 token/userid/t1 位于 `data`，而上层 `LoginSession.fromJson`
-    // 按顶层字段读取，因此这里解包。
-    return _unwrap(body);
+    // 按顶层字段读取，因此需要把它们平铺到顶层。
+    //
+    // 注意：不能直接 `return _unwrap(body)`。那样会丢掉顶层的 status /
+    // error_code，而 `MusicApi._isSuccess` 判断的是**顶层** `status == 1`
+    // （参考实现 login_cellphone.js 同样是先判 `body.status === 1`，
+    // 再从 body.data 里取 token/userid）。丢掉 status 会让登录成功也被
+    // 判为失败，报「登录失败，若没有账号请先在酷狗音乐概念版App注册」。
+    final mergedData = body['data'];
+    if (mergedData is! Map) return body;
+    // 注意顺序：顶层 body 在后，保证 status / error_code 以顶层为准
+    // （部分接口的 data 内部也带 status，例如扫码检测的 data.status）。
+    return <String, Object?>{
+      ...Map<String, Object?>.from(mergedData),
+      ...body,
+    };
   }
 
   // ===== 整形 / 工具 =====
