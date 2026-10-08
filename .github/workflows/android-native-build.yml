@@ -28,6 +28,10 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          # 仓库用 Git LFS 管理 *.png / *.jar；不拉 LFS 会拿到指针文件，
+          # AAPT 编译资源时会报 "file failed to compile"。
+          lfs: true
 
       - name: Setup Java 17
         uses: actions/setup-java@v4
