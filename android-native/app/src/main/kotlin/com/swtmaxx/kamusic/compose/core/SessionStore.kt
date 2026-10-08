@@ -1,5 +1,6 @@
 package com.swtmaxx.kamusic.compose.core
 
+import com.swtmaxx.kamusic.compose.BuildConfig
 import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences

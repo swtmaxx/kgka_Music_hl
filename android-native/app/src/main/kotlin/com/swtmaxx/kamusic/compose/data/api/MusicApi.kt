@@ -105,7 +105,7 @@ object LoginJudgement {
  * 酷狗外置 API 封装。
  *
  * 路由与 Flutter 版 `lib/services/music_api.dart` 一一对应，
- * 已核对部署端 `module/*.js` 全部存在（唯一例外是 `/login/logout`）。
+ * 已核对部署端 module 目录下的模块全部存在（唯一例外是 `/login/logout`）。
  */
 class MusicApi(private val client: ApiClient) {
 

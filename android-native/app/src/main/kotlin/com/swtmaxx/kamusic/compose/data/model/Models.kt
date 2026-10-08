@@ -107,7 +107,7 @@ private fun parseSingerArray(json: JsonObject): String? {
         ?: json.arr("singers")
         ?: return null
     val names = array.mapNotNull { element ->
-        element.asStringOrNull() ?: element.obj()?.strAny("name", "author_name", "singer_name")
+        element.asStringOrNull() ?: element.asObjOrNull()?.strAny("name", "author_name", "singer_name")
     }
     return names.filter { it.isNotEmpty() }.joinToString(" / ").takeIf { it.isNotEmpty() }
 }
@@ -116,7 +116,7 @@ private fun parseSingerArray(json: JsonObject): String? {
 fun parseSongList(element: kotlinx.serialization.json.JsonElement?): List<Song> {
     val direct = element.objList()
     if (direct.isNotEmpty()) return direct.map(::parseSong)
-    val obj = element.obj() ?: return emptyList()
+    val obj = element.asObjOrNull() ?: return emptyList()
     for (key in listOf("list", "songs", "data", "info", "song_list", "audios")) {
         val nested = obj.obj(key)?.let { listOf(it) } ?: obj.arr(key).objList()
         if (nested.isNotEmpty()) return nested.map(::parseSong)
