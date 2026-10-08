@@ -344,8 +344,8 @@ fun LoadingBox(message: String = "加载中…", modifier: Modifier = Modifier) 
 @Composable
 fun ErrorBox(
     message: String,
-    onRetry: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
+    onRetry: (() -> Unit)? = null,
 ) {
     Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Column(

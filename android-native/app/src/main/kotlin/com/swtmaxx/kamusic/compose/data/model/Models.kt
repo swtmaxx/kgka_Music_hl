@@ -2,6 +2,7 @@ package com.swtmaxx.kamusic.compose.data.model
 
 import com.swtmaxx.kamusic.compose.core.arr
 import com.swtmaxx.kamusic.compose.core.asIntOrNull
+import com.swtmaxx.kamusic.compose.core.asObjOrNull
 import com.swtmaxx.kamusic.compose.core.asStringOrNull
 import com.swtmaxx.kamusic.compose.core.int
 import com.swtmaxx.kamusic.compose.core.intAny
