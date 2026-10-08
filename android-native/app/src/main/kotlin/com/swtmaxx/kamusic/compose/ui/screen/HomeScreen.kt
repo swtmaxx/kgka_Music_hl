@@ -118,7 +118,7 @@ private fun HomeContent(
 ) {
     val error = data.errorFor(tab)
     if (error != null) {
-        ErrorBox(error, onRetry)
+        ErrorBox(error, onRetry = onRetry)
         return
     }
 
