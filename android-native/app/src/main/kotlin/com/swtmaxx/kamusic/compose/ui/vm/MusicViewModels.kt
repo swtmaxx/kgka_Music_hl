@@ -1,0 +1,377 @@
+package com.swtmaxx.kamusic.compose.ui.vm
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.swtmaxx.kamusic.compose.core.SessionStore
+import com.swtmaxx.kamusic.compose.data.model.FmClassGroup
+import com.swtmaxx.kamusic.compose.data.model.LyricLine
+import com.swtmaxx.kamusic.compose.data.model.PlaylistSummary
+import com.swtmaxx.kamusic.compose.data.model.Song
+import com.swtmaxx.kamusic.compose.data.model.UserProfile
+import com.swtmaxx.kamusic.compose.data.repo.AuthRepository
+import com.swtmaxx.kamusic.compose.data.repo.MusicRepository
+import com.swtmaxx.kamusic.compose.playback.PlaybackController
+import kotlinx.coroutines.async
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+
+/** 通用加载态。 */
+sealed interface UiState<out T> {
+    data object Loading : UiState<Nothing>
+    data class Error(val message: String) : UiState<Nothing>
+    data class Ready<T>(val data: T) : UiState<T>
+}
+
+// ============================================================================
+// 首页
+// ============================================================================
+
+data class HomeData(
+    val playlists: List<PlaylistSummary> = emptyList(),
+    val dailySongs: List<Song> = emptyList(),
+    val topSongs: List<Song> = emptyList(),
+    val fmGroups: List<FmClassGroup> = emptyList(),
+    val fmSongs: List<Song> = emptyList(),
+    val selectedFmId: String? = null,
+    /** 每个 tab 独立的错误，互不影响。 */
+    val errors: Map<Int, String> = emptyMap(),
+) {
+    fun errorFor(tab: Int): String? = errors[tab]
+}
+
+class HomeViewModel(private val repo: MusicRepository) : ViewModel() {
+
+    /** 0 推荐歌单 / 1 每日推荐 / 2 排行榜 / 3 电台 */
+    private val _tab = MutableStateFlow(0)
+    val tab: StateFlow<Int> = _tab.asStateFlow()
+
+    private val _state = MutableStateFlow(UiState.Ready(HomeData()))
+    val state: StateFlow<UiState<HomeData>> = _state.asStateFlow()
+
+    private var loaded = false
+
+    fun selectTab(index: Int) {
+        _tab.value = index
+        if (!loaded) load()
+    }
+
+    fun load(forceRefresh: Boolean = false) {
+        loaded = true
+        _state.update { current ->
+            if (current is UiState.Ready) current else UiState.Ready(HomeData())
+        }
+        viewModelScope.launch {
+            val data = (_state.value as? UiState.Ready)?.data ?: HomeData()
+            val errors = data.errors.toMutableMap()
+
+            val deferredPlaylists = async { runCatching { repo.recommendedPlaylists(forceRefresh) } }
+            val deferredDaily = async { runCatching { repo.dailyRecommend() } }
+            val deferredTop = async { runCatching { repo.topSongs() } }
+            val deferredFm = async { runCatching { repo.fmClassGroups() } }
+
+            val resultPlaylists = deferredPlaylists.await()
+            val resultDaily = deferredDaily.await()
+            val resultTop = deferredTop.await()
+            val resultFm = deferredFm.await()
+
+            val playlists = resultPlaylists.getOrNull()
+            val daily = resultDaily.getOrNull()
+            val top = resultTop.getOrNull()
+            val fmGroups = resultFm.getOrNull()
+
+            if (playlists == null) errors[0] = "推荐歌单加载失败" else errors.remove(0)
+            if (daily == null) errors[1] = "每日推荐加载失败" else errors.remove(1)
+            if (top == null) errors[2] = "排行榜加载失败" else errors.remove(2)
+            if (fmGroups == null) errors[3] = "电台加载失败" else errors.remove(3)
+
+            val selectedFm = data.selectedFmId ?: fmGroups?.firstOrNull()?.stations?.firstOrNull()?.id
+            val fmSongs = if (selectedFm != null && fmGroups != null) {
+                runCatching { repo.fmSongs(listOf(selectedFm)) }.getOrNull()
+            } else {
+                data.fmSongs
+            }
+
+            _state.value = UiState.Ready(
+                HomeData(
+                    playlists = playlists ?: data.playlists,
+                    dailySongs = daily ?: data.dailySongs,
+                    topSongs = top ?: data.topSongs,
+                    fmGroups = fmGroups ?: data.fmGroups,
+                    fmSongs = fmSongs ?: data.fmSongs,
+                    selectedFmId = selectedFm,
+                    errors = errors,
+                ),
+            )
+        }
+    }
+
+    fun selectFm(fmId: String) {
+        val current = (_state.value as? UiState.Ready)?.data ?: return
+        _state.value = UiState.Ready(current.copy(selectedFmId = fmId, fmSongs = emptyList()))
+        viewModelScope.launch {
+            val songs = runCatching { repo.fmSongs(listOf(fmId)) }.getOrNull() ?: emptyList()
+            _state.update { state ->
+                if (state is UiState.Ready) {
+                    UiState.Ready(state.data.copy(fmSongs = songs))
+                } else {
+                    state
+                }
+            }
+        }
+    }
+}
+
+// ============================================================================
+// 搜索
+// ============================================================================
+
+data class SearchUiState(
+    val query: String = "",
+    val hot: List<com.swtmaxx.kamusic.compose.data.model.SearchHotCategory> = emptyList(),
+    val suggestions: List<String> = emptyList(),
+    val results: List<Song> = emptyList(),
+    val searching: Boolean = false,
+    val error: String? = null,
+) {
+    val idle: Boolean get() = query.isBlank()
+}
+
+class SearchViewModel(private val repo: MusicRepository) : ViewModel() {
+
+    private val _state = MutableStateFlow(SearchUiState())
+    val state: StateFlow<SearchUiState> = _state.asStateFlow()
+
+    private var hotLoaded = false
+
+    fun ensureHotLoaded() {
+        if (hotLoaded) return
+        hotLoaded = true
+        viewModelScope.launch {
+            val hot = runCatching { repo.searchHot() }.getOrNull() ?: emptyList()
+            _state.update { it.copy(hot = hot) }
+        }
+    }
+
+    fun onQueryChange(value: String) {
+        _state.update { it.copy(query = value, error = null) }
+        if (value.isBlank()) {
+            _state.update { it.copy(suggestions = emptyList(), results = emptyList()) }
+            return
+        }
+        viewModelScope.launch {
+            val suggestions = runCatching { repo.searchSuggest(value) }.getOrDefault(emptyList())
+            // 只在该关键词仍是最新输入时应用，避免旧响应覆盖新输入。
+            if (_state.value.query == value) {
+                _state.update { it.copy(suggestions = suggestions.take(10)) }
+            }
+        }
+    }
+
+    fun submit(keyword: String = _state.value.query) {
+        if (keyword.isBlank()) return
+        _state.update { it.copy(query = keyword, searching = true, error = null, suggestions = emptyList()) }
+        viewModelScope.launch {
+            val result = runCatching { repo.search(keyword) }
+            result.fold(
+                onSuccess = { songs ->
+                    _state.update { it.copy(searching = false, results = songs) }
+                },
+                onFailure = { error ->
+                    _state.update {
+                        it.copy(searching = false, error = error.message ?: "搜索失败")
+                    }
+                },
+            )
+        }
+    }
+
+    fun clearQuery() = _state.update { SearchUiState(hot = it.hot) }
+}
+
+// ============================================================================
+// 歌单详情
+// ============================================================================
+
+data class PlaylistUiData(
+    val info: PlaylistSummary? = null,
+    val songs: List<Song> = emptyList(),
+    val loadingMore: Boolean = false,
+)
+
+class PlaylistViewModel(
+    private val repo: MusicRepository,
+    private val playlistId: String,
+    private val fallbackTitle: String,
+) : ViewModel() {
+
+    private val _state = MutableStateFlow<UiState<PlaylistUiData>>(UiState.Loading)
+    val state: StateFlow<UiState<PlaylistUiData>> = _state.asStateFlow()
+
+    private var page = 1
+    private var endReached = false
+
+    val title: String
+        get() = (_state.value as? UiState.Ready)?.data?.info?.title ?: fallbackTitle
+
+    fun load() {
+        _state.value = UiState.Loading
+        page = 1
+        endReached = false
+        viewModelScope.launch {
+            val infoResult = runCatching { repo.playlistInfo(playlistId) }
+            val songsResult = runCatching { repo.playlistSongs(playlistId, page = 1) }
+
+            val songs = songsResult.getOrNull()?.songs.orEmpty()
+            if (songs.isEmpty() && songsResult.isFailure) {
+                _state.value = UiState.Error(songsResult.exceptionOrNull()?.message ?: "歌单加载失败")
+                return@launch
+            }
+            endReached = songs.isEmpty()
+            _state.value = UiState.Ready(
+                PlaylistUiData(
+                    info = infoResult.getOrNull(),
+                    songs = songs,
+                ),
+            )
+        }
+    }
+
+    fun loadMore() {
+        val current = (_state.value as? UiState.Ready)?.data ?: return
+        if (endReached || current.loadingMore) return
+        _state.value = UiState.Ready(current.copy(loadingMore = true))
+        viewModelScope.launch {
+            val nextPage = page + 1
+            val result = runCatching { repo.playlistSongs(playlistId, page = nextPage) }
+            val more = result.getOrNull()?.songs.orEmpty()
+            if (more.isEmpty()) endReached = true else page = nextPage
+            _state.update { state ->
+                if (state is UiState.Ready) {
+                    UiState.Ready(
+                        state.data.copy(
+                            songs = state.data.songs + more,
+                            loadingMore = false,
+                        ),
+                    )
+                } else {
+                    state
+                }
+            }
+        }
+    }
+}
+
+// ============================================================================
+// 我的
+// ============================================================================
+
+data class MineUiData(
+    val profile: UserProfile? = null,
+    val createdPlaylists: List<PlaylistSummary> = emptyList(),
+    val collectedPlaylists: List<PlaylistSummary> = emptyList(),
+)
+
+class MineViewModel(
+    private val repo: MusicRepository,
+    private val authRepo: AuthRepository,
+    private val sessionStore: SessionStore,
+) : ViewModel() {
+
+    private val _state = MutableStateFlow<UiState<MineUiData>>(UiState.Loading)
+    val state: StateFlow<UiState<MineUiData>> = _state.asStateFlow()
+
+    val apiBaseUrl: StateFlow<String> = sessionStore.apiBaseUrlFlow
+        .map { it ?: com.swtmaxx.kamusic.compose.BuildConfig.DEFAULT_API_BASE_URL }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, sessionStore.effectiveApiBaseUrl)
+
+    private val _quality = MutableStateFlow(sessionStore.quality)
+    val quality: StateFlow<String> = _quality.asStateFlow()
+
+    fun load(forceRefresh: Boolean = false) {
+        viewModelScope.launch {
+            val profileResult = runCatching { repo.userDetail() }
+            val playlistsResult = runCatching { repo.userPlaylists(forceRefresh) }
+
+            if (profileResult.isFailure && playlistsResult.isFailure) {
+                _state.value = UiState.Error(
+                    profileResult.exceptionOrNull()?.message ?: "加载失败",
+                )
+                return@launch
+            }
+
+            val playlists = playlistsResult.getOrDefault(emptyList())
+            _state.value = UiState.Ready(
+                MineUiData(
+                    profile = profileResult.getOrNull(),
+                    createdPlaylists = playlists.filter { it.isCreatedPlaylist },
+                    collectedPlaylists = playlists.filter { !it.isCreatedPlaylist },
+                ),
+            )
+        }
+    }
+
+    fun updateApiBaseUrl(url: String?) {
+        viewModelScope.launch { sessionStore.setCustomApiBaseUrl(url) }
+    }
+
+    fun updateQuality(value: String) {
+        viewModelScope.launch {
+            sessionStore.setQuality(value)
+            _quality.value = sessionStore.quality
+        }
+    }
+
+    fun logout(onDone: () -> Unit) {
+        viewModelScope.launch {
+            authRepo.logout()
+            onDone()
+        }
+    }
+}
+
+// ============================================================================
+// 播放器
+// ============================================================================
+
+data class LyricsUiData(
+    val lines: List<LyricLine> = emptyList(),
+    val loading: Boolean = false,
+    val songHash: String? = null,
+)
+
+class PlayerViewModel(
+    private val repo: MusicRepository,
+    val controller: PlaybackController,
+) : ViewModel() {
+
+    val playerState = controller.state
+    val positionMs = controller.positionMs
+    val queue = controller.queue
+
+    private val _lyrics = MutableStateFlow(LyricsUiData())
+    val lyrics: StateFlow<LyricsUiData> = _lyrics.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            controller.state
+                .map { it.song }
+                .distinctUntilChanged()
+                .collect { song ->
+                    if (song == null) {
+                        _lyrics.value = LyricsUiData()
+                        return@collect
+                    }
+                    _lyrics.value = LyricsUiData(loading = true, songHash = song.hash)
+                    val lines = repo.lyrics(song)
+                    _lyrics.value = LyricsUiData(lines = lines, loading = false, songHash = song.hash)
+                }
+        }
+    }
+}

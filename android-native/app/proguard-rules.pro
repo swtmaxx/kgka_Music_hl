@@ -11,11 +11,11 @@
 }
 
 # 本项目的所有 @Serializable 模型（含嵌套）都保留序列化器。
--keep,includedescriptorclasses class com.swtmaxx.kamusic.native.**$$serializer { *; }
--keepclassmembers class com.swtmaxx.kamusic.native.** {
+-keep,includedescriptorclasses class com.swtmaxx.kamusic.compose.**$$serializer { *; }
+-keepclassmembers class com.swtmaxx.kamusic.compose.** {
     *** Companion;
 }
--keepclasseswithmembers class com.swtmaxx.kamusic.native.** {
+-keepclasseswithmembers class com.swtmaxx.kamusic.compose.** {
     kotlinx.serialization.KSerializer serializer(...);
 }
 
@@ -37,4 +37,4 @@
 
 # ===== 枚举与反射入口 =====
 # 让 R8 能安全移除未使用的资源 id 引用
--keep class com.swtmaxx.kamusic.native.data.model.** { *; }
+-keep class com.swtmaxx.kamusic.compose.data.model.** { *; }

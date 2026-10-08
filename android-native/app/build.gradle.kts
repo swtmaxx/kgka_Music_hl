@@ -26,11 +26,11 @@ val hasReleaseSigning = keystorePropertiesFile.exists() &&
     !keystoreProperties.getProperty("keyPassword").isNullOrBlank()
 
 android {
-    namespace = "com.swtmaxx.kamusic.native"
+    namespace = "com.swtmaxx.kamusic.compose"
     compileSdk = 37
 
     defaultConfig {
-        applicationId = "com.swtmaxx.kamusic.native"
+        applicationId = "com.swtmaxx.kamusic.compose"
         // 目标设备只有 S100（Android 8.1 = API 27），因此直接以 27 为下限，
         // 让 R8 可以移除全部向下兼容分支。
         minSdk = 27
