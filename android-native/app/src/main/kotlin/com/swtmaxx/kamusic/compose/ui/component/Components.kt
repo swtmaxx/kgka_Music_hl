@@ -123,12 +123,17 @@ fun PlayPauseButton(
  * 刻意不用 Slider：手表屏太窄，Slider 的 thumb 与 padding 会吃掉大量空间，
  * 且 Material Slider 的默认动画在低端设备上有额外开销。
  * 交互只做「点击定位」（在 240px 宽屏上拖动比点击更难精确）。
+ *
+ * [touchHeight] 是**触控区**高度（视觉轨道始终只有 [WatchMetrics.progressTrack]）。
+ * 默认 48dp（无障碍建议值）；播放页为了给歌词让出屏高会传 24dp ——
+ * 这是「可点区域」与「可见内容」分离的做法：视觉不变，但不再白占 17% 屏高。
  */
 @Composable
 fun WatchProgressBar(
     progress: Float,
     modifier: Modifier = Modifier,
     onSeek: ((Float) -> Unit)? = null,
+    touchHeight: Dp = WatchMetrics.minTouch,
 ) {
     val fraction = progress.coerceIn(0f, 1f)
     var trackWidthPx by remember { mutableIntStateOf(1) }
@@ -136,7 +141,7 @@ fun WatchProgressBar(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(WatchMetrics.minTouch)
+            .height(touchHeight)
             .onSizeChanged { trackWidthPx = it.width.coerceAtLeast(1) }
             .then(
                 if (onSeek != null) {
