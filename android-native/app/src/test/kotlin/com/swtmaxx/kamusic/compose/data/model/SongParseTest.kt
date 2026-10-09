@@ -117,6 +117,84 @@ class SongParseTest {
     }
 
     @Test
+    fun `hash 嵌在 audio_info 里也能解析`() {
+        // 实测 /rank/audio 的顶层键完全没有 hash，只有 audio_info.hash_*；
+        // 不回退会解析出空串 → playable=false → 列表能显示但点了没声音。
+        // /user/cloud、/album/songs、/artist/audios 也是同一形状。
+        val song = parseSong(
+            JsonObject(
+                mapOf(
+                    "audio_id" to JsonPrimitive(653605791),
+                    "songname" to JsonPrimitive("自由的你"),
+                    "author_name" to JsonPrimitive("G.E.M.邓紫棋"),
+                    "album_id" to JsonPrimitive(207873836),
+                    "album_audio_id" to JsonPrimitive(963769012),
+                    "audio_info" to JsonObject(
+                        mapOf(
+                            "hash_128" to JsonPrimitive("HASH128"),
+                            "hash_320" to JsonPrimitive("HASH320"),
+                            "hash_flac" to JsonPrimitive("HASHFLAC"),
+                            "duration_128" to JsonPrimitive(296000),
+                        ),
+                    ),
+                    "trans_param" to JsonObject(
+                        mapOf("union_cover" to JsonPrimitive("http://img/{size}/cover.jpg")),
+                    ),
+                ),
+            ),
+        )
+        assertEquals("HASH320", song.hash)
+        assertTrue(song.playable)
+        assertEquals("自由的你", song.title)
+        assertEquals("G.E.M.邓紫棋", song.artist)
+        // audio_info.duration_* 是毫秒
+        assertEquals(296_000L, song.durationMs)
+        // 封面回退到 trans_param.union_cover
+        assertEquals("http://img/240/cover.jpg", song.coverUrl)
+    }
+
+    @Test
+    fun `audio_info 只有 hash_128 时回退到 128`() {
+        val song = parseSong(
+            JsonObject(
+                mapOf(
+                    "songname" to JsonPrimitive("x"),
+                    "audio_info" to JsonObject(mapOf("hash_128" to JsonPrimitive("ONLY128"))),
+                ),
+            ),
+        )
+        assertEquals("ONLY128", song.hash)
+        assertTrue(song.playable)
+    }
+
+    @Test
+    fun `deprecated hash 作为最后兜底`() {
+        val song = parseSong(
+            JsonObject(
+                mapOf(
+                    "songname" to JsonPrimitive("x"),
+                    "deprecated" to JsonObject(mapOf("hash" to JsonPrimitive("DEPHASH"))),
+                ),
+            ),
+        )
+        assertEquals("DEPHASH", song.hash)
+    }
+
+    @Test
+    fun `顶层 hash 优先于 audio_info`() {
+        val song = parseSong(
+            JsonObject(
+                mapOf(
+                    "hash" to JsonPrimitive("TOP"),
+                    "songname" to JsonPrimitive("x"),
+                    "audio_info" to JsonObject(mapOf("hash_320" to JsonPrimitive("NESTED"))),
+                ),
+            ),
+        )
+        assertEquals("TOP", song.hash)
+    }
+
+    @Test
     fun `normalizeImageUrl 替换两种占位符`() {
         assertEquals("a/240/b", normalizeImageUrl("a/{size}/b"))
         assertEquals("a/240/b", normalizeImageUrl("a/{SIZE}/b"))

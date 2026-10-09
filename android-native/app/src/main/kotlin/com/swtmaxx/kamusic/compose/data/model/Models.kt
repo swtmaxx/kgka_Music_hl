@@ -69,9 +69,52 @@ data class Song(
         }
 }
 
+/**
+ * hash 回退链。
+ *
+ * ⚠️ 部分接口（`/rank/audio`、`/user/cloud`、`/album/songs`、`/artist/audios`）**不返回顶层 `hash`**，
+ * 而是按音质嵌在 `audio_info.hash_128 / hash_320 / hash_flac / hash_high` 里（或 `deprecated.hash`）。
+ * 实测 `/rank/audio` 的顶层键完全没有 `hash`，若不回退会解析出空串 → `Song.playable == false`
+ * → 列表能显示、点了没声音。
+ */
+private fun parseHash(json: JsonObject): String {
+    json.strAny("FileHash", "hash", "hash_320", "hash_flac", "filehash")?.let { return it }
+    return json.obj("audio_info").strAny("hash_320", "hash_flac", "hash_high", "hash_128", "hash")
+        ?: json.obj("deprecated").strAny("hash_320", "hash", "hash_128")
+        ?: ""
+}
+
+/**
+ * 时长回退链。
+ *
+ * 顶层字段单位不统一：`Duration` 是**秒**、`timelen`/`timelength` 是**毫秒**；
+ * 而 `audio_info.duration_*` 一律是**毫秒**（与 `hash_*` 同一层，见 [parseHash]）。
+ */
+private fun parseDurationMs(json: JsonObject): Long? =
+    durationMillisFromSeconds(json["Duration"])
+        ?: durationMillisFromMillis(json["timelen"])
+        ?: durationMillisFromSeconds(json["time_length"])
+        ?: durationMillisFromMillis(json["timelength"])
+        ?: durationMillisFromSeconds(json["duration"])
+        ?: json.obj("audio_info").let { info ->
+            info.long("duration_320") ?: info.long("duration_flac")
+                ?: info.long("duration_128") ?: info.long("duration_high")
+        }
+
+/** 封面回退链：顶层图 → `trans_param.union_cover`（榜单/云盘常用）→ `album_info`。 */
+private fun parseCoverUrl(json: JsonObject): String? =
+    normalizeImageUrl(
+        json.strAny(
+            "Image", "sizable_cover", "album_sizable_cover", "img",
+            "cover", "flexible_cover", "trans_param_img",
+        ),
+    )
+        ?: normalizeImageUrl(json.obj("trans_param").strAny("union_cover", "cover"))
+        ?: normalizeImageUrl(json.obj("album_info").strAny("sizable_cover", "cover", "img"))
+
 /** 从任意歌曲形状的 JSON 解析。所有接口共用。 */
 fun parseSong(json: JsonObject): Song {
-    val hash = json.strAny("FileHash", "hash", "hash_320", "hash_flac", "filehash") ?: ""
+    val hash = parseHash(json)
     val audioId = json.strAny("MixSongID", "mixsongid", "audio_id", "album_audio_id", "songid", "fileid")
     val artist = json.strAny(
         "SingerName", "author_name", "singername", "singer_name", "singer",
@@ -84,18 +127,10 @@ fun parseSong(json: JsonObject): Song {
         hash = hash,
         albumId = json.strAny("AlbumID", "album_id"),
         albumAudioId = json.strAny("album_audio_id", "MixSongID", "mixsongid", "audio_id"),
-        albumName = json.strAny("AlbumName", "album_name"),
-        coverUrl = normalizeImageUrl(
-            json.strAny(
-                "Image", "sizable_cover", "album_sizable_cover", "img",
-                "cover", "flexible_cover", "trans_param_img",
-            ),
-        ),
-        durationMs = durationMillisFromSeconds(json["Duration"])
-            ?: durationMillisFromMillis(json["timelen"])
-            ?: durationMillisFromSeconds(json["time_length"])
-            ?: durationMillisFromMillis(json["timelength"])
-            ?: durationMillisFromSeconds(json["duration"]),
+        albumName = json.strAny("AlbumName", "album_name")
+            ?: json.obj("album_info").str("album_name"),
+        coverUrl = parseCoverUrl(json),
+        durationMs = parseDurationMs(json),
         privilege = json.intAny("privilege", "privilege_type"),
     )
 }
