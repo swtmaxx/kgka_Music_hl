@@ -267,7 +267,6 @@ fun MineScreen(
             dismissButton = {
                 TextButton(onClick = { editingUrl = false }) { Text("取消") }
             },
-            containerColor = SurfaceRaised,
         )
     }
 }
