@@ -115,6 +115,15 @@ class MusicRepository(
 
     suspend fun everydayStyleRecommend(): List<Song> = api.everydayStyleRecommend()
 
+    // ===== 播放历史 =====
+
+    suspend fun playHistory(page: Int = 1): List<Song> = api.playHistory(page)
+
+    suspend fun uploadHistory(song: Song, playedAtSeconds: Long) =
+        api.uploadHistory(song, playedAtSeconds)
+
+    suspend fun listenReport(song: Song, event: String) = api.listenReport(song, event)
+
     // ===== 用户 =====
 
     suspend fun userDetail(): UserProfile = api.userDetail()

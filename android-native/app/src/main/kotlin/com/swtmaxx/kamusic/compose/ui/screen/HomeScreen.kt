@@ -29,6 +29,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -36,9 +37,11 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.swtmaxx.kamusic.compose.data.model.PlaylistSummary
+import com.swtmaxx.kamusic.compose.data.model.RankSummary
 import com.swtmaxx.kamusic.compose.data.model.Song
 import com.swtmaxx.kamusic.compose.ui.LocalAppContainer
 import com.swtmaxx.kamusic.compose.ui.component.ArtworkFill
+import com.swtmaxx.kamusic.compose.ui.component.CircleIconButton
 import com.swtmaxx.kamusic.compose.ui.component.EmptyBox
 import com.swtmaxx.kamusic.compose.ui.component.ErrorBox
 import com.swtmaxx.kamusic.compose.ui.component.LoadingBox
@@ -55,11 +58,12 @@ import com.swtmaxx.kamusic.compose.ui.vm.HomeData
 import com.swtmaxx.kamusic.compose.ui.vm.HomeViewModel
 import com.swtmaxx.kamusic.compose.ui.vm.UiState
 
-private val TABS = listOf("推荐", "每日", "排行")
+private val TABS = listOf("推荐", "每日", "榜单", "FM")
 
 @Composable
 fun HomeScreen(
     onOpenPlaylist: (id: String, title: String) -> Unit,
+    onOpenRank: (RankSummary) -> Unit,
     onOpenPlayer: () -> Unit,
 ) {
     val container = LocalAppContainer.current
@@ -103,6 +107,8 @@ fun HomeScreen(
                     container.playbackController.playFrom(songs, index)
                     onOpenPlayer()
                 },
+                onOpenRank = onOpenRank,
+                onRefreshFm = viewModel::refreshFm,
             )
         }
     }
@@ -115,6 +121,8 @@ private fun HomeContent(
     onRetry: () -> Unit,
     onOpenPlaylist: (id: String, title: String) -> Unit,
     onPlaySong: (List<Song>, Int) -> Unit,
+    onOpenRank: (RankSummary) -> Unit,
+    onRefreshFm: () -> Unit,
 ) {
     val error = data.errorFor(tab)
     if (error != null) {
@@ -125,7 +133,85 @@ private fun HomeContent(
     when (tab) {
         0 -> PlaylistGrid(data.playlists, onOpenPlaylist)
         1 -> SongList(data.dailySongs, onPlaySong)
-        2 -> SongList(data.topSongs, onPlaySong)
+        2 -> RankList(data.ranks, onOpenRank)
+        else -> FmList(data.fmSongs, onPlaySong, onRefreshFm)
+    }
+}
+
+/** 榜单列表：点任一项进榜单详情。 */
+@Composable
+private fun RankList(ranks: List<RankSummary>, onOpenRank: (RankSummary) -> Unit) {
+    if (ranks.isEmpty()) {
+        EmptyBox("暂无榜单")
+        return
+    }
+    val listState = rememberScalingLazyListState()
+    ScalingLazyColumn(
+        scalingParams = watchScalingParams(),
+        state = listState,
+        rotaryScrollableBehavior = watchRotary(listState),
+        contentPadding = PaddingValues(0.dp),
+        autoCentering = WatchAutoCentering,
+        modifier = Modifier.fillMaxSize(),
+    ) {
+        itemsIndexed(ranks, key = { _, rank -> rank.id }) { _, rank ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(WatchMetrics.listRow)
+                    .clickable { onOpenRank(rank) }
+                    .padding(horizontal = WatchMetrics.gutter),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Artwork(url = rank.coverUrl, size = WatchMetrics.coverSmall)
+                Spacer(Modifier.width(WatchMetrics.gutter))
+                Text(
+                    text = rank.name,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = TextPrimary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+        }
+    }
+}
+
+/**
+ * 私人 FM。
+ *
+ * 上游每次调用 `/personal/fm` 都返回新的推荐，所以「换一批」就是再调一次，
+ * 不需要游标或分页。
+ */
+@Composable
+private fun FmList(
+    songs: List<Song>,
+    onPlaySong: (List<Song>, Int) -> Unit,
+    onRefresh: () -> Unit,
+) {
+    Column(modifier = Modifier.fillMaxSize()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = WatchMetrics.gutterSmall, vertical = WatchMetrics.gutterSmall),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = if (songs.isEmpty()) "私人 FM" else "私人 FM · ${songs.size} 首",
+                style = MaterialTheme.typography.labelMedium,
+                color = TextSecondary,
+                modifier = Modifier.weight(1f),
+            )
+            CircleIconButton(
+                icon = painterResource(R.drawable.ic_refresh),
+                contentDescription = "换一批",
+                onClick = onRefresh,
+                size = 32.dp,
+                iconSize = WatchMetrics.icon,
+            )
+        }
+        SongList(songs, onPlaySong)
     }
 }
 

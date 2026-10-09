@@ -35,6 +35,7 @@ import kotlinx.coroutines.launch
 fun WatchShell(
     onOpenPlayer: () -> Unit,
     onOpenPlaylist: (id: String, title: String) -> Unit,
+    onOpenRank: (id: String, cid: String, title: String) -> Unit,
 ) {
     val container = LocalAppContainer.current
     val pagerState = rememberPagerState(pageCount = { 3 })
@@ -52,6 +53,7 @@ fun WatchShell(
                 when (page) {
                     0 -> HomeScreen(
                         onOpenPlaylist = onOpenPlaylist,
+                        onOpenRank = { rank -> onOpenRank(rank.id, rank.cid, rank.name) },
                         onOpenPlayer = onOpenPlayer,
                     )
 

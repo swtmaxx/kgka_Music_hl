@@ -407,6 +407,47 @@ class MusicApi(private val client: ApiClient) {
         client.get("/everyday/style/recommend").asObjOrNull()
             ?.arr("song_list").objList().orEmpty().map(::parseSong)
 
+    // ===== 播放历史 =====
+
+    /**
+     * 云端播放历史（需登录）。
+     *
+     * 未登录时上游返回 5xx，故形状未实测，对 `data` 下多种包裹名都做回退，
+     * 最后再交给 [parseSongList] 自寻。
+     */
+    suspend fun playHistory(page: Int = 1, pageSize: Int = 50): List<Song> {
+        val raw = client.get("/user/history", mapOf("page" to page, "pagesize" to pageSize))
+        val obj = raw.asObjOrNull()
+        val list = obj?.arr("songs") ?: obj?.arr("list") ?: obj?.arr("info")
+        if (list != null) return list.objList().map(::parseSong)
+        return parseSongList(raw)
+    }
+
+    /** 上报听歌历史（需登录）。失败不抛，由调用方忽略。 */
+    suspend fun uploadHistory(song: Song, playedAtSeconds: Long) {
+        val mixSongId = song.albumAudioId ?: song.id
+        if (mixSongId.isEmpty()) return
+        client.post(
+            "/playhistory/upload",
+            body = mapOf("mxid" to mixSongId, "time" to playedAtSeconds),
+        )
+    }
+
+    /**
+     * CSCC 真实播放上报（需登录）。
+     *
+     * `event` 取 `start` / `end`，由播放器在真实开始/结束时调用；
+     * 上报失败不应影响播放，调用方需自行 try/catch。
+     */
+    suspend fun listenReport(song: Song, event: String) {
+        val mixSongId = song.albumAudioId ?: song.id
+        if (mixSongId.isEmpty()) return
+        client.get(
+            "/user/listen/report",
+            mapOf("mixsongid" to mixSongId, "event" to event),
+        )
+    }
+
     // ===== 搜索 =====
 
     suspend fun searchHotKeywords(): List<SearchHotCategory> {

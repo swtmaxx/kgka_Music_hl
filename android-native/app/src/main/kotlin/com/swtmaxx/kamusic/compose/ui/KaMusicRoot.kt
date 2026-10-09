@@ -18,6 +18,7 @@ import com.swtmaxx.kamusic.compose.ui.screen.LoginScreen
 import com.swtmaxx.kamusic.compose.ui.screen.PlayerScreen
 import com.swtmaxx.kamusic.compose.ui.screen.PlaylistDetailScreen
 import com.swtmaxx.kamusic.compose.ui.screen.QueueScreen
+import com.swtmaxx.kamusic.compose.ui.screen.RankDetailScreen
 import com.swtmaxx.kamusic.compose.ui.shell.WatchShell
 
 /**
@@ -55,6 +56,9 @@ private fun MainNavHost() {
                 onOpenPlaylist = { id, title ->
                     navController.navigate("playlist/$id?title=${Uri.encode(title)}")
                 },
+                onOpenRank = { id, cid, title ->
+                    navController.navigate("rank/$id?cid=$cid&title=${Uri.encode(title)}")
+                },
             )
         }
 
@@ -84,6 +88,31 @@ private fun MainNavHost() {
             PlaylistDetailScreen(
                 playlistId = id,
                 fallbackTitle = title.ifEmpty { "歌单" },
+                onBack = { navController.popBackStack() },
+                onOpenPlayer = { navController.navigate("player") },
+            )
+        }
+        composable(
+            route = "rank/{id}?cid={cid}&title={title}",
+            arguments = listOf(
+                navArgument("id") { type = NavType.StringType },
+                navArgument("cid") {
+                    type = NavType.StringType
+                    defaultValue = ""
+                },
+                navArgument("title") {
+                    type = NavType.StringType
+                    defaultValue = ""
+                },
+            ),
+        ) { entry ->
+            val id = entry.arguments?.getString("id").orEmpty()
+            val cid = entry.arguments?.getString("cid").orEmpty()
+            val title = entry.arguments?.getString("title").orEmpty()
+            RankDetailScreen(
+                rankId = id,
+                rankCid = cid,
+                fallbackTitle = title.ifEmpty { "榜单" },
                 onBack = { navController.popBackStack() },
                 onOpenPlayer = { navController.navigate("player") },
             )

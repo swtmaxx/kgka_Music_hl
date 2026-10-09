@@ -5,6 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.swtmaxx.kamusic.compose.core.SessionStore
 import com.swtmaxx.kamusic.compose.data.model.LyricLine
 import com.swtmaxx.kamusic.compose.data.model.PlaylistSummary
+import com.swtmaxx.kamusic.compose.data.model.RankDetail
+import com.swtmaxx.kamusic.compose.data.model.RankSummary
 import com.swtmaxx.kamusic.compose.data.model.Song
 import com.swtmaxx.kamusic.compose.data.model.UserProfile
 import com.swtmaxx.kamusic.compose.data.repo.AuthRepository
@@ -35,7 +37,8 @@ sealed interface UiState<out T> {
 data class HomeData(
     val playlists: List<PlaylistSummary> = emptyList(),
     val dailySongs: List<Song> = emptyList(),
-    val topSongs: List<Song> = emptyList(),
+    val ranks: List<RankSummary> = emptyList(),
+    val fmSongs: List<Song> = emptyList(),
     /** 每个 tab 独立的错误，互不影响。 */
     val errors: Map<Int, String> = emptyMap(),
 ) {
@@ -44,7 +47,7 @@ data class HomeData(
 
 class HomeViewModel(private val repo: MusicRepository) : ViewModel() {
 
-    /** 0 推荐歌单 / 1 每日推荐 / 2 排行榜 */
+    /** 0 推荐歌单 / 1 每日推荐 / 2 榜单 / 3 私人 FM */
     private val _tab = MutableStateFlow(0)
     val tab: StateFlow<Int> = _tab.asStateFlow()
 
@@ -69,31 +72,53 @@ class HomeViewModel(private val repo: MusicRepository) : ViewModel() {
 
             val deferredPlaylists = async { runCatching { repo.recommendedPlaylists(forceRefresh) } }
             val deferredDaily = async { runCatching { repo.dailyRecommend() } }
-            val deferredTop = async { runCatching { repo.topSongs() } }
+            val deferredRanks = async { runCatching { repo.rankList() } }
+            val deferredFm = async { runCatching { repo.personalFm() } }
 
             val resultPlaylists = deferredPlaylists.await()
             val resultDaily = deferredDaily.await()
-            val resultTop = deferredTop.await()
+            val resultRanks = deferredRanks.await()
+            val resultFm = deferredFm.await()
 
             val playlists = resultPlaylists.getOrNull()
             val daily = resultDaily.getOrNull()
-            val top = resultTop.getOrNull()
+            val ranks = resultRanks.getOrNull()
+            val fm = resultFm.getOrNull()
 
             if (playlists == null) errors[0] = "推荐歌单加载失败" else errors.remove(0)
             if (daily == null) errors[1] = "每日推荐加载失败" else errors.remove(1)
-            if (top == null) errors[2] = "排行榜加载失败" else errors.remove(2)
+            if (ranks == null) errors[2] = "榜单加载失败" else errors.remove(2)
+            if (fm == null) errors[3] = "私人 FM 加载失败" else errors.remove(3)
 
             _state.value = UiState.Ready(
                 HomeData(
                     playlists = playlists ?: data.playlists,
                     dailySongs = daily ?: data.dailySongs,
-                    topSongs = top ?: data.topSongs,
+                    ranks = ranks ?: data.ranks,
+                    fmSongs = fm ?: data.fmSongs,
                     errors = errors,
                 ),
             )
         }
     }
 
+    /**
+     * 私人 FM 换一批。
+     *
+     * 上游每次调用都返回新的推荐（不需要游标），所以「换一批」就是再调一次。
+     */
+    fun refreshFm() {
+        viewModelScope.launch {
+            val songs = runCatching { repo.personalFm() }.getOrNull() ?: return@launch
+            _state.update { state ->
+                if (state is UiState.Ready) {
+                    UiState.Ready(state.data.copy(fmSongs = songs))
+                } else {
+                    state
+                }
+            }
+        }
+    }
 }
 
 // ============================================================================
@@ -230,6 +255,71 @@ class PlaylistViewModel(
                     )
                 } else {
                     state
+                }
+            }
+        }
+    }
+}
+
+// ============================================================================
+// 榜单详情
+// ============================================================================
+
+data class RankUiData(
+    val info: RankDetail? = null,
+    val songs: List<Song> = emptyList(),
+    val loadingMore: Boolean = false,
+)
+
+class RankDetailViewModel(
+    private val repo: MusicRepository,
+    private val rankId: String,
+    private val rankCid: String,
+    private val fallbackTitle: String,
+) : ViewModel() {
+
+    private val _state = MutableStateFlow<UiState<RankUiData>>(UiState.Loading)
+    val state: StateFlow<UiState<RankUiData>> = _state.asStateFlow()
+
+    private var page = 1
+    private var endReached = false
+
+    val title: String
+        get() = (_state.value as? UiState.Ready)?.data?.info?.name ?: fallbackTitle
+
+    fun load() {
+        _state.value = UiState.Loading
+        page = 1
+        endReached = false
+        viewModelScope.launch {
+            val infoResult = runCatching { repo.rankDetail(rankId, rankCid) }
+            val songsResult = runCatching { repo.rankSongs(rankId, rankCid, page = 1) }
+            val songs = songsResult.getOrNull().orEmpty()
+            if (songs.isEmpty() && songsResult.isFailure) {
+                _state.value = UiState.Error(songsResult.exceptionOrNull()?.message ?: "榜单加载失败")
+                return@launch
+            }
+            endReached = songs.isEmpty()
+            _state.value = UiState.Ready(
+                RankUiData(info = infoResult.getOrNull(), songs = songs),
+            )
+        }
+    }
+
+    fun loadMore() {
+        val current = (_state.value as? UiState.Ready)?.data ?: return
+        if (endReached || current.loadingMore) return
+        _state.value = UiState.Ready(current.copy(loadingMore = true))
+        viewModelScope.launch {
+            val next = page + 1
+            val more = runCatching { repo.rankSongs(rankId, rankCid, page = next) }
+                .getOrNull().orEmpty()
+            if (more.isEmpty()) endReached = true else page = next
+            _state.update { s ->
+                if (s is UiState.Ready) {
+                    UiState.Ready(s.data.copy(songs = s.data.songs + more, loadingMore = false))
+                } else {
+                    s
                 }
             }
         }
