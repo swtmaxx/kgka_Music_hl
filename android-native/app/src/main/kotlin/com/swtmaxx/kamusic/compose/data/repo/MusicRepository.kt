@@ -2,11 +2,18 @@ package com.swtmaxx.kamusic.compose.data.repo
 
 import com.swtmaxx.kamusic.compose.core.SessionStore
 import com.swtmaxx.kamusic.compose.data.api.MusicApi
+import com.swtmaxx.kamusic.compose.data.model.AlbumDetail
+import com.swtmaxx.kamusic.compose.data.model.ArtistDetail
+import com.swtmaxx.kamusic.compose.data.model.ClimaxRange
+import com.swtmaxx.kamusic.compose.data.model.Comment
 import com.swtmaxx.kamusic.compose.data.model.LyricLine
 import com.swtmaxx.kamusic.compose.data.model.PlaylistSummary
+import com.swtmaxx.kamusic.compose.data.model.RankDetail
+import com.swtmaxx.kamusic.compose.data.model.RankSummary
 import com.swtmaxx.kamusic.compose.data.model.Song
 import com.swtmaxx.kamusic.compose.data.model.SongPage
 import com.swtmaxx.kamusic.compose.data.model.UserProfile
+import com.swtmaxx.kamusic.compose.data.model.VipStatus
 
 /** 带 TTL 的极简内存缓存（首页/我的等低频变化数据）。 */
 private class TimedCache<T>(private val ttlMs: Long) {
@@ -58,6 +65,55 @@ class MusicRepository(
     suspend fun dailyRecommend(): List<Song> = api.dailyRecommend()
 
     suspend fun topSongs(): List<Song> = api.topSongs()
+
+    // ===== 私人 FM =====
+
+    suspend fun personalFm(mode: String = "normal"): List<Song> = api.personalFm(mode)
+
+    // ===== 榜单 =====
+
+    suspend fun rankList(): List<RankSummary> = api.rankList()
+
+    suspend fun rankDetail(rankId: String, rankCid: String): RankDetail? =
+        api.rankDetail(rankId, rankCid)
+
+    suspend fun rankSongs(rankId: String, rankCid: String, page: Int = 1): List<Song> =
+        api.rankSongs(rankId, rankCid, page)
+
+    // ===== 歌手 / 专辑 =====
+
+    suspend fun artistDetail(id: String): ArtistDetail? = api.artistDetail(id)
+
+    suspend fun artistSongs(id: String, page: Int = 1): List<Song> = api.artistSongs(id, page)
+
+    suspend fun albumDetail(id: String): AlbumDetail? = api.albumDetail(id)
+
+    suspend fun albumSongs(id: String, page: Int = 1): List<Song> = api.albumSongs(id, page)
+
+    suspend fun searchAlbums(keywords: String, page: Int = 1): List<AlbumDetail> =
+        api.searchAlbums(keywords, page)
+
+    // ===== 评论 =====
+
+    /** 评论接口要的是 `mixsongid`（= `Song.albumAudioId`），不是 hash。 */
+    suspend fun comments(song: Song, page: Int = 1): List<Comment> =
+        api.comments(song.albumAudioId ?: song.id, page)
+
+    // ===== 云盘 / VIP =====
+
+    suspend fun cloudSongs(page: Int = 1): List<Song> = api.cloudSongs(page)
+
+    suspend fun userVipDetail(): VipStatus? = api.userVipDetail()
+
+    // ===== 高潮区间 =====
+
+    suspend fun songClimax(hash: String): ClimaxRange? = api.songClimax(hash)
+
+    // ===== 刷歌 / 风格推荐 =====
+
+    suspend fun homeDiscover(pageSize: Int = 6): List<Song> = api.homeDiscover(pageSize)
+
+    suspend fun everydayStyleRecommend(): List<Song> = api.everydayStyleRecommend()
 
     // ===== 用户 =====
 

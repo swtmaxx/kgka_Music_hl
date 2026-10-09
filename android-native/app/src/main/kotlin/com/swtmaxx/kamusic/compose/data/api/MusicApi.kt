@@ -12,15 +12,22 @@ import com.swtmaxx.kamusic.compose.core.obj
 import com.swtmaxx.kamusic.compose.core.objList
 import com.swtmaxx.kamusic.compose.core.str
 import com.swtmaxx.kamusic.compose.core.strAny
+import com.swtmaxx.kamusic.compose.data.model.AlbumDetail
+import com.swtmaxx.kamusic.compose.data.model.ArtistDetail
+import com.swtmaxx.kamusic.compose.data.model.ClimaxRange
+import com.swtmaxx.kamusic.compose.data.model.Comment
 import com.swtmaxx.kamusic.compose.data.model.LoginSession
 import com.swtmaxx.kamusic.compose.data.model.PlayUrl
 import com.swtmaxx.kamusic.compose.data.model.PlaylistSummary
 import com.swtmaxx.kamusic.compose.data.model.QrCheckResult
 import com.swtmaxx.kamusic.compose.data.model.QrCodeInfo
+import com.swtmaxx.kamusic.compose.data.model.RankDetail
+import com.swtmaxx.kamusic.compose.data.model.RankSummary
 import com.swtmaxx.kamusic.compose.data.model.SearchHotCategory
 import com.swtmaxx.kamusic.compose.data.model.Song
 import com.swtmaxx.kamusic.compose.data.model.SongPage
 import com.swtmaxx.kamusic.compose.data.model.UserProfile
+import com.swtmaxx.kamusic.compose.data.model.VipStatus
 import com.swtmaxx.kamusic.compose.data.model.parseSong
 import com.swtmaxx.kamusic.compose.data.model.parseSongList
 import com.swtmaxx.kamusic.compose.lyric.LyricParser
@@ -214,10 +221,191 @@ class MusicApi(private val client: ApiClient) {
         return songsFrom(raw, listOf("data", "songs", "song_list", "list"))
     }
 
-    suspend fun personalFm(mode: Int = 0, page: Int = 1): List<Song> {
-        val raw = client.get("/personal/fm", mapOf("mode" to mode, "page" to page))
-        return songsFrom(raw, listOf("data", "songs", "song_list", "list"))
+    // ===== 私人 FM =====
+
+    /**
+     * 私人 FM。
+     *
+     * `mode` 是**字符串**（`normal` 等）不是数字 —— 部署端 `personal_fm.js` 直接把它
+     * 透传给上游的 `mode` 字段。响应解包后是 `{song_list:[...]}`。
+     */
+    suspend fun personalFm(mode: String = "normal"): List<Song> {
+        val raw = client.get("/personal/fm", mapOf("mode" to mode))
+        return raw.asObjOrNull()?.arr("song_list").objList().map(::parseSong)
     }
+
+    // ===== 榜单 =====
+
+    /**
+     * 榜单列表（实测 55 个）。
+     *
+     * 响应解包后是 `{timestamp,total,show_line,theme,info:[...]}`。
+     */
+    suspend fun rankList(): List<RankSummary> =
+        client.get("/rank/list").asObjOrNull()
+            ?.arr("info").objList().orEmpty()
+            .map(RankSummary::parse)
+            .filter { it.id.isNotEmpty() }
+
+    /** 榜单详情（`intro` 里含「更新频率：每天」这类说明）。 */
+    suspend fun rankDetail(rankId: String, rankCid: String): RankDetail? =
+        client.get("/rank/info", mapOf("rankid" to rankId, "rank_cid" to rankCid))
+            .asObjOrNull()?.let(RankDetail::parse)
+
+    /**
+     * 榜单歌曲。
+     *
+     * 响应解包后是 `{total, songlist:[...]}`；条目**没有顶层 `hash`**，
+     * 依赖 [parseSong] 的 `audio_info` 回退链。
+     */
+    suspend fun rankSongs(
+        rankId: String,
+        rankCid: String,
+        page: Int = 1,
+        pageSize: Int = 30,
+    ): List<Song> {
+        val raw = client.get(
+            "/rank/audio",
+            mapOf(
+                "rankid" to rankId,
+                "rank_cid" to rankCid,
+                "page" to page,
+                "pagesize" to pageSize,
+            ),
+        )
+        return raw.asObjOrNull()?.arr("songlist").objList().map(::parseSong)
+    }
+
+    // ===== 歌手 =====
+
+    suspend fun artistDetail(id: String): ArtistDetail? =
+        client.get("/artist/detail", mapOf("id" to id))
+            .asObjOrNull()?.let(ArtistDetail::parse)
+
+    /** `/artist/audios` 解包后直接就是歌曲数组（条目带顶层 `hash`）。 */
+    suspend fun artistSongs(id: String, page: Int = 1, pageSize: Int = 30): List<Song> =
+        client.get(
+            "/artist/audios",
+            mapOf("id" to id, "page" to page, "pagesize" to pageSize),
+        ).objList().map(::parseSong)
+
+    // ===== 专辑 =====
+
+    /** `/album/detail` 解包后是长度为 1 的数组。 */
+    suspend fun albumDetail(id: String): AlbumDetail? =
+        client.get("/album/detail", mapOf("id" to id))
+            .objList().firstOrNull()?.let(AlbumDetail::parse)
+
+    /** `/album/songs` 解包后是 `{total, songs:[...]}`；条目字段嵌在 `base` 里。 */
+    suspend fun albumSongs(id: String, page: Int = 1, pageSize: Int = 30): List<Song> {
+        val raw = client.get(
+            "/album/songs",
+            mapOf("id" to id, "page" to page, "pagesize" to pageSize),
+        )
+        return raw.asObjOrNull()?.arr("songs").objList().map(::parseSong)
+    }
+
+    /** 搜索专辑：`/search?type=album`，解包后是 `{lists:[...]}`。 */
+    suspend fun searchAlbums(keywords: String, page: Int = 1, pageSize: Int = 20): List<AlbumDetail> {
+        val raw = client.get(
+            "/search",
+            mapOf(
+                "keywords" to keywords,
+                "type" to "album",
+                "page" to page,
+                "pagesize" to pageSize,
+            ),
+        )
+        return raw.asObjOrNull()?.arr("lists").objList()
+            .map(AlbumDetail::parse)
+            .filter { it.id.isNotEmpty() }
+    }
+
+    // ===== 评论 =====
+
+    /**
+     * 歌曲评论（只读）。
+     *
+     * ⚠️ 两个坑：
+     * 1. 必须传 **`mixsongid`**（即 `Song.albumAudioId`），传 hash 会被上游拒绝（502）；
+     * 2. 响应**没有 `data` 包裹**，是扁平的 `{status, err_code, count, list:[...]}`，
+     *    所以这里读的是信封顶层的 `list`。
+     */
+    suspend fun comments(
+        mixSongId: String,
+        page: Int = 1,
+        pageSize: Int = 20,
+    ): List<Comment> {
+        if (mixSongId.isEmpty()) return emptyList()
+        val raw = client.get(
+            "/comment/music",
+            mapOf("mixsongid" to mixSongId, "page" to page, "pagesize" to pageSize),
+        )
+        return raw.asObjOrNull()?.arr("list").objList().map(Comment::parse)
+    }
+
+    // ===== 云盘 =====
+
+    /**
+     * 云盘列表（需登录）。响应解包后是 `{list:[...], used_size, ...}`。
+     * 未登录时上游会返回 5xx，调用方应自行容错。
+     */
+    suspend fun cloudSongs(page: Int = 1, pageSize: Int = 50): List<Song> {
+        val raw = client.get("/user/cloud", mapOf("page" to page, "pagesize" to pageSize))
+        return raw.asObjOrNull()?.arr("list").objList().map(::parseSong)
+    }
+
+    /** 云盘歌曲播放地址（需登录）。 */
+    suspend fun cloudSongUrl(song: Song): PlayUrl {
+        val json = client.get(
+            "/user/cloud/url",
+            mapOf(
+                "hash" to song.hash,
+                "album_id" to song.albumId,
+                "album_audio_id" to song.albumAudioId,
+                "quality" to "128",
+            ),
+        ).asObjOrNull() ?: EMPTY_JSON_OBJECT
+        return PlayUrl.parse(json)
+    }
+
+    // ===== VIP =====
+
+    /** VIP 状态（需登录；未登录时上游 502，调用方应自行容错）。 */
+    suspend fun userVipDetail(): VipStatus? =
+        client.get("/user/vip/detail").asObjOrNull()?.let(VipStatus::parse)
+
+    // ===== 高潮区间 =====
+
+    /** 歌曲高潮区间，用于进度条高亮。解包后是长度为 1 的数组。 */
+    suspend fun songClimax(hash: String): ClimaxRange? {
+        if (hash.isEmpty()) return null
+        return client.get("/song/climax", mapOf("hash" to hash))
+            .objList().firstOrNull()?.let(ClimaxRange::parse)
+    }
+
+    // ===== 首页刷歌 / 风格推荐 =====
+
+    /**
+     * 首页刷歌（无限流推荐）。
+     *
+     * 解包后是 `{items:[{item_id,item_type,song_info:{...}}]}`；`song_info` 才是歌曲本体。
+     * `pageSize` 建议小值（官方客户端默认 4），适合手表逐批拉取。
+     */
+    suspend fun homeDiscover(pageSize: Int = 6, todayPlayNum: Int = 0): List<Song> {
+        val raw = client.get(
+            "/home/discover",
+            mapOf("pagesize" to pageSize, "today_play_num" to todayPlayNum),
+        )
+        return raw.asObjOrNull()?.arr("items").objList()
+            .mapNotNull { it.obj("song_info") }
+            .map(::parseSong)
+    }
+
+    /** 按风格每日推荐。解包后是 `{song_list:[...], title, tag_info, ...}`。 */
+    suspend fun everydayStyleRecommend(): List<Song> =
+        client.get("/everyday/style/recommend").asObjOrNull()
+            ?.arr("song_list").objList().orEmpty().map(::parseSong)
 
     // ===== 搜索 =====
 

@@ -111,22 +111,30 @@ private fun parseCoverUrl(json: JsonObject): String? =
     )
         ?: normalizeImageUrl(json.obj("trans_param").strAny("union_cover", "cover"))
         ?: normalizeImageUrl(json.obj("album_info").strAny("sizable_cover", "cover", "img"))
+        ?: normalizeImageUrl(json.obj("base").strAny("sizable_cover", "cover", "img"))
 
 /** 从任意歌曲形状的 JSON 解析。所有接口共用。 */
 fun parseSong(json: JsonObject): Song {
+    // /album/songs 这类接口把歌名/歌手/专辑 id 全部嵌在 `base` 里，顶层只有
+    // audio_info / album_info / authors，因此每项都要有 base 回退。
+    val base = json.obj("base")
     val hash = parseHash(json)
     val audioId = json.strAny("MixSongID", "mixsongid", "audio_id", "album_audio_id", "songid", "fileid")
+        ?: base.strAny("audio_id", "album_audio_id")
     val artist = json.strAny(
         "SingerName", "author_name", "singername", "singer_name", "singer",
-    ) ?: parseSingerArray(json) ?: "未知艺人"
+    ) ?: parseSingerArray(json) ?: base.str("author_name") ?: "未知艺人"
 
     return Song(
         id = audioId ?: hash,
-        title = json.strAny("FileName", "songname", "name", "audio_name", "filename") ?: "未知歌曲",
+        title = json.strAny("FileName", "songname", "name", "audio_name", "filename")
+            ?: base.strAny("audio_name", "songname")
+            ?: "未知歌曲",
         artist = artist,
         hash = hash,
-        albumId = json.strAny("AlbumID", "album_id"),
-        albumAudioId = json.strAny("album_audio_id", "MixSongID", "mixsongid", "audio_id"),
+        albumId = json.strAny("AlbumID", "album_id") ?: base.str("album_id"),
+        albumAudioId = json.strAny("album_audio_id", "MixSongID", "mixsongid", "audio_id")
+            ?: base.str("album_audio_id"),
         albumName = json.strAny("AlbumName", "album_name")
             ?: json.obj("album_info").str("album_name"),
         coverUrl = parseCoverUrl(json),
@@ -320,3 +328,197 @@ data class QrCheckResult(
 // ============================================================================
 
 data class SearchHotCategory(val name: String, val keywords: List<String>)
+
+// ============================================================================
+// 榜单（/rank/list、/rank/audio）
+// ============================================================================
+
+/**
+ * 榜单条目。
+ *
+ * `/rank/list` 返回 55 个榜，每项带 `rankid` 与 `classify`（即调 `/rank/audio` 时要传的 `rank_cid`）。
+ */
+data class RankSummary(
+    val id: String,
+    val cid: String,
+    val name: String,
+    val coverUrl: String? = null,
+    /** 1=每天 / 0=不定期…（官方 `intro` 里会写「更新频率：每天」）。 */
+    val updateFrequency: Int? = null,
+    val playCount: Int? = null,
+) {
+    companion object {
+        fun parse(json: JsonObject): RankSummary = RankSummary(
+            id = json.strAny("rankid", "rankId", "id").orEmpty(),
+            cid = json.strAny("classify", "rank_cid", "rankCid").orEmpty(),
+            name = json.strAny("rankname", "rankName", "name") ?: "未命名榜单",
+            coverUrl = normalizeImageUrl(
+                json.strAny("img_9", "base_img", "banner_9", "img", "album_img_9"),
+            ),
+            updateFrequency = json.int("update_frequency_type"),
+            playCount = json.intAny("play_times", "playcount"),
+        )
+    }
+}
+
+/** `/rank/info` 的详情。 */
+data class RankDetail(
+    val name: String,
+    val intro: String?,
+) {
+    companion object {
+        fun parse(json: JsonObject): RankDetail = RankDetail(
+            name = json.strAny("rankname", "rankName", "name") ?: "榜单",
+            intro = json.strAny("intro", "long_intro"),
+        )
+    }
+}
+
+// ============================================================================
+// 歌手 / 专辑
+// ============================================================================
+
+data class ArtistDetail(
+    val id: String,
+    val name: String,
+    val avatarUrl: String? = null,
+    val songCount: Int? = null,
+    val albumCount: Int? = null,
+    val fansCount: Int? = null,
+    val intro: String? = null,
+) {
+    val subtitle: String
+        get() = listOfNotNull(
+            songCount?.let { "$it 首" },
+            albumCount?.let { "$it 专辑" },
+        ).joinToString(" · ")
+
+    companion object {
+        fun parse(json: JsonObject): ArtistDetail = ArtistDetail(
+            id = json.strAny("author_id", "authorId", "id").orEmpty(),
+            name = json.strAny("author_name", "authorName", "name", "singername") ?: "未知歌手",
+            avatarUrl = normalizeImageUrl(
+                json.strAny("sizable_avatar", "avatar", "img", "pic"),
+            ),
+            songCount = json.intAny("song_count", "songcount"),
+            albumCount = json.intAny("album_count", "albumcount"),
+            fansCount = json.intAny("fansnums", "fans_count"),
+            intro = json.strAny("intro", "long_intro"),
+        )
+    }
+}
+
+/**
+ * 专辑。
+ *
+ * 同时服务 `/album/detail`（取 `data[0]`）与 `/search?type=album`（取 `data.lists`）
+ * 两种字段命名（`album_id`/`albumid`、`album_name`/`albumname`、`sizable_cover`/`img`）。
+ */
+data class AlbumDetail(
+    val id: String,
+    val name: String,
+    val artistName: String? = null,
+    val coverUrl: String? = null,
+    val songCount: Int? = null,
+    val publishDate: String? = null,
+    val intro: String? = null,
+) {
+    val subtitle: String
+        get() = listOfNotNull(artistName, publishDate).joinToString(" · ")
+
+    companion object {
+        fun parse(json: JsonObject): AlbumDetail = AlbumDetail(
+            id = json.strAny("album_id", "albumid", "id").orEmpty(),
+            name = json.strAny("album_name", "albumname", "name") ?: "未知专辑",
+            artistName = json.strAny("author_name", "singername", "singer_name")
+                ?: json.arr("authors").objList().firstOrNull()
+                    ?.strAny("author_name", "name"),
+            coverUrl = normalizeImageUrl(
+                json.strAny("sizable_cover", "cover", "img", "album_sizable_cover"),
+            ),
+            songCount = json.intAny("song_count", "songcount", "song_count_total"),
+            publishDate = json.strAny("publish_date", "publish_time"),
+            intro = json.strAny("intro", "album_intro"),
+        )
+    }
+}
+
+// ============================================================================
+// 评论
+// ============================================================================
+
+/**
+ * 歌曲评论（只读）。
+ *
+ * 注意 `/comment/music` 的响应**没有 `data` 包裹**，是扁平的
+ * `{status, err_code, count, list:[...]}`，且必须传 `mixsongid`（不是 hash）。
+ */
+data class Comment(
+    val id: String,
+    val userName: String,
+    val avatarUrl: String? = null,
+    val content: String,
+    val time: String? = null,
+    val likeCount: Int? = null,
+    val replyCount: Int? = null,
+) {
+    companion object {
+        fun parse(json: JsonObject): Comment = Comment(
+            id = json.strAny("id", "comment_id").orEmpty(),
+            userName = json.strAny("user_name", "username", "nickname") ?: "匿名",
+            avatarUrl = normalizeImageUrl(
+                json.strAny("user_pic", "user_avatar", "avatar"),
+            ),
+            content = json.strAny("content", "pcontent").orEmpty(),
+            time = json.strAny("addtime", "time"),
+            likeCount = json.intAny("like", "like_count"),
+            replyCount = json.intAny("reply_num", "reply_count"),
+        )
+    }
+}
+
+// ============================================================================
+// VIP
+// ============================================================================
+
+data class VipStatus(
+    val isVip: Boolean,
+    val label: String,
+    val expireText: String? = null,
+) {
+    companion object {
+        /**
+         * `/user/vip/detail` 需要登录，未登录时上游返回 502，调用方应 try/catch。
+         * 字段名在不同版本间不统一，故全部走宽容读取。
+         */
+        fun parse(json: JsonObject): VipStatus {
+            val expire = json.strAny(
+                "vip_end_time", "end_time", "expire_time", "union_vip_end_time",
+            )
+            val isVip = json.intAny("is_vip", "vip_type", "is_vip_user", "busi_vip")?.let { it > 0 }
+                ?: !expire.isNullOrEmpty()
+            return VipStatus(
+                isVip = isVip,
+                label = if (isVip) "VIP" else "未开通",
+                expireText = expire,
+            )
+        }
+    }
+}
+
+// ============================================================================
+// 高潮区间（/song/climax）
+// ============================================================================
+
+/** 歌曲高潮区间（毫秒）。用于进度条高亮。 */
+data class ClimaxRange(val startMs: Long, val endMs: Long) {
+    val isValid: Boolean get() = endMs > startMs && startMs >= 0
+
+    companion object {
+        fun parse(json: JsonObject): ClimaxRange? {
+            val start = json.long("start_time") ?: return null
+            val end = json.long("end_time") ?: return null
+            return ClimaxRange(start, end).takeIf { it.isValid }
+        }
+    }
+}
