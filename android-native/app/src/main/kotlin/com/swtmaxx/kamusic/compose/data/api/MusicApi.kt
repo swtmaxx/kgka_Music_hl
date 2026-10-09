@@ -112,11 +112,18 @@ class MusicApi(private val client: ApiClient) {
     // ===== 登录 =====
 
     suspend fun sendLoginCode(mobile: String) {
-        val json = client.post("/captcha/sent", query = mapOf("mobile" to mobile)).asObjOrNull()
-        val status = json.int("status")
-        val errCode = json.intAny("error_code", "errcode")
-        if (status != 1 && errCode != 0) {
-            throw IllegalStateException("发送验证码失败，${LoginJudgement.REGISTER_HINT}${LoginJudgement.failureSuffix(json ?: EMPTY_JSON_OBJECT)}")
+        // 必须用 postRaw：成功响应是 {"data":{"count":8},"status":1,"error_code":0}，
+        // data 是对象，走 post 会被解包成 {"count":8}，顶层 status 丢失，
+        // 导致「短信已发出但客户端报失败」。
+        val envelope = client.postRaw("/captcha/sent", query = mapOf("mobile" to mobile)).asObjOrNull()
+        val status = envelope.int("status")
+        val errCode = envelope.intAny("error_code", "errcode")
+        val succeeded = status == 1 || errCode == 0
+        if (!succeeded) {
+            throw IllegalStateException(
+                "发送验证码失败，${LoginJudgement.REGISTER_HINT}" +
+                    LoginJudgement.failureSuffix(envelope ?: EMPTY_JSON_OBJECT),
+            )
         }
     }
 
@@ -355,6 +362,11 @@ class MusicApi(private val client: ApiClient) {
     }
 
     private fun findCandidateRecursive(value: JsonElement?): JsonObject? {
+        // 顶层就是数组时（如 {"data":[{...}]} 解包后）也要能往下找
+        if (value is JsonArray) {
+            value.forEach { item -> findCandidateRecursive(item)?.let { return it } }
+            return null
+        }
         val obj = value.asObjOrNull() ?: return null
         if (hasCandidateKeys(obj)) return obj
         for (key in listOf("candidates", "candidate", "list", "lyrics", "items", "info", "data")) {

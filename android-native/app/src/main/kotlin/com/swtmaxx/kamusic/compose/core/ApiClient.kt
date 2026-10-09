@@ -58,13 +58,30 @@ class ApiClient(
     fun session(): Session = sessionStore.session
 
     suspend fun get(path: String, query: Map<String, Any?> = emptyMap()): JsonElement? =
-        execute(buildRequest("GET", path, query, null))
+        execute(buildRequest("GET", path, query, null), unwrap = true)
 
     suspend fun post(
         path: String,
         query: Map<String, Any?> = emptyMap(),
         body: Map<String, Any?>? = null,
-    ): JsonElement? = execute(buildRequest("POST", path, query, body))
+    ): JsonElement? = execute(buildRequest("POST", path, query, body), unwrap = true)
+
+    /**
+     * 与 [get] 相同，但**不解包 `data`**，保留顶层 `status` / `error_code`。
+     *
+     * 用于需要读信封本身的接口。典型例子：`/captcha/sent` 成功时返回
+     * `{"data":{"count":8},"status":1,"error_code":0}`，
+     * `data` 是对象 → 走 [get] 会被解包成 `{"count":8}`，顶层 `status` 就没了。
+     */
+    suspend fun getRaw(path: String, query: Map<String, Any?> = emptyMap()): JsonElement? =
+        execute(buildRequest("GET", path, query, null), unwrap = false)
+
+    /** 与 [post] 相同，但**不解包 `data`**。 */
+    suspend fun postRaw(
+        path: String,
+        query: Map<String, Any?> = emptyMap(),
+        body: Map<String, Any?>? = null,
+    ): JsonElement? = execute(buildRequest("POST", path, query, body), unwrap = false)
 
     // ===== 内部实现 =====
 
@@ -120,7 +137,7 @@ class ApiClient(
         return builder.build()
     }
 
-    private suspend fun execute(request: Request): JsonElement? = withContext(Dispatchers.IO) {
+    private suspend fun execute(request: Request, unwrap: Boolean): JsonElement? = withContext(Dispatchers.IO) {
         var lastError: Exception? = null
         for (attempt in 0..MAX_RETRIES) {
             try {
@@ -146,7 +163,7 @@ class ApiClient(
 
                 val parsed = runCatching { KaJson.parseToJsonElement(text) }.getOrNull()
                     ?: return@withContext JsonPrimitive(text)
-                return@withContext unwrapData(parsed)
+                return@withContext if (unwrap) unwrapData(parsed) else parsed
             } catch (e: ApiException) {
                 throw e
             } catch (e: IOException) {
