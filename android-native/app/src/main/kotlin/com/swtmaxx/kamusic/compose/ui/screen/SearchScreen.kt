@@ -5,6 +5,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -12,12 +13,13 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import androidx.wear.compose.foundation.lazy.ScalingLazyColumn
+import androidx.wear.compose.foundation.lazy.itemsIndexed
+import androidx.wear.compose.foundation.lazy.rememberScalingLazyListState
+import androidx.wear.compose.material3.MaterialTheme
+import androidx.wear.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -39,7 +41,10 @@ import com.swtmaxx.kamusic.compose.ui.component.ErrorBox
 import com.swtmaxx.kamusic.compose.ui.component.LoadingBox
 import com.swtmaxx.kamusic.compose.ui.component.PillTab
 import com.swtmaxx.kamusic.compose.ui.component.TrackRow
+import com.swtmaxx.kamusic.compose.ui.component.WatchAutoCentering
 import com.swtmaxx.kamusic.compose.ui.component.WatchTextField
+import com.swtmaxx.kamusic.compose.ui.component.watchRotary
+import com.swtmaxx.kamusic.compose.ui.component.watchScalingParams
 import com.swtmaxx.kamusic.compose.ui.theme.TextPrimary
 import com.swtmaxx.kamusic.compose.ui.theme.TextSecondary
 import com.swtmaxx.kamusic.compose.ui.theme.WatchMetrics
@@ -61,6 +66,10 @@ fun SearchScreen(onOpenPlayer: () -> Unit) {
         },
     )
     val state by viewModel.state.collectAsStateWithLifecycle()
+
+    // 结果列表与建议列表共用同一个表冠滚动状态。本页有固定搜索行，因此不套 ScreenScaffold
+    // （否则系统时间会与搜索行叠加），只取列表本身的手表能力。
+    val listState = rememberScalingLazyListState()
 
     LaunchedEffect(Unit) { viewModel.ensureHotLoaded() }
 
@@ -104,7 +113,14 @@ fun SearchScreen(onOpenPlayer: () -> Unit) {
 
             state.error != null -> ErrorBox(state.error!!) { viewModel.submit() }
 
-            state.results.isNotEmpty() -> LazyColumn(modifier = Modifier.fillMaxSize()) {
+            state.results.isNotEmpty() -> ScalingLazyColumn(
+                scalingParams = watchScalingParams(),
+                state = listState,
+                rotaryScrollableBehavior = watchRotary(listState),
+                contentPadding = PaddingValues(0.dp),
+                autoCentering = WatchAutoCentering,
+                modifier = Modifier.fillMaxSize(),
+            ) {
                 itemsIndexed(
                     state.results,
                     key = { index, song -> "${song.hash}_$index" },
@@ -120,7 +136,12 @@ fun SearchScreen(onOpenPlayer: () -> Unit) {
                 }
             }
 
-            state.query.isNotBlank() && state.suggestions.isNotEmpty() -> LazyColumn(
+            state.query.isNotBlank() && state.suggestions.isNotEmpty() -> ScalingLazyColumn(
+                scalingParams = watchScalingParams(),
+                state = listState,
+                rotaryScrollableBehavior = watchRotary(listState),
+                contentPadding = PaddingValues(0.dp),
+                autoCentering = WatchAutoCentering,
                 modifier = Modifier.fillMaxSize(),
             ) {
                 itemsIndexed(state.suggestions) { _, suggestion ->

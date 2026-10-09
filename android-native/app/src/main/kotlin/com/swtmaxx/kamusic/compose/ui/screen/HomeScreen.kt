@@ -14,15 +14,16 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import androidx.wear.compose.foundation.lazy.ScalingLazyColumn
+import androidx.wear.compose.foundation.lazy.itemsIndexed
+import androidx.wear.compose.foundation.lazy.rememberScalingLazyListState
+import androidx.wear.compose.material3.MaterialTheme
+import androidx.wear.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -45,6 +46,9 @@ import com.swtmaxx.kamusic.compose.ui.component.ErrorBox
 import com.swtmaxx.kamusic.compose.ui.component.LoadingBox
 import com.swtmaxx.kamusic.compose.ui.component.PillTab
 import com.swtmaxx.kamusic.compose.ui.component.TrackRow
+import com.swtmaxx.kamusic.compose.ui.component.WatchAutoCentering
+import com.swtmaxx.kamusic.compose.ui.component.watchRotary
+import com.swtmaxx.kamusic.compose.ui.component.watchScalingParams
 import com.swtmaxx.kamusic.compose.ui.theme.SurfaceRaised
 import com.swtmaxx.kamusic.compose.ui.theme.TextPrimary
 import com.swtmaxx.kamusic.compose.ui.theme.TextSecondary
@@ -183,8 +187,21 @@ private fun SongList(songs: List<Song>, onPlaySong: (List<Song>, Int) -> Unit) {
         EmptyBox("暂无歌曲")
         return
     }
-    LazyColumn(modifier = Modifier.fillMaxSize()) {
-        itemsIndexed(songs, key = { index, song -> "${song.hash}_$index" }) { index, song ->
+    // 换成 Wear 的 ScalingLazyColumn 以接入表冠滚动。本页有固定 tab 行，因此不套
+    // ScreenScaffold（否则系统时间会与 tab 行叠加），只取列表本身的手表能力。
+    val listState = rememberScalingLazyListState()
+    ScalingLazyColumn(
+        scalingParams = watchScalingParams(),
+        state = listState,
+        rotaryScrollableBehavior = watchRotary(listState),
+        contentPadding = PaddingValues(0.dp),
+        autoCentering = WatchAutoCentering,
+        modifier = Modifier.fillMaxSize(),
+    ) {
+        itemsIndexed(
+            songs,
+            key = { index, song -> "${song.hash}_$index" },
+        ) { index, song ->
             TrackRow(
                 song = song,
                 isCurrent = false,

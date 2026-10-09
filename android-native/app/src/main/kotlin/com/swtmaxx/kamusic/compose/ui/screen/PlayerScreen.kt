@@ -14,8 +14,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import androidx.wear.compose.material3.MaterialTheme
+import androidx.wear.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -44,6 +44,7 @@ import com.swtmaxx.kamusic.compose.playback.PlayMode
 import com.swtmaxx.kamusic.compose.ui.LocalAppContainer
 import com.swtmaxx.kamusic.compose.ui.component.CircleIconButton
 import com.swtmaxx.kamusic.compose.ui.component.PlayPauseButton
+import com.swtmaxx.kamusic.compose.ui.component.watchSwipeBack
 import com.swtmaxx.kamusic.compose.ui.component.WatchProgressBar
 import com.swtmaxx.kamusic.compose.ui.theme.AccentBlue
 import com.swtmaxx.kamusic.compose.ui.theme.TextDisabled
@@ -86,6 +87,9 @@ fun PlayerScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            // 右滑返回。手势层放在 padding 之前，保证覆盖整个屏幕（含 padding 让出的左右边距），
+            // 且只识别水平手势，与歌词列表的纵向滚动互不干扰。
+            .watchSwipeBack(onBack)
             .background(Color.Black)
             .padding(horizontal = WatchMetrics.gutter),
     ) {

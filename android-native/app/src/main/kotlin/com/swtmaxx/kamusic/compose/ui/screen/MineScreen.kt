@@ -18,10 +18,11 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import androidx.wear.compose.material3.AlertDialog
+import androidx.wear.compose.material3.Icon
+import androidx.wear.compose.material3.MaterialTheme
+import androidx.wear.compose.material3.Text
+import androidx.wear.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -120,7 +121,7 @@ fun MineScreen(
                     ) {
                         val avatar = data.profile?.avatarUrl
                         if (avatar.isNullOrEmpty()) {
-                            androidx.compose.material3.Icon(
+                            Icon(
                                 painter = painterResource(R.drawable.ic_person),
                                 contentDescription = null,
                                 tint = TextDisabled,
@@ -209,7 +210,7 @@ fun MineScreen(
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    androidx.compose.material3.Icon(
+                    Icon(
                         painter = painterResource(R.drawable.ic_logout),
                         contentDescription = null,
                         tint = TextSecondary,
@@ -238,6 +239,8 @@ fun MineScreen(
 
     if (editingUrl) {
         AlertDialog(
+            // Wear 版 AlertDialog 比手机版多一个 visible 参数（它自带显隐动画）。
+            visible = true,
             onDismissRequest = { editingUrl = false },
             title = { Text("API 服务器地址", style = MaterialTheme.typography.titleSmall) },
             text = {

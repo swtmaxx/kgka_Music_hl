@@ -17,11 +17,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import androidx.wear.compose.material3.CircularProgressIndicator
+import androidx.wear.compose.material3.Icon
+import androidx.wear.compose.material3.MaterialTheme
+import androidx.wear.compose.material3.Text
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -114,49 +113,6 @@ fun PlayPauseButton(
     )
 }
 
-// ============================================================================
-// 顶栏
-// ============================================================================
-
-@Composable
-fun WatchTopBar(
-    title: String,
-    onBack: (() -> Unit)? = null,
-    modifier: Modifier = Modifier,
-    actions: @Composable androidx.compose.foundation.layout.RowScope.() -> Unit = {},
-) {
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(WatchMetrics.appBar)
-            .padding(horizontal = WatchMetrics.gutterSmall),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        if (onBack != null) {
-            IconButton(onClick = onBack, modifier = Modifier.size(WatchMetrics.appBar)) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_arrow_back),
-                    contentDescription = "返回",
-                    tint = TextPrimary,
-                    modifier = Modifier.size(WatchMetrics.iconLarge),
-                )
-            }
-        } else {
-            Spacer(Modifier.width(WatchMetrics.gutterSmall))
-        }
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleMedium,
-            color = TextPrimary,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f),
-        )
-        actions()
-    }
-}
-
-typealias RowScopeContent = @Composable androidx.compose.foundation.layout.RowScope.() -> Unit
 // ============================================================================
 // 进度条
 // ============================================================================
@@ -331,7 +287,8 @@ fun LoadingBox(message: String = "加载中…", modifier: Modifier = Modifier) 
     Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             CircularProgressIndicator(
-                color = AccentBlue,
+                // Wear 版没有 `color` 参数（改用 colors），这里靠 colorScheme.primary 着色，
+                // 主题里已把 primary 设为 AccentBlue，视觉效果与改造前一致。
                 strokeWidth = 2.dp,
                 modifier = Modifier.size(24.dp),
             )
