@@ -12,19 +12,6 @@ import org.junit.Assert.assertNull
 import org.junit.Before
 import org.junit.Test
 
-/** 可变的假会话源，替代依赖 Android Context 的 SessionStore。 */
-private class FakeSessions(
-    override var effectiveApiBaseUrl: String,
-    initial: Session = Session.EMPTY,
-) : ApiSessionSource {
-    override var session: Session = initial
-        private set
-
-    override suspend fun updateSessionId(sessionId: String) {
-        session = session.copy(sessionId = sessionId)
-    }
-}
-
 /**
  * `getRaw` / `postRaw` 契约测试。
  *
