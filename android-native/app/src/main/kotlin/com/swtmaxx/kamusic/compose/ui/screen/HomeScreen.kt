@@ -14,11 +14,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.lazy.items
 import androidx.wear.compose.foundation.lazy.ScalingLazyColumn
 import androidx.wear.compose.foundation.lazy.itemsIndexed
 import androidx.wear.compose.foundation.lazy.rememberScalingLazyListState
@@ -57,7 +55,7 @@ import com.swtmaxx.kamusic.compose.ui.vm.HomeData
 import com.swtmaxx.kamusic.compose.ui.vm.HomeViewModel
 import com.swtmaxx.kamusic.compose.ui.vm.UiState
 
-private val TABS = listOf("推荐", "每日", "排行", "电台")
+private val TABS = listOf("推荐", "每日", "排行")
 
 @Composable
 fun HomeScreen(
@@ -105,7 +103,6 @@ fun HomeScreen(
                     container.playbackController.playFrom(songs, index)
                     onOpenPlayer()
                 },
-                onSelectFm = viewModel::selectFm,
             )
         }
     }
@@ -118,7 +115,6 @@ private fun HomeContent(
     onRetry: () -> Unit,
     onOpenPlaylist: (id: String, title: String) -> Unit,
     onPlaySong: (List<Song>, Int) -> Unit,
-    onSelectFm: (String) -> Unit,
 ) {
     val error = data.errorFor(tab)
     if (error != null) {
@@ -130,7 +126,6 @@ private fun HomeContent(
         0 -> PlaylistGrid(data.playlists, onOpenPlaylist)
         1 -> SongList(data.dailySongs, onPlaySong)
         2 -> SongList(data.topSongs, onPlaySong)
-        3 -> FmSection(data, onSelectFm, onPlaySong)
     }
 }
 
@@ -208,34 +203,6 @@ private fun SongList(songs: List<Song>, onPlaySong: (List<Song>, Int) -> Unit) {
                 onClick = { onPlaySong(songs, index) },
             )
         }
-    }
-}
-
-@Composable
-private fun FmSection(
-    data: HomeData,
-    onSelectFm: (String) -> Unit,
-    onPlaySong: (List<Song>, Int) -> Unit,
-) {
-    val stations = data.fmGroups.flatMap { it.stations }
-    Column(modifier = Modifier.fillMaxSize()) {
-        if (stations.isNotEmpty()) {
-            LazyRow(
-                contentPadding = PaddingValues(horizontal = WatchMetrics.gutterSmall),
-                horizontalArrangement = Arrangement.spacedBy(WatchMetrics.gutterSmall),
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                items(stations, key = { it.id }) { station ->
-                    PillTab(
-                        text = station.name,
-                        selected = station.id == data.selectedFmId,
-                        onClick = { onSelectFm(station.id) },
-                    )
-                }
-            }
-            Spacer(Modifier.height(WatchMetrics.gutterSmall))
-        }
-        SongList(data.fmSongs, onPlaySong)
     }
 }
 

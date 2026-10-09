@@ -12,9 +12,6 @@ import com.swtmaxx.kamusic.compose.core.obj
 import com.swtmaxx.kamusic.compose.core.objList
 import com.swtmaxx.kamusic.compose.core.str
 import com.swtmaxx.kamusic.compose.core.strAny
-import com.swtmaxx.kamusic.compose.data.model.FmClassGroup
-import com.swtmaxx.kamusic.compose.data.model.FmImage
-import com.swtmaxx.kamusic.compose.data.model.FmStation
 import com.swtmaxx.kamusic.compose.data.model.LoginSession
 import com.swtmaxx.kamusic.compose.data.model.PlayUrl
 import com.swtmaxx.kamusic.compose.data.model.PlaylistSummary
@@ -220,41 +217,6 @@ class MusicApi(private val client: ApiClient) {
     suspend fun personalFm(mode: Int = 0, page: Int = 1): List<Song> {
         val raw = client.get("/personal/fm", mapOf("mode" to mode, "page" to page))
         return songsFrom(raw, listOf("data", "songs", "song_list", "list"))
-    }
-
-    suspend fun fmClassGroups(): List<FmClassGroup> {
-        val raw = client.get("/fm/class")
-        val groups = raw.asObjOrNull()?.let { it.arr("data") ?: it.arr("list") } ?: raw.asArrOrNull()
-        return groups.objList().map { group ->
-            FmClassGroup(
-                id = group.strAny("id", "fm_class_id").orEmpty(),
-                name = group.strAny("name", "class_name") ?: "未知分类",
-                stations = group.arr("stations").objList().map { station ->
-                    FmStation(
-                        id = station.strAny("id", "fmid").orEmpty(),
-                        name = station.strAny("name", "fm_name") ?: "未知电台",
-                        type = station.int("type") ?: 0,
-                    )
-                },
-            )
-        }.filter { it.stations.isNotEmpty() }
-    }
-
-    suspend fun fmSongs(fmIds: List<String>, page: Int = 1, pageSize: Int = 30): List<Song> {
-        val raw = client.get(
-            "/fm/songs",
-            mapOf("fmids" to fmIds, "page" to page, "pagesize" to pageSize),
-        )
-        return songsFrom(raw, listOf("data", "songs", "song_list", "list"))
-    }
-
-    suspend fun fmImages(fmIds: List<String>): Map<String, FmImage> {
-        val raw = client.get("/fm/image", mapOf("fmid" to fmIds))
-        val list = raw.asObjOrNull()?.let { it.arr("data") ?: it.arr("list") } ?: raw.asArrOrNull()
-        return list.objList().mapNotNull { item ->
-            val id = item.strAny("fmid", "id") ?: return@mapNotNull null
-            id to FmImage(id, item.strAny("img", "image", "imgurl"))
-        }.toMap()
     }
 
     // ===== 搜索 =====

@@ -3,7 +3,6 @@ package com.swtmaxx.kamusic.compose.ui.vm
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.swtmaxx.kamusic.compose.core.SessionStore
-import com.swtmaxx.kamusic.compose.data.model.FmClassGroup
 import com.swtmaxx.kamusic.compose.data.model.LyricLine
 import com.swtmaxx.kamusic.compose.data.model.PlaylistSummary
 import com.swtmaxx.kamusic.compose.data.model.Song
@@ -37,9 +36,6 @@ data class HomeData(
     val playlists: List<PlaylistSummary> = emptyList(),
     val dailySongs: List<Song> = emptyList(),
     val topSongs: List<Song> = emptyList(),
-    val fmGroups: List<FmClassGroup> = emptyList(),
-    val fmSongs: List<Song> = emptyList(),
-    val selectedFmId: String? = null,
     /** 每个 tab 独立的错误，互不影响。 */
     val errors: Map<Int, String> = emptyMap(),
 ) {
@@ -48,7 +44,7 @@ data class HomeData(
 
 class HomeViewModel(private val repo: MusicRepository) : ViewModel() {
 
-    /** 0 推荐歌单 / 1 每日推荐 / 2 排行榜 / 3 电台 */
+    /** 0 推荐歌单 / 1 每日推荐 / 2 排行榜 */
     private val _tab = MutableStateFlow(0)
     val tab: StateFlow<Int> = _tab.asStateFlow()
 
@@ -74,58 +70,30 @@ class HomeViewModel(private val repo: MusicRepository) : ViewModel() {
             val deferredPlaylists = async { runCatching { repo.recommendedPlaylists(forceRefresh) } }
             val deferredDaily = async { runCatching { repo.dailyRecommend() } }
             val deferredTop = async { runCatching { repo.topSongs() } }
-            val deferredFm = async { runCatching { repo.fmClassGroups() } }
 
             val resultPlaylists = deferredPlaylists.await()
             val resultDaily = deferredDaily.await()
             val resultTop = deferredTop.await()
-            val resultFm = deferredFm.await()
 
             val playlists = resultPlaylists.getOrNull()
             val daily = resultDaily.getOrNull()
             val top = resultTop.getOrNull()
-            val fmGroups = resultFm.getOrNull()
 
             if (playlists == null) errors[0] = "推荐歌单加载失败" else errors.remove(0)
             if (daily == null) errors[1] = "每日推荐加载失败" else errors.remove(1)
             if (top == null) errors[2] = "排行榜加载失败" else errors.remove(2)
-            if (fmGroups == null) errors[3] = "电台加载失败" else errors.remove(3)
-
-            val selectedFm = data.selectedFmId ?: fmGroups?.firstOrNull()?.stations?.firstOrNull()?.id
-            val fmSongs = if (selectedFm != null && fmGroups != null) {
-                runCatching { repo.fmSongs(listOf(selectedFm)) }.getOrNull()
-            } else {
-                data.fmSongs
-            }
 
             _state.value = UiState.Ready(
                 HomeData(
                     playlists = playlists ?: data.playlists,
                     dailySongs = daily ?: data.dailySongs,
                     topSongs = top ?: data.topSongs,
-                    fmGroups = fmGroups ?: data.fmGroups,
-                    fmSongs = fmSongs ?: data.fmSongs,
-                    selectedFmId = selectedFm,
                     errors = errors,
                 ),
             )
         }
     }
 
-    fun selectFm(fmId: String) {
-        val current = (_state.value as? UiState.Ready)?.data ?: return
-        _state.value = UiState.Ready(current.copy(selectedFmId = fmId, fmSongs = emptyList()))
-        viewModelScope.launch {
-            val songs = runCatching { repo.fmSongs(listOf(fmId)) }.getOrNull() ?: emptyList()
-            _state.update { state ->
-                if (state is UiState.Ready) {
-                    UiState.Ready(state.data.copy(fmSongs = songs))
-                } else {
-                    state
-                }
-            }
-        }
-    }
 }
 
 // ============================================================================

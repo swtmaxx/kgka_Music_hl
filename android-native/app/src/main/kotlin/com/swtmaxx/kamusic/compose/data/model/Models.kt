@@ -285,9 +285,3 @@ data class QrCheckResult(
 // ============================================================================
 
 data class SearchHotCategory(val name: String, val keywords: List<String>)
-
-data class FmStation(val id: String, val name: String, val type: Int = 0)
-
-data class FmClassGroup(val id: String, val name: String, val stations: List<FmStation>)
-
-data class FmImage(val fmid: String, val imageUrl: String?)

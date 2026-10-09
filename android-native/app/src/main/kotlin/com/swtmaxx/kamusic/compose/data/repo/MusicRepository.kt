@@ -2,7 +2,6 @@ package com.swtmaxx.kamusic.compose.data.repo
 
 import com.swtmaxx.kamusic.compose.core.SessionStore
 import com.swtmaxx.kamusic.compose.data.api.MusicApi
-import com.swtmaxx.kamusic.compose.data.model.FmClassGroup
 import com.swtmaxx.kamusic.compose.data.model.LyricLine
 import com.swtmaxx.kamusic.compose.data.model.PlaylistSummary
 import com.swtmaxx.kamusic.compose.data.model.Song
@@ -59,10 +58,6 @@ class MusicRepository(
     suspend fun dailyRecommend(): List<Song> = api.dailyRecommend()
 
     suspend fun topSongs(): List<Song> = api.topSongs()
-
-    suspend fun fmClassGroups(): List<FmClassGroup> = api.fmClassGroups()
-
-    suspend fun fmSongs(fmIds: List<String>): List<Song> = api.fmSongs(fmIds)
 
     // ===== 用户 =====
 
