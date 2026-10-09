@@ -40,6 +40,7 @@ import com.swtmaxx.kamusic.compose.data.model.PlaylistSummary
 import com.swtmaxx.kamusic.compose.data.model.RankSummary
 import com.swtmaxx.kamusic.compose.data.model.Song
 import com.swtmaxx.kamusic.compose.ui.LocalAppContainer
+import com.swtmaxx.kamusic.compose.ui.component.Artwork
 import com.swtmaxx.kamusic.compose.ui.component.ArtworkFill
 import com.swtmaxx.kamusic.compose.ui.component.CircleIconButton
 import com.swtmaxx.kamusic.compose.ui.component.EmptyBox
@@ -132,9 +133,83 @@ private fun HomeContent(
 
     when (tab) {
         0 -> PlaylistGrid(data.playlists, onOpenPlaylist)
-        1 -> SongList(data.dailySongs, onPlaySong)
+        1 -> TwoSectionSongList(
+            firstTitle = "每日推荐",
+            first = data.dailySongs,
+            secondTitle = "按风格推荐",
+            second = data.styleSongs,
+            onPlaySong = onPlaySong,
+        )
         2 -> RankList(data.ranks, onOpenRank)
         else -> FmList(data.fmSongs, onPlaySong, onRefreshFm)
+    }
+}
+
+/** 分节标题。 */
+@Composable
+private fun SectionLabel(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.labelMedium,
+        color = TextSecondary,
+        modifier = Modifier.padding(
+            start = WatchMetrics.gutter,
+            end = WatchMetrics.gutter,
+            top = WatchMetrics.gutter,
+            bottom = WatchMetrics.gutterSmall,
+        ),
+    )
+}
+
+/**
+ * 两段歌曲列表（共用同一个 `ScalingLazyColumn` 与表冠状态）。
+ *
+ * 「每日」tab 用：上面是 `/recommend/songs` 的每日推荐，下面是 `/everyday/style/recommend`
+ * 的按风格推荐。点击时把两段拼成一个播放队列，所以索引要加 `first.size` 偏移；
+ * 两段的 key 也必须加不同前缀，否则跨段可能重名。
+ */
+@Composable
+private fun TwoSectionSongList(
+    firstTitle: String,
+    first: List<Song>,
+    secondTitle: String,
+    second: List<Song>,
+    onPlaySong: (List<Song>, Int) -> Unit,
+) {
+    val all = first + second
+    if (all.isEmpty()) {
+        EmptyBox("暂无歌曲")
+        return
+    }
+    val listState = rememberScalingLazyListState()
+    ScalingLazyColumn(
+        scalingParams = watchScalingParams(),
+        state = listState,
+        rotaryScrollableBehavior = watchRotary(listState),
+        contentPadding = PaddingValues(0.dp),
+        autoCentering = WatchAutoCentering,
+        modifier = Modifier.fillMaxSize(),
+    ) {
+        if (first.isNotEmpty()) {
+            item { SectionLabel(firstTitle) }
+            itemsIndexed(first, key = { i, s -> "a_${s.hash}_$i" }) { i, song ->
+                TrackRow(
+                    song = song,
+                    isCurrent = false,
+                    onClick = { onPlaySong(all, i) },
+                )
+            }
+        }
+        if (second.isNotEmpty()) {
+            item { SectionLabel(secondTitle) }
+            itemsIndexed(second, key = { i, s -> "b_${s.hash}_$i" }) { i, song ->
+                TrackRow(
+                    song = song,
+                    isCurrent = false,
+                    onClick = { onPlaySong(all, first.size + i) },
+                )
+            }
+        }
     }
 }
 

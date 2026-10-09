@@ -46,6 +46,7 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import androidx.wear.compose.material3.MaterialTheme
 import androidx.wear.compose.material3.Text
 import com.swtmaxx.kamusic.compose.R
+import com.swtmaxx.kamusic.compose.data.model.ClimaxRange
 import com.swtmaxx.kamusic.compose.data.model.LyricLine
 import com.swtmaxx.kamusic.compose.playback.PlayMode
 import com.swtmaxx.kamusic.compose.playback.PlaybackMapping
@@ -127,6 +128,7 @@ fun PlayerScreen(
     val state by viewModel.playerState.collectAsStateWithLifecycle()
     val positionState = viewModel.positionMs.collectAsStateWithLifecycle()
     val lyricsState by viewModel.lyrics.collectAsStateWithLifecycle()
+    val climax by viewModel.climax.collectAsStateWithLifecycle()
 
     val pagerState = rememberPagerState(pageCount = { 2 })
 
@@ -142,6 +144,7 @@ fun PlayerScreen(
                     state = state,
                     positionState = positionState,
                     currentPage = pagerState.currentPage,
+                    climax = climax,
                     onBack = onBack,
                     onOpenQueue = onOpenQueue,
                 )
@@ -153,6 +156,7 @@ fun PlayerScreen(
                     songArtist = state.song?.artist,
                     durationMs = state.durationMs,
                     currentPage = pagerState.currentPage,
+                    climax = climax,
                     onBack = onBack,
                     onSeekFraction = { fraction ->
                         val duration = state.durationMs
@@ -175,6 +179,7 @@ private fun ControlPage(
     state: PlayerUiState,
     positionState: State<Long>,
     currentPage: Int,
+    climax: ClimaxRange?,
     onBack: () -> Unit,
     onOpenQueue: () -> Unit,
 ) {
@@ -212,6 +217,7 @@ private fun ControlPage(
             positionState = positionState,
             durationMs = durationMs,
             showTime = true,
+            climax = climax,
             onSeekFraction = { fraction ->
                 if (durationMs > 0) {
                     container.playbackController.seekTo((durationMs * fraction).toLong())
@@ -346,6 +352,7 @@ private fun LyricsPage(
     songArtist: String?,
     durationMs: Long,
     currentPage: Int,
+    climax: ClimaxRange?,
     onBack: () -> Unit,
     onSeekFraction: (Float) -> Unit,
 ) {
@@ -375,6 +382,7 @@ private fun LyricsPage(
             positionState = positionState,
             durationMs = durationMs,
             showTime = false,
+            climax = climax,
             onSeekFraction = onSeekFraction,
         )
     }
@@ -391,6 +399,7 @@ private fun PlayerProgress(
     positionState: State<Long>,
     durationMs: Long,
     showTime: Boolean,
+    climax: ClimaxRange?,
     onSeekFraction: (Float) -> Unit,
 ) {
     WatchProgressBar(
@@ -402,6 +411,8 @@ private fun PlayerProgress(
             },
         onSeek = onSeekFraction,
         touchHeight = PlayerLayout.progressTouchHeight,
+        durationMs = durationMs,
+        climax = climax,
     )
     if (showTime) {
         Row(

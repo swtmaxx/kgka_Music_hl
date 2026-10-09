@@ -70,6 +70,7 @@ fun MineScreen(
     onOpenCloud: () -> Unit = {},
     onOpenVip: () -> Unit = {},
     onOpenHistory: () -> Unit = {},
+    onOpenDiscover: () -> Unit = {},
 ) {
     val container = LocalAppContainer.current
     val viewModel: MineViewModel = viewModel(
@@ -182,6 +183,7 @@ fun MineScreen(
                 SettingRow(label = "云盘", value = "", onClick = onOpenCloud)
                 SettingRow(label = "VIP", value = "", onClick = onOpenVip)
                 SettingRow(label = "播放历史", value = "", onClick = onOpenHistory)
+                SettingRow(label = "刷歌", value = "", onClick = onOpenDiscover)
 
                 // ===== 设置 =====
                 Text(

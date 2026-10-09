@@ -36,6 +36,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.swtmaxx.kamusic.compose.R
 import com.swtmaxx.kamusic.compose.ui.LocalAppContainer
+import com.swtmaxx.kamusic.compose.ui.component.Artwork
 import com.swtmaxx.kamusic.compose.ui.component.CircleIconButton
 import com.swtmaxx.kamusic.compose.ui.component.ErrorBox
 import com.swtmaxx.kamusic.compose.ui.component.LoadingBox
@@ -58,7 +59,10 @@ import com.swtmaxx.kamusic.compose.ui.vm.SearchViewModel
  * 这也是 Flutter 版遗留的体验问题。
  */
 @Composable
-fun SearchScreen(onOpenPlayer: () -> Unit) {
+fun SearchScreen(
+    onOpenPlayer: () -> Unit,
+    onOpenAlbum: (id: String, title: String) -> Unit = { _, _ -> },
+) {
     val container = LocalAppContainer.current
     val viewModel: SearchViewModel = viewModel(
         factory = viewModelFactory {
@@ -108,10 +112,78 @@ fun SearchScreen(onOpenPlayer: () -> Unit) {
             }
         }
 
+        // 单曲 / 专辑 切换（有关键词时才显示，避免空态多占一行）
+        if (state.query.isNotBlank()) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(
+                        horizontal = WatchMetrics.gutterSmall,
+                        vertical = WatchMetrics.gutterSmall,
+                    ),
+                horizontalArrangement = Arrangement.spacedBy(WatchMetrics.gutterSmall),
+            ) {
+                PillTab(
+                    text = "单曲",
+                    selected = state.type == 0,
+                    onClick = { viewModel.selectType(0) },
+                    modifier = Modifier.weight(1f),
+                )
+                PillTab(
+                    text = "专辑",
+                    selected = state.type == 1,
+                    onClick = { viewModel.selectType(1) },
+                    modifier = Modifier.weight(1f),
+                )
+            }
+        }
+
         when {
             state.searching -> LoadingBox()
 
             state.error != null -> ErrorBox(state.error!!) { viewModel.submit() }
+
+            state.type == 1 && state.albums.isNotEmpty() -> ScalingLazyColumn(
+                scalingParams = watchScalingParams(),
+                state = listState,
+                rotaryScrollableBehavior = watchRotary(listState),
+                contentPadding = PaddingValues(0.dp),
+                autoCentering = WatchAutoCentering,
+                modifier = Modifier.fillMaxSize(),
+            ) {
+                itemsIndexed(state.albums, key = { _, album -> album.id }) { _, album ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(WatchMetrics.listRow)
+                            .clickable { onOpenAlbum(album.id, album.name) }
+                            .padding(horizontal = WatchMetrics.gutter),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Artwork(url = album.coverUrl, size = WatchMetrics.coverSmall)
+                        Spacer(Modifier.width(WatchMetrics.gutter))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = album.name,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = TextPrimary,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                            val subtitle = album.subtitle
+                            if (subtitle.isNotEmpty()) {
+                                Text(
+                                    text = subtitle,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = TextSecondary,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                            }
+                        }
+                    }
+                }
+            }
 
             state.results.isNotEmpty() -> ScalingLazyColumn(
                 scalingParams = watchScalingParams(),

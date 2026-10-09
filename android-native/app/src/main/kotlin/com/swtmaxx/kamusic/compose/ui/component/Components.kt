@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -46,6 +47,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.swtmaxx.kamusic.compose.R
+import com.swtmaxx.kamusic.compose.data.model.ClimaxRange
 import com.swtmaxx.kamusic.compose.data.model.Song
 import com.swtmaxx.kamusic.compose.ui.theme.AccentBlue
 import com.swtmaxx.kamusic.compose.ui.theme.OutlineDim
@@ -127,6 +129,9 @@ fun PlayPauseButton(
  * [touchHeight] 是**触控区**高度（视觉轨道始终只有 [WatchMetrics.progressTrack]）。
  * 默认 48dp（无障碍建议值）；播放页为了给歌词让出屏高会传 24dp ——
  * 这是「可点区域」与「可见内容」分离的做法：视觉不变，但不再白占 17% 屏高。
+ *
+ * [climax] + [durationMs]：在轨道上叠出一段高潮区间高亮。用 `Row` + `weight`
+ * 定位而不是像素偏移，避免依赖已测宽度。
  */
 @Composable
 fun WatchProgressBar(
@@ -134,9 +139,22 @@ fun WatchProgressBar(
     modifier: Modifier = Modifier,
     onSeek: ((Float) -> Unit)? = null,
     touchHeight: Dp = WatchMetrics.minTouch,
+    durationMs: Long = 0L,
+    climax: ClimaxRange? = null,
 ) {
     val fraction = progress.coerceIn(0f, 1f)
     var trackWidthPx by remember { mutableIntStateOf(1) }
+
+    // 把高潮区间换算成 0..1 的比例，无效或超出时置 null
+    val climaxFraction: Pair<Float, Float>? = remember(climax, durationMs) {
+        if (climax == null || durationMs <= 0L || !climax.isValid) {
+            null
+        } else {
+            val start = (climax.startMs.toFloat() / durationMs).coerceIn(0f, 1f)
+            val end = (climax.endMs.toFloat() / durationMs).coerceIn(0f, 1f)
+            if (end > start) start to end else null
+        }
+    }
 
     Box(
         modifier = modifier
@@ -163,13 +181,26 @@ fun WatchProgressBar(
                 .clip(CircleShape)
                 .background(OutlineDim),
         ) {
+            // 已播放段
             Box(
                 modifier = Modifier
                     .fillMaxWidth(fraction)
-                    .height(WatchMetrics.progressTrack)
-                    .clip(CircleShape)
+                    .fillMaxHeight()
                     .background(AccentBlue),
             )
+            // 高潮区间：叠在已播放段之上，用浅色保证在蓝底上也能看见
+            climaxFraction?.let { (start, end) ->
+                Row(modifier = Modifier.fillMaxSize()) {
+                    if (start > 0f) Spacer(Modifier.weight(start))
+                    Box(
+                        modifier = Modifier
+                            .weight(end - start)
+                            .fillMaxHeight()
+                            .background(TextPrimary.copy(alpha = 0.45f)),
+                    )
+                    if (end < 1f) Spacer(Modifier.weight(1f - end))
+                }
+            }
         }
     }
 }

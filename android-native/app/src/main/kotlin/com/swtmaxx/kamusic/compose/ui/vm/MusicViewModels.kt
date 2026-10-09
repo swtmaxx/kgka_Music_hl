@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.swtmaxx.kamusic.compose.core.SessionStore
 import com.swtmaxx.kamusic.compose.data.model.AlbumDetail
 import com.swtmaxx.kamusic.compose.data.model.ArtistDetail
+import com.swtmaxx.kamusic.compose.data.model.ClimaxRange
 import com.swtmaxx.kamusic.compose.data.model.Comment
 import com.swtmaxx.kamusic.compose.data.model.LyricLine
 import com.swtmaxx.kamusic.compose.data.model.VipStatus
@@ -41,6 +42,7 @@ sealed interface UiState<out T> {
 data class HomeData(
     val playlists: List<PlaylistSummary> = emptyList(),
     val dailySongs: List<Song> = emptyList(),
+    val styleSongs: List<Song> = emptyList(),
     val ranks: List<RankSummary> = emptyList(),
     val fmSongs: List<Song> = emptyList(),
     /** 每个 tab 独立的错误，互不影响。 */
@@ -76,16 +78,19 @@ class HomeViewModel(private val repo: MusicRepository) : ViewModel() {
 
             val deferredPlaylists = async { runCatching { repo.recommendedPlaylists(forceRefresh) } }
             val deferredDaily = async { runCatching { repo.dailyRecommend() } }
+            val deferredStyle = async { runCatching { repo.everydayStyleRecommend() } }
             val deferredRanks = async { runCatching { repo.rankList() } }
             val deferredFm = async { runCatching { repo.personalFm() } }
 
             val resultPlaylists = deferredPlaylists.await()
             val resultDaily = deferredDaily.await()
+            val resultStyle = deferredStyle.await()
             val resultRanks = deferredRanks.await()
             val resultFm = deferredFm.await()
 
             val playlists = resultPlaylists.getOrNull()
             val daily = resultDaily.getOrNull()
+            val style = resultStyle.getOrNull()
             val ranks = resultRanks.getOrNull()
             val fm = resultFm.getOrNull()
 
@@ -98,6 +103,7 @@ class HomeViewModel(private val repo: MusicRepository) : ViewModel() {
                 HomeData(
                     playlists = playlists ?: data.playlists,
                     dailySongs = daily ?: data.dailySongs,
+                    styleSongs = style ?: data.styleSongs,
                     ranks = ranks ?: data.ranks,
                     fmSongs = fm ?: data.fmSongs,
                     errors = errors,
@@ -126,6 +132,42 @@ class HomeViewModel(private val repo: MusicRepository) : ViewModel() {
 }
 
 // ============================================================================
+// 刷歌（/home/discover）
+// ============================================================================
+
+class DiscoverViewModel(private val repo: MusicRepository) : ViewModel() {
+
+    private val _state = MutableStateFlow<UiState<List<Song>>>(UiState.Loading)
+    val state: StateFlow<UiState<List<Song>>> = _state.asStateFlow()
+
+    /** 已播放过的条数，作为 `today_play_num` 上报给上游，用于推荐去重。 */
+    private var played = 0
+
+    fun load() {
+        _state.value = UiState.Loading
+        viewModelScope.launch {
+            val result = runCatching { repo.homeDiscover(pageSize = 6) }
+            val list = result.getOrNull()
+            if (list == null) {
+                _state.value = UiState.Error(result.exceptionOrNull()?.message ?: "刷歌加载失败")
+                return@launch
+            }
+            _state.value = UiState.Ready(list)
+        }
+    }
+
+    /** 换一批：上游按 `today_play_num` 去重，所以每次递增。 */
+    fun refresh() {
+        played += 6
+        viewModelScope.launch {
+            val result = runCatching { repo.homeDiscover(pageSize = 6) }
+            val list = result.getOrNull() ?: return@launch
+            _state.value = UiState.Ready(list)
+        }
+    }
+}
+
+// ============================================================================
 // 搜索
 // ============================================================================
 
@@ -134,6 +176,9 @@ data class SearchUiState(
     val hot: List<com.swtmaxx.kamusic.compose.data.model.SearchHotCategory> = emptyList(),
     val suggestions: List<String> = emptyList(),
     val results: List<Song> = emptyList(),
+    val albums: List<AlbumDetail> = emptyList(),
+    /** 0 = 单曲 / 1 = 专辑 */
+    val type: Int = 0,
     val searching: Boolean = false,
     val error: String? = null,
 ) {
@@ -173,20 +218,44 @@ class SearchViewModel(private val repo: MusicRepository) : ViewModel() {
 
     fun submit(keyword: String = _state.value.query) {
         if (keyword.isBlank()) return
-        _state.update { it.copy(query = keyword, searching = true, error = null, suggestions = emptyList()) }
-        viewModelScope.launch {
-            val result = runCatching { repo.search(keyword) }
-            result.fold(
-                onSuccess = { songs ->
-                    _state.update { it.copy(searching = false, results = songs) }
-                },
-                onFailure = { error ->
-                    _state.update {
-                        it.copy(searching = false, error = error.message ?: "搜索失败")
-                    }
-                },
-            )
+        val type = _state.value.type
+        _state.update {
+            it.copy(query = keyword, searching = true, error = null, suggestions = emptyList())
         }
+        viewModelScope.launch {
+            if (type == 1) {
+                val result = runCatching { repo.searchAlbums(keyword) }
+                result.fold(
+                    onSuccess = { albums ->
+                        _state.update { it.copy(searching = false, albums = albums) }
+                    },
+                    onFailure = { error ->
+                        _state.update {
+                            it.copy(searching = false, error = error.message ?: "搜索失败")
+                        }
+                    },
+                )
+            } else {
+                val result = runCatching { repo.search(keyword) }
+                result.fold(
+                    onSuccess = { songs ->
+                        _state.update { it.copy(searching = false, results = songs) }
+                    },
+                    onFailure = { error ->
+                        _state.update {
+                            it.copy(searching = false, error = error.message ?: "搜索失败")
+                        }
+                    },
+                )
+            }
+        }
+    }
+
+    /** 切换单曲/专辑；若已有关键词则立即重搜。 */
+    fun selectType(index: Int) {
+        if (_state.value.type == index) return
+        _state.update { it.copy(type = index, results = emptyList(), albums = emptyList()) }
+        if (_state.value.query.isNotBlank()) submit()
     }
 
     fun clearQuery() = _state.update { SearchUiState(hot = it.hot) }
@@ -627,6 +696,10 @@ class PlayerViewModel(
     private val _lyrics = MutableStateFlow(LyricsUiData())
     val lyrics: StateFlow<LyricsUiData> = _lyrics.asStateFlow()
 
+    /** 当前曲目的高潮区间，用于进度条高亮；拿不到时为 null（进度条不画高亮）。 */
+    private val _climax = MutableStateFlow<ClimaxRange?>(null)
+    val climax: StateFlow<ClimaxRange?> = _climax.asStateFlow()
+
     init {
         viewModelScope.launch {
             controller.state
@@ -635,11 +708,15 @@ class PlayerViewModel(
                 .collect { song ->
                     if (song == null) {
                         _lyrics.value = LyricsUiData()
+                        _climax.value = null
                         return@collect
                     }
+                    _climax.value = null
                     _lyrics.value = LyricsUiData(loading = true, songHash = song.hash)
                     val lines = repo.lyrics(song)
                     _lyrics.value = LyricsUiData(lines = lines, loading = false, songHash = song.hash)
+                    // 高潮区间单独拉，失败不影响歌词
+                    _climax.value = runCatching { repo.songClimax(song.hash) }.getOrNull()
                 }
         }
     }
