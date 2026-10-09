@@ -3,6 +3,7 @@ package com.swtmaxx.kamusic.compose.ui.screen
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -10,20 +11,24 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.requiredHeight
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.State
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
@@ -33,7 +38,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.max
+import androidx.compose.ui.unit.min
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
@@ -44,79 +49,63 @@ import com.swtmaxx.kamusic.compose.R
 import com.swtmaxx.kamusic.compose.data.model.LyricLine
 import com.swtmaxx.kamusic.compose.playback.PlayMode
 import com.swtmaxx.kamusic.compose.playback.PlaybackMapping
+import com.swtmaxx.kamusic.compose.playback.PlayerUiState
 import com.swtmaxx.kamusic.compose.ui.LocalAppContainer
+import com.swtmaxx.kamusic.compose.ui.component.Artwork
 import com.swtmaxx.kamusic.compose.ui.component.CircleIconButton
 import com.swtmaxx.kamusic.compose.ui.component.PlayPauseButton
 import com.swtmaxx.kamusic.compose.ui.component.WatchProgressBar
-import com.swtmaxx.kamusic.compose.ui.component.watchSwipeBack
 import com.swtmaxx.kamusic.compose.ui.theme.AccentBlue
+import com.swtmaxx.kamusic.compose.ui.theme.OutlineDim
 import com.swtmaxx.kamusic.compose.ui.theme.TextDisabled
 import com.swtmaxx.kamusic.compose.ui.theme.TextPrimary
 import com.swtmaxx.kamusic.compose.ui.theme.TextSecondary
 import com.swtmaxx.kamusic.compose.ui.theme.WatchMetrics
+import com.swtmaxx.kamusic.compose.ui.vm.LyricsUiData
 import com.swtmaxx.kamusic.compose.ui.vm.PlayerViewModel
 
 /**
  * 播放页尺寸令牌。
  *
- * 结构对齐 **官方 Wear OS 播放页**（`google/horologist` 的
- * `media/ui-material3/.../screens/player/PlayerScreen.kt`）的**三段式等分布局**：
+ * 布局参考 **官方 Wear OS 播放器**（`google/horologist`）的两点做法：
+ * 1. **水平翻页**：官方 `PlayerLibraryPagerScreen` 用 `HorizontalPager(pageCount = 2)`
+ *    在「播放器」与「音乐库」之间左右翻页。本页借用同一模式，改为
+ *    「**控制页 ⇄ 歌词页**」——这样歌词能拿满整屏，不再和封面/控制键抢那 60dp。
+ * 2. **尺寸由屏高推导**：官方 `middleSectionHeight = max(MIDDLE_BUTTON_SIZE, screenHeightDp / 3f)`，
+ *    不写死像素。本页的封面尺寸与进度触控高度同理。
  *
- * ```
- * Column(verticalArrangement = SpaceBetween) {
- *   ① 上段 requiredHeight(topSectionHeight)    BottomCenter  媒体信息 / 歌词
- *   ② 中段 requiredHeight(middleSectionHeight) Center        播放控制键（含进度）
- *   ③ 下段 weight(1f)                          Center        次要按钮
- * }
- * middleSectionHeight = max(MIDDLE_BUTTON_SIZE, screenHeightDp / 3f)
- * topSectionHeight    = max(TOP_SECTION_MIN_HEIGHT, (screenHeightDp - middleSectionHeight) / 2f)
- * ```
- *
- * 代入 240×284（`screenHeightDp = 284`）：
- * ```
- * middleSectionHeight = max(52, 94.67) = 94.67dp
- * topSectionHeight    = max(68, 94.67) = 94.67dp
- * 下段 weight(1f)                       = 94.67dp
- * ```
- * 即三段严格等分 94.67dp。
- *
- * 与官方的两处刻意差异：
- * 1. **播放键用 52dp**（官方大屏 80dp / 小屏 64dp）。240px 宽的屏上 80dp 按钮会占掉 1/3 屏宽，
- *    两侧的上一首/下一首会被挤没，故收窄。
- * 2. **上段放歌词而非纯媒体信息**。官方上段是「歌名 + 歌手」纯文字（封面走 background slot），
- *    且官方布局里**没有歌词的位置**。本 App 以歌词为核心，因此把「歌名 + 歌手」压成上段顶部的
- *    一行（与返回键同行），把上段主体让给歌词——这样歌词仍能显示 3 行，不因改版而退步。
+ * ⚠️ 因为 `HorizontalPager` 会消费水平手势，本页**不再挂 `watchSwipeBack`**（两者会抢手势）。
+ * 返回依靠头部返回键与系统返回键。
  */
 private object PlayerLayout {
-    /** 中段播放键直径。官方小屏 64dp / 大屏 80dp，此处按 240px 屏宽收窄。 */
-    val middleButtonSize = 52.dp
-
-    /** 上段最小高度（官方 `SMALL_DEVICE_PLAYER_SCREEN_TOP_SECTION_HEIGHT = 68.dp`）。 */
-    val minTopSectionHeight = 68.dp
-
-    /** 顶部「返回键 + 歌名/歌手」行高。 */
+    /** 顶部「返回键 + 歌名/歌手 + 页码点」行高。 */
     val headerHeight = 34.dp
+
+    /** 控制页播放键直径。官方小屏 64dp / 大屏 80dp，此处按 240px 屏宽收窄。 */
+    val middleButtonSize = 56.dp
+
+    /** 次要按钮直径。 */
+    val secondaryButtonSize = 40.dp
 
     /**
      * 进度条触控区高度。
      *
      * 改造前沿用 `WatchMetrics.minTouch`（48dp），但进度条视觉只有 3dp —— 相当于用 17% 的屏高
-     * 去承载一根看不见的线。压缩到 24dp 后仍高于 Android 无障碍建议的 24dp 下限，
-     * 同时把省下的 24dp 让给歌词。
+     * 去承载一根看不见的线。压缩到 24dp 后仍高于无障碍建议下限。
      */
     val progressTouchHeight = 24.dp
+
+    /** 页码指示点直径。 */
+    val dotSize = 5.dp
 }
 
 /**
- * 播放器页。
+ * 播放页：**控制页 ⇄ 歌词页** 水平翻页。
  *
- * 三段式布局（上：歌词 / 中：控制键 + 进度 / 下：次要按钮），尺寸由屏高推导，
- * 换屏时无需改常量。右滑返回。
+ * - 第 0 页（控制页）：封面 + 进度 + 传输键 + 次要按钮
+ * - 第 1 页（歌词页）：整屏歌词 + 底部细进度条
  *
- * 性能要点：
- * - 高频播放位置单独订阅 [PlayerViewModel.positionMs]，只让进度条与歌词重组；
- * - 歌词用 `derivedStateOf` 算出当前行与当前字，避免每个位置 tick 都重建列表；
- * - 自动滚动用 `scrollToItem`（瞬时）而非动画，避免低端设备掉帧。
+ * 两页共用同一个 [PlayerViewModel]，所以切页不会重新拉歌词、也不会打断播放。
  */
 @Composable
 fun PlayerScreen(
@@ -132,212 +121,334 @@ fun PlayerScreen(
 
     val state by viewModel.playerState.collectAsStateWithLifecycle()
     val positionState = viewModel.positionMs.collectAsStateWithLifecycle()
-    val positionMs = positionState.value
     val lyricsState by viewModel.lyrics.collectAsStateWithLifecycle()
 
-    val song = state.song
-    val durationMs = state.durationMs
+    val pagerState = rememberPagerState(pageCount = { 2 })
 
-    // ===== 官方三段式的尺寸推导（见 PlayerLayout 文档）=====
-    val screenHeight = LocalConfiguration.current.screenHeightDp.dp
-    val middleSectionHeight = max(PlayerLayout.middleButtonSize, screenHeight / 3f)
-    val topSectionHeight = max(
-        PlayerLayout.minTopSectionHeight,
-        (screenHeight - middleSectionHeight) / 2f,
-    )
+    Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
+        HorizontalPager(
+            state = pagerState,
+            modifier = Modifier.fillMaxSize(),
+            // 与主壳一致：关闭越界预加载，低端设备上省合成帧。
+            beyondViewportPageCount = 0,
+        ) { page ->
+            when (page) {
+                0 -> ControlPage(
+                    state = state,
+                    positionState = positionState,
+                    currentPage = pagerState.currentPage,
+                    onBack = onBack,
+                    onOpenQueue = onOpenQueue,
+                )
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            // 右滑返回。手势层放在 padding 之前，保证覆盖整个屏幕，
-            // 且只识别水平手势，与歌词列表的纵向滚动互不干扰。
-            .watchSwipeBack(onBack)
-            .background(Color.Black),
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = WatchMetrics.gutter),
-            verticalArrangement = Arrangement.SpaceBetween,
-        ) {
-            // ================= ① 上段：头部 + 歌词 =================
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .requiredHeight(topSectionHeight),
-            ) {
-                // 头部：返回 + 歌名/歌手（与返回键同行，为歌词让出高度）
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(PlayerLayout.headerHeight),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    CircleIconButton(
-                        icon = painterResource(R.drawable.ic_arrow_back),
-                        contentDescription = "返回",
-                        onClick = onBack,
-                        size = 28.dp,
-                        iconSize = WatchMetrics.icon,
-                    )
-                    Spacer(Modifier.width(WatchMetrics.gutterSmall))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = song?.title ?: "未在播放",
-                            style = MaterialTheme.typography.titleSmall,
-                            color = TextPrimary,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                        Text(
-                            text = song?.artist.orEmpty(),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = TextSecondary,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
-                }
-
-                // 歌词：吃掉上段剩余高度（284 屏上约 60.67dp，可显示 3 行）
-                Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
-                    LyricsView(
-                        lines = lyricsState.lines,
-                        loading = lyricsState.loading,
-                        position = positionState,
-                    )
-                }
-            }
-
-            // ================= ② 中段：控制键 + 进度 =================
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .requiredHeight(middleSectionHeight),
-                contentAlignment = Alignment.Center,
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    // 上一首 / 播放暂停 / 下一首
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        CircleIconButton(
-                            icon = painterResource(R.drawable.ic_skip_previous),
-                            contentDescription = "上一首",
-                            onClick = { container.playbackController.previous() },
-                            size = WatchMetrics.minTouch,
-                            iconSize = WatchMetrics.iconLarge,
-                            enabled = song != null,
-                        )
-                        Spacer(Modifier.width(WatchMetrics.gutter))
-                        PlayPauseButton(
-                            isPlaying = state.isPlaying,
-                            onClick = { container.playbackController.togglePlayPause() },
-                            size = PlayerLayout.middleButtonSize,
-                        )
-                        Spacer(Modifier.width(WatchMetrics.gutter))
-                        CircleIconButton(
-                            icon = painterResource(R.drawable.ic_skip_next),
-                            contentDescription = "下一首",
-                            onClick = { container.playbackController.next() },
-                            size = WatchMetrics.minTouch,
-                            iconSize = WatchMetrics.iconLarge,
-                            enabled = song != null,
-                        )
-                    }
-
-                    Spacer(Modifier.height(2.dp))
-
-                    // 进度：点击 seek（240px 宽屏上拖动难以精确，故只做点击）
-                    WatchProgressBar(
-                        progress =
-                            if (durationMs > 0) {
-                                positionMs.toFloat() / durationMs.toFloat()
-                            } else {
-                                0f
-                            },
-                        onSeek = { fraction ->
-                            if (durationMs > 0) {
-                                container.playbackController.seekTo(
-                                    (durationMs * fraction).toLong(),
-                                )
-                            }
-                        },
-                        touchHeight = PlayerLayout.progressTouchHeight,
-                    )
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                    ) {
-                        Text(
-                            text = formatTime(positionMs),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = TextSecondary,
-                        )
-                        Text(
-                            text = if (durationMs > 0) formatTime(durationMs) else "--:--",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = TextSecondary,
-                        )
-                    }
-                }
-            }
-
-            // ================= ③ 下段：次要按钮 =================
-            // 官方下段是 `buttons`（默认空实现）。我们放 3 个次要按钮，
-            // 剩余约 50dp 空白留给后续功能入口（下载 / 评论 / 专辑 / 歌手）。
-            Box(
-                modifier = Modifier.fillMaxWidth().weight(1f),
-                contentAlignment = Alignment.Center,
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    CircleIconButton(
-                        icon = painterResource(
-                            when (state.mode) {
-                                PlayMode.SEQUENCE -> R.drawable.ic_repeat
-                                PlayMode.REPEAT_ONE -> R.drawable.ic_repeat_one
-                                PlayMode.SHUFFLE -> R.drawable.ic_shuffle
-                            },
-                        ),
-                        contentDescription = PlaybackMapping.modeLabel(state.mode),
-                        onClick = { container.playbackController.cycleMode() },
-                        size = 40.dp,
-                        iconSize = WatchMetrics.icon,
-                        tint = if (state.mode == PlayMode.SEQUENCE) TextSecondary else AccentBlue,
-                    )
-                    CircleIconButton(
-                        icon = painterResource(R.drawable.ic_volume_up),
-                        contentDescription = if (state.isMuted) "取消静音" else "静音",
-                        onClick = { container.playbackController.toggleMute() },
-                        size = 40.dp,
-                        iconSize = WatchMetrics.icon,
-                        tint = if (state.isMuted) TextDisabled else TextSecondary,
-                    )
-                    CircleIconButton(
-                        icon = painterResource(R.drawable.ic_queue_music),
-                        contentDescription = "播放队列",
-                        onClick = onOpenQueue,
-                        size = 40.dp,
-                        iconSize = WatchMetrics.icon,
-                        tint = TextSecondary,
-                    )
-                }
+                else -> LyricsPage(
+                    lyrics = lyricsState,
+                    positionState = positionState,
+                    songTitle = state.song?.title,
+                    songArtist = state.song?.artist,
+                    durationMs = state.durationMs,
+                    currentPage = pagerState.currentPage,
+                    onBack = onBack,
+                    onSeekFraction = { fraction ->
+                        val duration = state.durationMs
+                        if (duration > 0) {
+                            container.playbackController.seekTo((duration * fraction).toLong())
+                        }
+                    },
+                )
             }
         }
     }
 }
 
+// ============================================================================
+// 第 0 页：控制页
+// ============================================================================
+
+@Composable
+private fun ControlPage(
+    state: PlayerUiState,
+    positionState: State<Long>,
+    currentPage: Int,
+    onBack: () -> Unit,
+    onOpenQueue: () -> Unit,
+) {
+    val container = LocalAppContainer.current
+    val song = state.song
+    val durationMs = state.durationMs
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = WatchMetrics.gutter),
+    ) {
+        PlayerHeader(
+            title = song?.title ?: "未在播放",
+            artist = song?.artist.orEmpty(),
+            currentPage = currentPage,
+            onBack = onBack,
+        )
+
+        // ===== 封面：吃掉所有剩余高度（约 105dp @ 240×284）=====
+        BoxWithConstraints(
+            modifier = Modifier.weight(1f).fillMaxWidth(),
+            contentAlignment = Alignment.Center,
+        ) {
+            val side = min(maxWidth, maxHeight)
+            Artwork(
+                url = song?.coverUrl,
+                size = side,
+                corner = 12.dp,
+            )
+        }
+
+        // ===== 进度 =====
+        PlayerProgress(
+            positionState = positionState,
+            durationMs = durationMs,
+            showTime = true,
+            onSeekFraction = { fraction ->
+                if (durationMs > 0) {
+                    container.playbackController.seekTo((durationMs * fraction).toLong())
+                }
+            },
+        )
+
+        // ===== 传输键 =====
+        Row(
+            modifier = Modifier.fillMaxWidth().height(PlayerLayout.middleButtonSize),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            CircleIconButton(
+                icon = painterResource(R.drawable.ic_skip_previous),
+                contentDescription = "上一首",
+                onClick = { container.playbackController.previous() },
+                size = WatchMetrics.minTouch,
+                iconSize = WatchMetrics.iconLarge,
+                enabled = song != null,
+            )
+            Spacer(Modifier.width(WatchMetrics.gutter))
+            PlayPauseButton(
+                isPlaying = state.isPlaying,
+                onClick = { container.playbackController.togglePlayPause() },
+                size = PlayerLayout.middleButtonSize,
+            )
+            Spacer(Modifier.width(WatchMetrics.gutter))
+            CircleIconButton(
+                icon = painterResource(R.drawable.ic_skip_next),
+                contentDescription = "下一首",
+                onClick = { container.playbackController.next() },
+                size = WatchMetrics.minTouch,
+                iconSize = WatchMetrics.iconLarge,
+                enabled = song != null,
+            )
+        }
+
+        // ===== 次要按钮 =====
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(PlayerLayout.secondaryButtonSize + WatchMetrics.gutter),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            CircleIconButton(
+                icon = painterResource(
+                    when (state.mode) {
+                        PlayMode.SEQUENCE -> R.drawable.ic_repeat
+                        PlayMode.REPEAT_ONE -> R.drawable.ic_repeat_one
+                        PlayMode.SHUFFLE -> R.drawable.ic_shuffle
+                    },
+                ),
+                contentDescription = PlaybackMapping.modeLabel(state.mode),
+                onClick = { container.playbackController.cycleMode() },
+                size = PlayerLayout.secondaryButtonSize,
+                iconSize = WatchMetrics.icon,
+                tint = if (state.mode == PlayMode.SEQUENCE) TextSecondary else AccentBlue,
+            )
+            CircleIconButton(
+                icon = painterResource(R.drawable.ic_volume_up),
+                contentDescription = if (state.isMuted) "取消静音" else "静音",
+                onClick = { container.playbackController.toggleMute() },
+                size = PlayerLayout.secondaryButtonSize,
+                iconSize = WatchMetrics.icon,
+                tint = if (state.isMuted) TextDisabled else TextSecondary,
+            )
+            CircleIconButton(
+                icon = painterResource(R.drawable.ic_queue_music),
+                contentDescription = "播放队列",
+                onClick = onOpenQueue,
+                size = PlayerLayout.secondaryButtonSize,
+                iconSize = WatchMetrics.icon,
+                tint = TextSecondary,
+            )
+        }
+    }
+}
+
+// ============================================================================
+// 第 1 页：歌词页
+// ============================================================================
+
+@Composable
+private fun LyricsPage(
+    lyrics: LyricsUiData,
+    positionState: State<Long>,
+    songTitle: String?,
+    songArtist: String?,
+    durationMs: Long,
+    currentPage: Int,
+    onBack: () -> Unit,
+    onSeekFraction: (Float) -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = WatchMetrics.gutter),
+    ) {
+        PlayerHeader(
+            title = songTitle ?: "未在播放",
+            artist = songArtist.orEmpty(),
+            currentPage = currentPage,
+            onBack = onBack,
+        )
+
+        // 整屏歌词：240×284 上可用约 226dp，能显示 10 行以上（改造前只有 3 行）
+        Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+            LyricsView(
+                lines = lyrics.lines,
+                loading = lyrics.loading,
+                position = positionState,
+            )
+        }
+
+        // 底部细进度条：在歌词页也能看到进度并点击 seek
+        PlayerProgress(
+            positionState = positionState,
+            durationMs = durationMs,
+            showTime = false,
+            onSeekFraction = onSeekFraction,
+        )
+    }
+}
+
+/**
+ * 进度条 + （可选）时间行。
+ *
+ * **单独抽出来的目的是把 `positionState.value` 的读取收在这一层** —— 播放位置每 500ms 更新一次，
+ * 若在 `ControlPage` / `LyricsPage` 的顶层读取，整页（含封面、传输键、整份歌词）都会跟着重组。
+ */
+@Composable
+private fun PlayerProgress(
+    positionState: State<Long>,
+    durationMs: Long,
+    showTime: Boolean,
+    onSeekFraction: (Float) -> Unit,
+) {
+    WatchProgressBar(
+        progress =
+            if (durationMs > 0) {
+                positionState.value.toFloat() / durationMs.toFloat()
+            } else {
+                0f
+            },
+        onSeek = onSeekFraction,
+        touchHeight = PlayerLayout.progressTouchHeight,
+    )
+    if (showTime) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Text(
+                text = formatTime(positionState.value),
+                style = MaterialTheme.typography.labelSmall,
+                color = TextSecondary,
+            )
+            Text(
+                text = if (durationMs > 0) formatTime(durationMs) else "--:--",
+                style = MaterialTheme.typography.labelSmall,
+                color = TextSecondary,
+            )
+        }
+    }
+}
+
+// ============================================================================
+// 共用：头部（返回 + 歌名/歌手 + 页码点）
+// ============================================================================
+
+/**
+ * 两页共用的头部。右侧的页码点提示「可以左右翻页」——
+ * 官方 `PlayerLibraryPagerScreen` 没有做指示，但在 240px 小屏上滑动手势不易被发现，
+ * 加两个点成本很低。
+ */
+@Composable
+private fun PlayerHeader(
+    title: String,
+    artist: String,
+    currentPage: Int,
+    onBack: () -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth().height(PlayerLayout.headerHeight),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        CircleIconButton(
+            icon = painterResource(R.drawable.ic_arrow_back),
+            contentDescription = "返回",
+            onClick = onBack,
+            size = 28.dp,
+            iconSize = WatchMetrics.icon,
+        )
+        Spacer(Modifier.width(WatchMetrics.gutterSmall))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleSmall,
+                color = TextPrimary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = artist,
+                style = MaterialTheme.typography.labelSmall,
+                color = TextSecondary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        Spacer(Modifier.width(WatchMetrics.gutterSmall))
+        PageDots(count = 2, current = currentPage)
+    }
+}
+
+/** 极简页码点：当前页实心强调色，其余为描边灰。 */
+@Composable
+private fun PageDots(count: Int, current: Int) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        repeat(count) { index ->
+            Box(
+                modifier = Modifier
+                    .padding(horizontal = 2.dp)
+                    .size(PlayerLayout.dotSize)
+                    .clip(CircleShape)
+                    .background(if (index == current) AccentBlue else OutlineDim),
+            )
+        }
+    }
+}
+
+// ============================================================================
+// 歌词列表
+// ============================================================================
+
 @Composable
 private fun LyricsView(
     lines: List<LyricLine>,
     loading: Boolean,
-    position: androidx.compose.runtime.State<Long>,
+    position: State<Long>,
 ) {
     if (lines.isEmpty()) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -371,12 +482,11 @@ private fun LyricsView(
         if (activeIndex >= 0) listState.scrollToItem(activeIndex)
     }
 
-    // 行距从 6dp 收到 4dp：284 屏的上段给歌词只剩约 60dp，
-    // 4dp 行距能让「当前行 + 下两行」正好放得下（17 + 4 + 15 + 4 + 15 = 55dp）。
     LazyColumn(
         state = listState,
         modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
+        // 整屏后行距可以放回 6dp（改造前为挤出 3 行曾收到 4dp）
+        verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         itemsIndexed(lines) { index, line ->
             val isActive = index == activeIndex
