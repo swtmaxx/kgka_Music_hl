@@ -67,6 +67,9 @@ import com.swtmaxx.kamusic.compose.ui.vm.UiState
 fun MineScreen(
     onOpenPlayer: () -> Unit,
     onOpenPlaylist: (id: String, title: String) -> Unit = { _, _ -> },
+    onOpenCloud: () -> Unit = {},
+    onOpenVip: () -> Unit = {},
+    onOpenHistory: () -> Unit = {},
 ) {
     val container = LocalAppContainer.current
     val viewModel: MineViewModel = viewModel(
@@ -163,6 +166,22 @@ fun MineScreen(
                     playlists = data.collectedPlaylists,
                     onOpenPlaylist = onOpenPlaylist,
                 )
+
+                // ===== 更多（云盘 / VIP / 播放历史）=====
+                Text(
+                    text = "更多",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = TextPrimary,
+                    modifier = Modifier.padding(
+                        start = WatchMetrics.gutter,
+                        end = WatchMetrics.gutter,
+                        top = WatchMetrics.gutter * 2,
+                        bottom = WatchMetrics.gutterSmall,
+                    ),
+                )
+                SettingRow(label = "云盘", value = "", onClick = onOpenCloud)
+                SettingRow(label = "VIP", value = "", onClick = onOpenVip)
+                SettingRow(label = "播放历史", value = "", onClick = onOpenHistory)
 
                 // ===== 设置 =====
                 Text(

@@ -16,12 +16,15 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.swtmaxx.kamusic.compose.ui.screen.AlbumDetailScreen
 import com.swtmaxx.kamusic.compose.ui.screen.ArtistDetailScreen
+import com.swtmaxx.kamusic.compose.ui.screen.CloudScreen
 import com.swtmaxx.kamusic.compose.ui.screen.CommentScreen
+import com.swtmaxx.kamusic.compose.ui.screen.HistoryScreen
 import com.swtmaxx.kamusic.compose.ui.screen.LoginScreen
 import com.swtmaxx.kamusic.compose.ui.screen.PlayerScreen
 import com.swtmaxx.kamusic.compose.ui.screen.PlaylistDetailScreen
 import com.swtmaxx.kamusic.compose.ui.screen.QueueScreen
 import com.swtmaxx.kamusic.compose.ui.screen.RankDetailScreen
+import com.swtmaxx.kamusic.compose.ui.screen.VipScreen
 import com.swtmaxx.kamusic.compose.ui.shell.WatchShell
 
 /**
@@ -62,6 +65,9 @@ private fun MainNavHost() {
                 onOpenRank = { id, cid, title ->
                     navController.navigate("rank/$id?cid=$cid&title=${Uri.encode(title)}")
                 },
+                onOpenCloud = { navController.navigate("cloud") },
+                onOpenVip = { navController.navigate("vip") },
+                onOpenHistory = { navController.navigate("history") },
             )
         }
 
@@ -180,6 +186,24 @@ private fun MainNavHost() {
                 mixSongId = entry.arguments?.getString("mixId").orEmpty(),
                 fallbackTitle = entry.arguments?.getString("title").orEmpty().ifEmpty { "评论" },
                 onBack = { navController.popBackStack() },
+            )
+        }
+
+        composable("cloud") {
+            CloudScreen(
+                onBack = { navController.popBackStack() },
+                onOpenPlayer = { navController.navigate("player") },
+            )
+        }
+
+        composable("vip") {
+            VipScreen(onBack = { navController.popBackStack() })
+        }
+
+        composable("history") {
+            HistoryScreen(
+                onBack = { navController.popBackStack() },
+                onOpenPlayer = { navController.navigate("player") },
             )
         }
     }

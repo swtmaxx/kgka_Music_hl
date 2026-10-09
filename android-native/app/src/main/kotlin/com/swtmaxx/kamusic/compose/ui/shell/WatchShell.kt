@@ -36,6 +36,9 @@ fun WatchShell(
     onOpenPlayer: () -> Unit,
     onOpenPlaylist: (id: String, title: String) -> Unit,
     onOpenRank: (id: String, cid: String, title: String) -> Unit,
+    onOpenCloud: () -> Unit,
+    onOpenVip: () -> Unit,
+    onOpenHistory: () -> Unit,
 ) {
     val container = LocalAppContainer.current
     val pagerState = rememberPagerState(pageCount = { 3 })
@@ -61,6 +64,9 @@ fun WatchShell(
                     else -> MineScreen(
                         onOpenPlayer = onOpenPlayer,
                         onOpenPlaylist = onOpenPlaylist,
+                        onOpenCloud = onOpenCloud,
+                        onOpenVip = onOpenVip,
+                        onOpenHistory = onOpenHistory,
                     )
                 }
             }
