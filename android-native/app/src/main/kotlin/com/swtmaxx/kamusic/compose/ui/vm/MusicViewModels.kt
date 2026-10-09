@@ -3,6 +3,9 @@ package com.swtmaxx.kamusic.compose.ui.vm
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.swtmaxx.kamusic.compose.core.SessionStore
+import com.swtmaxx.kamusic.compose.data.model.AlbumDetail
+import com.swtmaxx.kamusic.compose.data.model.ArtistDetail
+import com.swtmaxx.kamusic.compose.data.model.Comment
 import com.swtmaxx.kamusic.compose.data.model.LyricLine
 import com.swtmaxx.kamusic.compose.data.model.PlaylistSummary
 import com.swtmaxx.kamusic.compose.data.model.RankDetail
@@ -322,6 +325,129 @@ class RankDetailViewModel(
                     s
                 }
             }
+        }
+    }
+}
+
+// ============================================================================
+// 歌手详情
+// ============================================================================
+
+data class ArtistUiData(
+    val detail: ArtistDetail? = null,
+    val songs: List<Song> = emptyList(),
+)
+
+class ArtistDetailViewModel(
+    private val repo: MusicRepository,
+    private val artistId: String,
+    private val fallbackName: String,
+) : ViewModel() {
+
+    private val _state = MutableStateFlow<UiState<ArtistUiData>>(UiState.Loading)
+    val state: StateFlow<UiState<ArtistUiData>> = _state.asStateFlow()
+
+    val title: String
+        get() = (_state.value as? UiState.Ready)?.data?.detail?.name ?: fallbackName
+
+    fun load() {
+        _state.value = UiState.Loading
+        viewModelScope.launch {
+            val detail = runCatching { repo.artistDetail(artistId) }
+            val songs = runCatching { repo.artistSongs(artistId) }
+            val list = songs.getOrNull().orEmpty()
+            if (detail.getOrNull() == null && list.isEmpty()) {
+                _state.value = UiState.Error(
+                    detail.exceptionOrNull()?.message ?: "歌手加载失败",
+                )
+                return@launch
+            }
+            _state.value = UiState.Ready(ArtistUiData(detail.getOrNull(), list))
+        }
+    }
+}
+
+// ============================================================================
+// 专辑详情
+// ============================================================================
+
+data class AlbumUiData(
+    val detail: AlbumDetail? = null,
+    val songs: List<Song> = emptyList(),
+)
+
+class AlbumDetailViewModel(
+    private val repo: MusicRepository,
+    private val albumId: String,
+    private val fallbackTitle: String,
+) : ViewModel() {
+
+    private val _state = MutableStateFlow<UiState<AlbumUiData>>(UiState.Loading)
+    val state: StateFlow<UiState<AlbumUiData>> = _state.asStateFlow()
+
+    val title: String
+        get() = (_state.value as? UiState.Ready)?.data?.detail?.name ?: fallbackTitle
+
+    fun load() {
+        _state.value = UiState.Loading
+        viewModelScope.launch {
+            val detail = runCatching { repo.albumDetail(albumId) }
+            val songs = runCatching { repo.albumSongs(albumId) }
+            val list = songs.getOrNull().orEmpty()
+            if (detail.getOrNull() == null && list.isEmpty()) {
+                _state.value = UiState.Error(
+                    detail.exceptionOrNull()?.message ?: "专辑加载失败",
+                )
+                return@launch
+            }
+            _state.value = UiState.Ready(AlbumUiData(detail.getOrNull(), list))
+        }
+    }
+}
+
+// ============================================================================
+// 评论（只读）
+// ============================================================================
+
+class CommentViewModel(
+    private val repo: MusicRepository,
+    private val mixSongId: String,
+    private val fallbackTitle: String,
+) : ViewModel() {
+
+    private val _state = MutableStateFlow<UiState<List<Comment>>>(UiState.Loading)
+    val state: StateFlow<UiState<List<Comment>>> = _state.asStateFlow()
+
+    val title: String get() = fallbackTitle
+
+    private var page = 1
+    private var endReached = false
+
+    fun load() {
+        _state.value = UiState.Loading
+        page = 1
+        endReached = false
+        viewModelScope.launch {
+            val result = runCatching { repo.comments(mixSongId, page = 1) }
+            val list = result.getOrNull()
+            if (list == null) {
+                _state.value = UiState.Error(result.exceptionOrNull()?.message ?: "评论加载失败")
+                return@launch
+            }
+            endReached = list.isEmpty()
+            _state.value = UiState.Ready(list)
+        }
+    }
+
+    fun loadMore() {
+        val current = (_state.value as? UiState.Ready)?.data ?: return
+        if (endReached) return
+        viewModelScope.launch {
+            val next = page + 1
+            val more = runCatching { repo.comments(mixSongId, page = next) }
+                .getOrNull().orEmpty()
+            if (more.isEmpty()) endReached = true else page = next
+            _state.value = UiState.Ready(current + more)
         }
     }
 }

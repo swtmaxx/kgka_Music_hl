@@ -14,6 +14,9 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.swtmaxx.kamusic.compose.ui.screen.AlbumDetailScreen
+import com.swtmaxx.kamusic.compose.ui.screen.ArtistDetailScreen
+import com.swtmaxx.kamusic.compose.ui.screen.CommentScreen
 import com.swtmaxx.kamusic.compose.ui.screen.LoginScreen
 import com.swtmaxx.kamusic.compose.ui.screen.PlayerScreen
 import com.swtmaxx.kamusic.compose.ui.screen.PlaylistDetailScreen
@@ -66,6 +69,15 @@ private fun MainNavHost() {
             PlayerScreen(
                 onBack = { navController.popBackStack() },
                 onOpenQueue = { navController.navigate("queue") },
+                onOpenArtist = { id, name ->
+                    navController.navigate("artist/$id?name=${Uri.encode(name)}")
+                },
+                onOpenAlbum = { id, title ->
+                    navController.navigate("album/$id?title=${Uri.encode(title)}")
+                },
+                onOpenComments = { mixId, title ->
+                    navController.navigate("comments/$mixId?title=${Uri.encode(title)}")
+                },
             )
         }
 
@@ -115,6 +127,59 @@ private fun MainNavHost() {
                 fallbackTitle = title.ifEmpty { "榜单" },
                 onBack = { navController.popBackStack() },
                 onOpenPlayer = { navController.navigate("player") },
+            )
+        }
+
+        composable(
+            route = "artist/{id}?name={name}",
+            arguments = listOf(
+                navArgument("id") { type = NavType.StringType },
+                navArgument("name") {
+                    type = NavType.StringType
+                    defaultValue = ""
+                },
+            ),
+        ) { entry ->
+            ArtistDetailScreen(
+                artistId = entry.arguments?.getString("id").orEmpty(),
+                fallbackName = entry.arguments?.getString("name").orEmpty().ifEmpty { "歌手" },
+                onBack = { navController.popBackStack() },
+                onOpenPlayer = { navController.navigate("player") },
+            )
+        }
+
+        composable(
+            route = "album/{id}?title={title}",
+            arguments = listOf(
+                navArgument("id") { type = NavType.StringType },
+                navArgument("title") {
+                    type = NavType.StringType
+                    defaultValue = ""
+                },
+            ),
+        ) { entry ->
+            AlbumDetailScreen(
+                albumId = entry.arguments?.getString("id").orEmpty(),
+                fallbackTitle = entry.arguments?.getString("title").orEmpty().ifEmpty { "专辑" },
+                onBack = { navController.popBackStack() },
+                onOpenPlayer = { navController.navigate("player") },
+            )
+        }
+
+        composable(
+            route = "comments/{mixId}?title={title}",
+            arguments = listOf(
+                navArgument("mixId") { type = NavType.StringType },
+                navArgument("title") {
+                    type = NavType.StringType
+                    defaultValue = ""
+                },
+            ),
+        ) { entry ->
+            CommentScreen(
+                mixSongId = entry.arguments?.getString("mixId").orEmpty(),
+                fallbackTitle = entry.arguments?.getString("title").orEmpty().ifEmpty { "评论" },
+                onBack = { navController.popBackStack() },
             )
         }
     }

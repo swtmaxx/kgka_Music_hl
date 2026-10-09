@@ -50,6 +50,7 @@ data class Song(
     val artist: String,
     val hash: String,
     val albumId: String? = null,
+    val artistId: String? = null,
     val albumAudioId: String? = null,
     val albumName: String? = null,
     val coverUrl: String? = null,
@@ -113,6 +114,21 @@ private fun parseCoverUrl(json: JsonObject): String? =
         ?: normalizeImageUrl(json.obj("album_info").strAny("sizable_cover", "cover", "img"))
         ?: normalizeImageUrl(json.obj("base").strAny("sizable_cover", "cover", "img"))
 
+/**
+ * 歌手 id。
+ *
+ * 各家接口放的位置不同：
+ * - `/rank/audio`、`/album/songs`：`authors: [{author_id, author_name}]`
+ * - `/personal/fm`：`singerinfo: [{id, name}]`
+ * - 少数接口直接给顶层 `author_id` / `singer_id`
+ * 都没有时返回 null（歌手详情入口会置灰，而不是跳到空页）。
+ */
+private fun parseArtistId(json: JsonObject): String? =
+    json.strAny("author_id", "authorId", "singer_id", "singerid")
+        ?: json.arr("authors").objList().firstOrNull()?.strAny("author_id", "id")
+        ?: json.arr("singerinfo").objList().firstOrNull()?.strAny("id", "author_id")
+        ?: json.obj("base").strAny("author_id", "singer_id")
+
 /** 从任意歌曲形状的 JSON 解析。所有接口共用。 */
 fun parseSong(json: JsonObject): Song {
     // /album/songs 这类接口把歌名/歌手/专辑 id 全部嵌在 `base` 里，顶层只有
@@ -133,6 +149,7 @@ fun parseSong(json: JsonObject): Song {
         artist = artist,
         hash = hash,
         albumId = json.strAny("AlbumID", "album_id") ?: base.str("album_id"),
+        artistId = parseArtistId(json),
         albumAudioId = json.strAny("album_audio_id", "MixSongID", "mixsongid", "audio_id")
             ?: base.str("album_audio_id"),
         albumName = json.strAny("AlbumName", "album_name")

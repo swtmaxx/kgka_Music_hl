@@ -84,8 +84,13 @@ private object PlayerLayout {
     /** 控制页播放键直径。官方小屏 64dp / 大屏 80dp，此处按 240px 屏宽收窄。 */
     val middleButtonSize = 56.dp
 
-    /** 次要按钮直径。 */
-    val secondaryButtonSize = 40.dp
+    /**
+     * 次要按钮直径。
+     *
+     * 40dp → 36dp：下段现在要放两行（模式/静音/队列 + 歌手/专辑/评论），
+     * 收窄后才能给封面留出可用高度（240×284 上封面仍有约 81dp）。
+     */
+    val secondaryButtonSize = 36.dp
 
     /**
      * 进度条触控区高度。
@@ -245,11 +250,13 @@ private fun ControlPage(
             )
         }
 
-        // ===== 次要按钮 =====
+        // ===== 次要按钮（两行）=====
+        // 第一行：播放模式 / 静音 / 队列
+        // 第二行：歌手 / 专辑 / 评论 —— 从当前曲目跳转，缺对应 id 时置灰
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(PlayerLayout.secondaryButtonSize + WatchMetrics.gutter),
+                .height(PlayerLayout.secondaryButtonSize),
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -282,6 +289,46 @@ private fun ControlPage(
                 size = PlayerLayout.secondaryButtonSize,
                 iconSize = WatchMetrics.icon,
                 tint = TextSecondary,
+            )
+        }
+
+        Spacer(Modifier.height(WatchMetrics.gutterSmall))
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(PlayerLayout.secondaryButtonSize),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            CircleIconButton(
+                icon = painterResource(R.drawable.ic_person),
+                contentDescription = "歌手",
+                onClick = { song?.artistId?.let { onOpenArtist(it, song.artist) } },
+                size = PlayerLayout.secondaryButtonSize,
+                iconSize = WatchMetrics.icon,
+                tint = TextSecondary,
+                enabled = song?.artistId != null,
+            )
+            CircleIconButton(
+                icon = painterResource(R.drawable.ic_album),
+                contentDescription = "专辑",
+                onClick = {
+                    song?.albumId?.let { onOpenAlbum(it, song.albumName ?: song.title) }
+                },
+                size = PlayerLayout.secondaryButtonSize,
+                iconSize = WatchMetrics.icon,
+                tint = TextSecondary,
+                enabled = song?.albumId != null,
+            )
+            CircleIconButton(
+                icon = painterResource(R.drawable.ic_comment),
+                contentDescription = "评论",
+                onClick = { song?.albumAudioId?.let { onOpenComments(it, song.title) } },
+                size = PlayerLayout.secondaryButtonSize,
+                iconSize = WatchMetrics.icon,
+                tint = TextSecondary,
+                enabled = song?.albumAudioId != null,
             )
         }
     }
