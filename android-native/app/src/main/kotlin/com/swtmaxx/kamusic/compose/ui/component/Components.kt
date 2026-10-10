@@ -6,6 +6,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -39,6 +40,8 @@ import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -46,6 +49,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.swtmaxx.kamusic.compose.R
 import com.swtmaxx.kamusic.compose.data.model.ClimaxRange
 import com.swtmaxx.kamusic.compose.data.model.Song
@@ -209,6 +213,32 @@ fun WatchProgressBar(
 // 列表项
 // ============================================================================
 
+/**
+ * 按目标显示尺寸缩略解码。
+ *
+ * ⚠️ 酷狗封面常是 480~1000px，而手表屏只有 240px 宽。
+ * 不告诉 Coil 目标尺寸，它会**按原图全尺寸解码** —— 在 1GB RAM 上白白浪费 4~16 倍内存。
+ * 这里把目标像素宽高交给 Coil（`size()`），让它直接解码到需要的尺寸。
+ */
+@Composable
+private fun rememberSizedImageRequest(url: String?, widthPx: Int, heightPx: Int): ImageRequest? {
+    val context = LocalContext.current
+    if (url.isNullOrEmpty()) return null
+    return remember(url, widthPx, heightPx) {
+        ImageRequest.Builder(context)
+            .data(url)
+            .size(widthPx.coerceAtLeast(MIN_DECODE_PX), heightPx.coerceAtLeast(MIN_DECODE_PX))
+            .crossfade(false)
+            .build()
+    }
+}
+
+/** 解码下限，避免 1dp 的占位图也被要求解码成 1px（模糊）。 */
+private const val MIN_DECODE_PX = 32
+
+/** 屏幕宽度量级的上限，用于尺寸未知的铺满型封面。 */
+private const val MAX_DECODE_PX = 480
+
 @Composable
 fun Artwork(
     url: String?,
@@ -216,6 +246,10 @@ fun Artwork(
     modifier: Modifier = Modifier,
     corner: Dp = 6.dp,
 ) {
+    val density = LocalDensity.current
+    val sidePx = with(density) { size.roundToPx() }
+    val request = rememberSizedImageRequest(url, sidePx, sidePx)
+
     Box(
         modifier = modifier
             .size(size)
@@ -223,7 +257,7 @@ fun Artwork(
             .background(SurfaceRaised),
         contentAlignment = Alignment.Center,
     ) {
-        if (url.isNullOrEmpty()) {
+        if (request == null) {
             Icon(
                 painter = painterResource(R.drawable.ic_music_note),
                 contentDescription = null,
@@ -232,7 +266,7 @@ fun Artwork(
             )
         } else {
             AsyncImage(
-                model = url,
+                model = request,
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize(),
@@ -248,13 +282,20 @@ fun ArtworkFill(
     modifier: Modifier = Modifier,
     corner: Dp = 8.dp,
 ) {
-    Box(
+    BoxWithConstraints(
         modifier = modifier
             .clip(RoundedCornerShape(corner))
             .background(SurfaceRaised),
         contentAlignment = Alignment.Center,
     ) {
-        if (url.isNullOrEmpty()) {
+        val density = LocalDensity.current
+        // 网格单元尺寸由外部（fillMaxWidth + aspectRatio）决定，这里用约束实测；
+        // 无界时回落到 240（= 屏宽量级），总比全尺寸解码好。
+        val wPx = if (maxWidth.isFinite) with(density) { maxWidth.roundToPx() } else 240
+        val hPx = if (maxHeight.isFinite) with(density) { maxHeight.roundToPx() } else 240
+        val request = rememberSizedImageRequest(url, wPx, hPx)
+
+        if (request == null) {
             Icon(
                 painter = painterResource(R.drawable.ic_music_note),
                 contentDescription = null,
@@ -263,7 +304,7 @@ fun ArtworkFill(
             )
         } else {
             AsyncImage(
-                model = url,
+                model = request,
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize(),

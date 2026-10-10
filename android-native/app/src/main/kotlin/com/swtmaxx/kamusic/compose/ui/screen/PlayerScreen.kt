@@ -24,8 +24,10 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -44,14 +46,17 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import androidx.wear.compose.material3.AlertDialog
 import androidx.wear.compose.material3.MaterialTheme
 import androidx.wear.compose.material3.Text
+import androidx.wear.compose.material3.TextButton
 import com.swtmaxx.kamusic.compose.R
 import com.swtmaxx.kamusic.compose.core.DownloadState
 import com.swtmaxx.kamusic.compose.data.model.ClimaxRange
 import com.swtmaxx.kamusic.compose.data.model.LyricLine
 import com.swtmaxx.kamusic.compose.playback.PlayMode
 import com.swtmaxx.kamusic.compose.playback.PlaybackMapping
+import com.swtmaxx.kamusic.compose.playback.SleepTimerMode
 import com.swtmaxx.kamusic.compose.playback.PlayerUiState
 import com.swtmaxx.kamusic.compose.ui.LocalAppContainer
 import com.swtmaxx.kamusic.compose.ui.component.Artwork
@@ -198,6 +203,8 @@ private fun ControlPage(
     val container = LocalAppContainer.current
     val scope = rememberCoroutineScope()
     val withPermission = rememberStoragePermission()
+    val sleepMode by container.playbackController.sleepMode.collectAsStateWithLifecycle()
+    var showSleepDialog by remember { mutableStateOf(false) }
     val song = state.song
     val durationMs = state.durationMs
 
@@ -377,7 +384,60 @@ private fun ControlPage(
                 tint = if (isDownloaded || downloading) AccentBlue else TextSecondary,
                 enabled = song != null && !isDownloaded && !downloading && song.hash.isNotEmpty(),
             )
+
+            // 睡眠定时：开启时图标高亮
+            CircleIconButton(
+                icon = painterResource(R.drawable.ic_timer),
+                contentDescription = "睡眠定时",
+                onClick = { showSleepDialog = true },
+                size = PlayerLayout.secondaryButtonSize,
+                iconSize = WatchMetrics.icon,
+                tint = if (sleepMode == SleepTimerMode.OFF) TextSecondary else AccentBlue,
+            )
         }
+    }
+
+    // 睡眠定时选项。Wear 的 AlertDialog 带 DialogProperties，是独立窗口，
+    // 作为兄弟节点放在 Column 之后不影响布局。
+    if (showSleepDialog) {
+        AlertDialog(
+            visible = true,
+            onDismissRequest = { showSleepDialog = false },
+            title = { Text("睡眠定时") },
+            content = {
+                item {
+                    SleepOption("关闭定时", sleepMode == SleepTimerMode.OFF) {
+                        container.playbackController.setSleepTimer(0)
+                        showSleepDialog = false
+                    }
+                }
+                listOf(15, 30, 60).forEach { minutes ->
+                    item {
+                        SleepOption("$minutes 分钟", false) {
+                            container.playbackController.setSleepTimer(minutes)
+                            showSleepDialog = false
+                        }
+                    }
+                }
+                item {
+                    SleepOption("播完当前曲", sleepMode == SleepTimerMode.END_OF_TRACK) {
+                        container.playbackController.setSleepEndOfTrack(true)
+                        showSleepDialog = false
+                    }
+                }
+            },
+        )
+    }
+}
+
+/** 睡眠定时的单个选项；选中项用强调色标出。 */
+@Composable
+private fun SleepOption(label: String, selected: Boolean, onClick: () -> Unit) {
+    TextButton(onClick = onClick) {
+        Text(
+            text = label,
+            color = if (selected) AccentBlue else TextPrimary,
+        )
     }
 }
 
@@ -490,6 +550,12 @@ private fun PlayerHeader(
     currentPage: Int,
     onBack: () -> Unit,
 ) {
+    val container = LocalAppContainer.current
+    // 只在这一层订阅剩余时间 —— 它每秒变一次，放上层会让整页（封面/歌词/控制键）每秒重组
+    val sleepMode by container.playbackController.sleepMode.collectAsStateWithLifecycle()
+    val sleepRemainingMs by
+        container.playbackController.sleepRemainingMs.collectAsStateWithLifecycle()
+
     Row(
         modifier = Modifier.fillMaxWidth().height(PlayerLayout.headerHeight),
         verticalAlignment = Alignment.CenterVertically,
@@ -518,7 +584,20 @@ private fun PlayerHeader(
                 overflow = TextOverflow.Ellipsis,
             )
         }
-        Spacer(Modifier.width(WatchMetrics.gutterSmall))
+        // 睡眠定时生效时，在页码点之前显示倒计时（低频页无此元素）
+        if (sleepMode != SleepTimerMode.OFF) {
+            Text(
+                text = if (sleepMode == SleepTimerMode.END_OF_TRACK) {
+                    "本曲"
+                } else {
+                    formatTime(sleepRemainingMs)
+                },
+                style = MaterialTheme.typography.labelSmall,
+                color = AccentBlue,
+                maxLines = 1,
+            )
+            Spacer(Modifier.width(WatchMetrics.gutterSmall))
+        }
         PageDots(count = 2, current = currentPage)
     }
 }

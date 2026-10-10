@@ -156,11 +156,21 @@ class MusicRepository(
 
     // ===== 播放 =====
 
-    /** 解析可播放地址；失败返回 null（调用方决定跳过还是提示）。 */
-    suspend fun resolvePlayUrl(song: Song): String? = runCatching {
-        val playUrl = api.songUrl(song, sessionStore.quality)
-        playUrl.url.takeIf { it.isNotEmpty() }
-    }.getOrNull()
+    /**
+     * 解析可播放地址，带音质降级；全部失败返回 null。
+     *
+     * 本地已下载的歌在 [com.swtmaxx.kamusic.compose.playback.PlaybackMapping.toMediaItem]
+     * 里就已经直接给了 `file://`，不会走到这里。
+     */
+    suspend fun resolvePlayUrl(song: Song): String? {
+        for (quality in qualityChain(sessionStore.quality)) {
+            val url = runCatching {
+                api.songUrl(song, quality).url.takeIf { it.isNotEmpty() }
+            }.getOrNull()
+            if (!url.isNullOrEmpty()) return url
+        }
+        return null
+    }
 
     /**
      * 按 hash 解析播放地址。
@@ -182,4 +192,18 @@ class MusicRepository(
         if (lines.isNotEmpty()) lyricCache.put(song.hash to lines)
         return lines
     }
+}
+
+/**
+ * 音质降级链：从用户设置的档位往下逐级尝试。
+ *
+ * 服务端对没有对应音质的歌会返回空 url（例如只有 128 的歌请求 flac）。
+ * 不降级的话用户设了「无损」就会遇到一大片「无法获取播放地址」。
+ *
+ * 抽成顶层纯函数是为了能单测。
+ */
+internal fun qualityChain(preferred: String): List<String> = when (preferred) {
+    "flac" -> listOf("flac", "320", "128")
+    "320" -> listOf("320", "128")
+    else -> listOf("128")
 }
