@@ -169,7 +169,7 @@ class MusicRepository(
      * 在 ExoPlayer 加载线程上同步调用（那里不是协程上下文，用 runBlocking 包一层）。
      */
     suspend fun resolvePlayUrlByHash(hash: String): String? {
-        val song = com.swtmaxx.kamusic.compose.playback.SongRegistry.get(hash) ?: return null
+        val song = com.swtmaxx.kamusic.compose.playback.SongRegistry.getByHash(hash) ?: return null
         return resolvePlayUrl(song)
     }
 

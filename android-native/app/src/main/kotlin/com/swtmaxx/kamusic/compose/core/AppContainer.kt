@@ -25,6 +25,9 @@ class AppContainer(context: Context) {
 
     val sessionStore: SessionStore = SessionStore(appContext)
 
+    /** 下载记录（DataStore 单键 JSON）。 */
+    val localStore: LocalStore = LocalStore(appContext)
+
     private val http: OkHttpClient = createOkHttpClient()
 
     val apiClient: ApiClient = ApiClient(http, sessionStore)
@@ -35,11 +38,15 @@ class AppContainer(context: Context) {
 
     val musicRepository: MusicRepository = MusicRepository(musicApi, sessionStore)
 
+    /** 下载器（并发 1 + 断点续传 + 原子落盘）。 */
+    val downloader: Downloader = Downloader(appContext, http, musicRepository, localStore)
+
     val playbackController: PlaybackController = PlaybackController(appContext, appScope)
 
-    /** 从 DataStore 恢复登录态与设置。UI 应等到 [SessionStore.ready] 为 true 再渲染。 */
+    /** 从 DataStore 恢复登录态、设置与下载记录。UI 应等到 [SessionStore.ready] 为 true 再渲染。 */
     suspend fun hydrate() {
         sessionStore.hydrate()
+        localStore.hydrate()
     }
 
     fun shutdown() {

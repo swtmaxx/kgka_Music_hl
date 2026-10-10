@@ -19,6 +19,7 @@ import com.swtmaxx.kamusic.compose.ui.screen.ArtistDetailScreen
 import com.swtmaxx.kamusic.compose.ui.screen.CloudScreen
 import com.swtmaxx.kamusic.compose.ui.screen.CommentScreen
 import com.swtmaxx.kamusic.compose.ui.screen.DiscoverScreen
+import com.swtmaxx.kamusic.compose.ui.screen.DownloadScreen
 import com.swtmaxx.kamusic.compose.ui.screen.HistoryScreen
 import com.swtmaxx.kamusic.compose.ui.screen.LoginScreen
 import com.swtmaxx.kamusic.compose.ui.screen.PlayerScreen
@@ -70,6 +71,7 @@ private fun MainNavHost() {
                 onOpenVip = { navController.navigate("vip") },
                 onOpenHistory = { navController.navigate("history") },
                 onOpenDiscover = { navController.navigate("discover") },
+                onOpenDownloads = { navController.navigate("downloads") },
                 onOpenAlbum = { id, title ->
                     navController.navigate("album/$id?title=${Uri.encode(title)}")
                 },
@@ -214,6 +216,13 @@ private fun MainNavHost() {
 
         composable("discover") {
             DiscoverScreen(
+                onBack = { navController.popBackStack() },
+                onOpenPlayer = { navController.navigate("player") },
+            )
+        }
+
+        composable("downloads") {
+            DownloadScreen(
                 onBack = { navController.popBackStack() },
                 onOpenPlayer = { navController.navigate("player") },
             )

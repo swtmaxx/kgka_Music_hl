@@ -41,6 +41,7 @@ fun WatchShell(
     onOpenVip: () -> Unit,
     onOpenHistory: () -> Unit,
     onOpenDiscover: () -> Unit,
+    onOpenDownloads: () -> Unit,
 ) {
     val container = LocalAppContainer.current
     val pagerState = rememberPagerState(pageCount = { 3 })
@@ -73,6 +74,7 @@ fun WatchShell(
                         onOpenVip = onOpenVip,
                         onOpenHistory = onOpenHistory,
                         onOpenDiscover = onOpenDiscover,
+                        onOpenDownloads = onOpenDownloads,
                     )
                 }
             }

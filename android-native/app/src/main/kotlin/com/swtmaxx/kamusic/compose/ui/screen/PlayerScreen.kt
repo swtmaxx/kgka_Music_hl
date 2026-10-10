@@ -25,6 +25,7 @@ import androidx.compose.runtime.State
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -46,6 +47,7 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import androidx.wear.compose.material3.MaterialTheme
 import androidx.wear.compose.material3.Text
 import com.swtmaxx.kamusic.compose.R
+import com.swtmaxx.kamusic.compose.core.DownloadState
 import com.swtmaxx.kamusic.compose.data.model.ClimaxRange
 import com.swtmaxx.kamusic.compose.data.model.LyricLine
 import com.swtmaxx.kamusic.compose.playback.PlayMode
@@ -56,6 +58,7 @@ import com.swtmaxx.kamusic.compose.ui.component.Artwork
 import com.swtmaxx.kamusic.compose.ui.component.CircleIconButton
 import com.swtmaxx.kamusic.compose.ui.component.PlayPauseButton
 import com.swtmaxx.kamusic.compose.ui.component.WatchProgressBar
+import com.swtmaxx.kamusic.compose.ui.component.rememberStoragePermission
 import com.swtmaxx.kamusic.compose.ui.theme.AccentBlue
 import com.swtmaxx.kamusic.compose.ui.theme.OutlineDim
 import com.swtmaxx.kamusic.compose.ui.theme.TextDisabled
@@ -64,6 +67,7 @@ import com.swtmaxx.kamusic.compose.ui.theme.TextSecondary
 import com.swtmaxx.kamusic.compose.ui.theme.WatchMetrics
 import com.swtmaxx.kamusic.compose.ui.vm.LyricsUiData
 import com.swtmaxx.kamusic.compose.ui.vm.PlayerViewModel
+import kotlinx.coroutines.launch
 
 /**
  * 播放页尺寸令牌。
@@ -130,6 +134,10 @@ fun PlayerScreen(
     val lyricsState by viewModel.lyrics.collectAsStateWithLifecycle()
     val climax by viewModel.climax.collectAsStateWithLifecycle()
 
+    // 下载态：已下载列表（决定按钮图标与可用性）+ 进行中的进度
+    val downloads by container.localStore.downloads.collectAsStateWithLifecycle()
+    val downloadStates by container.downloader.states.collectAsStateWithLifecycle()
+
     val pagerState = rememberPagerState(pageCount = { 2 })
 
     Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
@@ -145,6 +153,8 @@ fun PlayerScreen(
                     positionState = positionState,
                     currentPage = pagerState.currentPage,
                     climax = climax,
+                    downloadedIds = downloads.map { it.id }.toSet(),
+                    downloadStates = downloadStates,
                     onBack = onBack,
                     onOpenQueue = onOpenQueue,
                 )
@@ -180,10 +190,14 @@ private fun ControlPage(
     positionState: State<Long>,
     currentPage: Int,
     climax: ClimaxRange?,
+    downloadedIds: Set<String>,
+    downloadStates: Map<String, DownloadState>,
     onBack: () -> Unit,
     onOpenQueue: () -> Unit,
 ) {
     val container = LocalAppContainer.current
+    val scope = rememberCoroutineScope()
+    val withPermission = rememberStoragePermission()
     val song = state.song
     val durationMs = state.durationMs
 
@@ -258,7 +272,7 @@ private fun ControlPage(
 
         // ===== 次要按钮（两行）=====
         // 第一行：播放模式 / 静音 / 队列
-        // 第二行：歌手 / 专辑 / 评论 —— 从当前曲目跳转，缺对应 id 时置灰
+        // 第二行：歌手 / 专辑 / 评论 / 下载 —— 前三项从当前曲目跳转，缺对应 id 时置灰
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -335,6 +349,33 @@ private fun ControlPage(
                 iconSize = WatchMetrics.icon,
                 tint = TextSecondary,
                 enabled = song?.albumAudioId != null,
+            )
+
+            // 下载当前曲目：已下载→勾且禁用；下载中→高亮且禁用
+            val songId = song?.id
+            val isDownloaded = songId != null && downloadedIds.contains(songId)
+            val dlState = songId?.let { downloadStates[it] }
+            val downloading = dlState is DownloadState.Queued || dlState is DownloadState.Running
+            CircleIconButton(
+                icon = painterResource(
+                    if (isDownloaded) R.drawable.ic_check else R.drawable.ic_download,
+                ),
+                contentDescription = if (isDownloaded) "已下载" else "下载",
+                onClick = {
+                    val target = song ?: return@CircleIconButton
+                    withPermission {
+                        scope.launch {
+                            container.downloader.enqueue(
+                                listOf(target),
+                                container.sessionStore.downloadQuality,
+                            )
+                        }
+                    }
+                },
+                size = PlayerLayout.secondaryButtonSize,
+                iconSize = WatchMetrics.icon,
+                tint = if (isDownloaded || downloading) AccentBlue else TextSecondary,
+                enabled = song != null && !isDownloaded && !downloading && song.hash.isNotEmpty(),
             )
         }
     }

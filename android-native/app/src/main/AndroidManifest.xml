@@ -9,6 +9,17 @@
     <!-- API 33+ 才需要；minSdk 27 下系统会忽略未知权限。 -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
+    <!--
+      下载到公共目录 /storage/emulated/0/Download/KA Music/ 所需。
+      API 27（我们的目标机）上必须运行时申请；maxSdkVersion 只是声明「更高版本不再需要」。
+    -->
+    <uses-permission
+        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="28" />
+    <uses-permission
+        android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
+
     <application
         android:name=".KaMusicApp"
         android:allowBackup="false"

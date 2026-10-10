@@ -71,6 +71,7 @@ fun MineScreen(
     onOpenVip: () -> Unit = {},
     onOpenHistory: () -> Unit = {},
     onOpenDiscover: () -> Unit = {},
+    onOpenDownloads: () -> Unit = {},
 ) {
     val container = LocalAppContainer.current
     val viewModel: MineViewModel = viewModel(
@@ -87,6 +88,7 @@ fun MineScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val apiBaseUrl by viewModel.apiBaseUrl.collectAsStateWithLifecycle()
     val quality by viewModel.quality.collectAsStateWithLifecycle()
+    val downloadQuality by viewModel.downloadQuality.collectAsStateWithLifecycle()
 
     var editingUrl by remember { mutableStateOf(false) }
     var urlDraft by remember { mutableStateOf("") }
@@ -184,6 +186,7 @@ fun MineScreen(
                 SettingRow(label = "VIP", value = "", onClick = onOpenVip)
                 SettingRow(label = "播放历史", value = "", onClick = onOpenHistory)
                 SettingRow(label = "刷歌", value = "", onClick = onOpenDiscover)
+                SettingRow(label = "下载管理", value = "", onClick = onOpenDownloads)
 
                 // ===== 设置 =====
                 Text(
@@ -217,6 +220,19 @@ fun MineScreen(
                     QualityChips(
                         quality = quality,
                         onSelect = { viewModel.updateQuality(it) },
+                    )
+                }
+
+                Column(modifier = Modifier.padding(horizontal = WatchMetrics.gutter, vertical = WatchMetrics.gutterSmall)) {
+                    Text(
+                        text = "下载音质",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = TextPrimary,
+                    )
+                    Spacer(Modifier.height(WatchMetrics.gutterSmall))
+                    QualityChips(
+                        quality = downloadQuality,
+                        onSelect = { viewModel.updateDownloadQuality(it) },
                     )
                 }
 

@@ -632,6 +632,10 @@ class MineViewModel(
     private val _quality = MutableStateFlow(sessionStore.quality)
     val quality: StateFlow<String> = _quality.asStateFlow()
 
+    /** 下载音质，与播放音质独立（默认标准档，手表上体积优先）。 */
+    private val _downloadQuality = MutableStateFlow(sessionStore.downloadQuality)
+    val downloadQuality: StateFlow<String> = _downloadQuality.asStateFlow()
+
     fun load(forceRefresh: Boolean = false) {
         viewModelScope.launch {
             val profileResult = runCatching { repo.userDetail() }
@@ -663,6 +667,13 @@ class MineViewModel(
         viewModelScope.launch {
             sessionStore.setQuality(value)
             _quality.value = sessionStore.quality
+        }
+    }
+
+    fun updateDownloadQuality(value: String) {
+        viewModelScope.launch {
+            sessionStore.setDownloadQuality(value)
+            _downloadQuality.value = sessionStore.downloadQuality
         }
     }
 

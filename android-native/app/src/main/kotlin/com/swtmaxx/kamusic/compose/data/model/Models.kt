@@ -57,8 +57,16 @@ data class Song(
     val durationMs: Long? = null,
     /** 服务端 privilege 字段，用于判断是否可播放（0 通常表示无版权）。 */
     val privilege: Int? = null,
+    /** 已下载到本地的音频绝对路径；非空时优先本地播放，不联网。 */
+    val localPath: String? = null,
+    /** 已下载到本地的封面绝对路径；非空时优先用它当封面。 */
+    val localCoverPath: String? = null,
 ) {
-    val playable: Boolean get() = hash.isNotEmpty()
+    /** 有 hash 就能联网解析，有 localPath 就能离线播放。 */
+    val playable: Boolean get() = hash.isNotEmpty() || !localPath.isNullOrEmpty()
+
+    /** 是否已下载到本地。 */
+    val isLocal: Boolean get() = !localPath.isNullOrEmpty()
 
     val durationText: String
         get() {

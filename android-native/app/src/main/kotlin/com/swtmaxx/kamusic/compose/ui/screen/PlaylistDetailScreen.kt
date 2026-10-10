@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -38,11 +39,13 @@ import com.swtmaxx.kamusic.compose.ui.component.WatchScreenScaffold
 import com.swtmaxx.kamusic.compose.ui.component.watchRotary
 import com.swtmaxx.kamusic.compose.ui.component.watchScalingParams
 import com.swtmaxx.kamusic.compose.ui.component.watchSwipeBack
+import com.swtmaxx.kamusic.compose.ui.component.rememberStoragePermission
 import com.swtmaxx.kamusic.compose.ui.theme.TextPrimary
 import com.swtmaxx.kamusic.compose.ui.theme.TextSecondary
 import com.swtmaxx.kamusic.compose.ui.theme.WatchMetrics
 import com.swtmaxx.kamusic.compose.ui.vm.PlaylistViewModel
 import com.swtmaxx.kamusic.compose.ui.vm.UiState
+import kotlinx.coroutines.launch
 
 /**
  * 歌单详情页。
@@ -61,6 +64,8 @@ fun PlaylistDetailScreen(
     onOpenPlayer: () -> Unit,
 ) {
     val container = LocalAppContainer.current
+    val scope = rememberCoroutineScope()
+    val withPermission = rememberStoragePermission()
     val viewModel: PlaylistViewModel = viewModel(
         key = "playlist_$playlistId",
         factory = viewModelFactory {
@@ -120,6 +125,23 @@ fun PlaylistDetailScreen(
                                     modifier = Modifier.weight(1f),
                                 )
                                 if (data.songs.isNotEmpty()) {
+                                    Spacer(Modifier.width(WatchMetrics.gutterSmall))
+                                    CircleIconButton(
+                                        icon = painterResource(R.drawable.ic_download),
+                                        contentDescription = "下载全部",
+                                        onClick = {
+                                            withPermission {
+                                                scope.launch {
+                                                    container.downloader.enqueue(
+                                                        data.songs,
+                                                        container.sessionStore.downloadQuality,
+                                                    )
+                                                }
+                                            }
+                                        },
+                                        size = 36.dp,
+                                        iconSize = WatchMetrics.icon,
+                                    )
                                     Spacer(Modifier.width(WatchMetrics.gutterSmall))
                                     CircleIconButton(
                                         icon = painterResource(R.drawable.ic_playlist_play),

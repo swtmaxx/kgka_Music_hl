@@ -84,18 +84,55 @@ class PlaybackMappingTest {
     }
 
     @Test
-    fun `歌曲登记表可写入与读取`() {
+    fun `歌曲登记表双索引：按 id 主查、按 hash 辅助`() {
         SongRegistry.clear()
-        val song = com.swtmaxx.kamusic.compose.data.model.Song(
+        val online = com.swtmaxx.kamusic.compose.data.model.Song(
             id = "1",
             title = "t",
             artist = "a",
             hash = "HASH",
         )
-        SongRegistry.remember(listOf(song))
-        assertEquals(song, SongRegistry.get("HASH"))
+        // 本地歌没有 hash —— 改造前会被 remember() 直接丢掉
+        val local = com.swtmaxx.kamusic.compose.data.model.Song(
+            id = "local_x",
+            title = "lt",
+            artist = "la",
+            hash = "",
+            localPath = "/tmp/x.mp3",
+        )
+        SongRegistry.remember(listOf(online, local))
+
+        // 主索引（PlaybackController 用）
+        assertEquals(online, SongRegistry.get("1"))
+        assertEquals(local, SongRegistry.get("local_x"))
+        // hash 索引（播放地址解析用）
+        assertEquals(online, SongRegistry.getByHash("HASH"))
+        assertEquals(null, SongRegistry.getByHash(""))
         assertEquals(null, SongRegistry.get("NOPE"))
+
         SongRegistry.clear()
-        assertEquals(null, SongRegistry.get("HASH"))
+        assertEquals(null, SongRegistry.get("1"))
+        assertEquals(null, SongRegistry.getByHash("HASH"))
+    }
+
+    @Test
+    fun `toMediaItem 的 mediaId 始终是 song_id`() {
+        val online = com.swtmaxx.kamusic.compose.data.model.Song(
+            id = "1",
+            title = "t",
+            artist = "a",
+            hash = "HASH",
+        )
+        val local = com.swtmaxx.kamusic.compose.data.model.Song(
+            id = "local_x",
+            title = "lt",
+            artist = "la",
+            hash = "",
+            localPath = "/tmp/x.mp3",
+        )
+        assertEquals("1", PlaybackMapping.toMediaItem(online).mediaId)
+        // 关键回归：改造前 mediaId 用的是 hash，本地歌会得到空 mediaId，
+        // 导致 SongRegistry 取不回 Song、UI 与通知栏都拿不到曲目。
+        assertEquals("local_x", PlaybackMapping.toMediaItem(local).mediaId)
     }
 }

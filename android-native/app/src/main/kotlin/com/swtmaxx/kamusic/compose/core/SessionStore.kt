@@ -52,6 +52,7 @@ class SessionStore(private val context: Context) : ApiSessionSource {
         val sessionId = stringPreferencesKey("session_id")
         val apiBaseUrl = stringPreferencesKey("api_base_url")
         val quality = stringPreferencesKey("quality")
+        val downloadQuality = stringPreferencesKey("download_quality")
     }
 
     @Volatile
@@ -74,6 +75,16 @@ class SessionStore(private val context: Context) : ApiSessionSource {
 
     @Volatile
     var quality: String = DEFAULT_QUALITY
+        private set
+
+    /**
+     * 下载音质，与播放音质**分开**。
+     *
+     * 手表是表内小喇叭或蓝牙耳机，128 与 320 听感差别很小，但体积差 2.5 倍
+     * （4 分钟歌：128→3.8 MB、320→9.4 MB、flac→27 MB），所以下载默认走标准档。
+     */
+    @Volatile
+    var downloadQuality: String = DEFAULT_DOWNLOAD_QUALITY
         private set
 
     private val _ready = MutableStateFlow(false)
@@ -99,6 +110,7 @@ class SessionStore(private val context: Context) : ApiSessionSource {
             customApiBaseUrl = prefs[Keys.apiBaseUrl]?.takeIf { it.isNotBlank() }
             _apiBaseUrlFlow.value = customApiBaseUrl
             quality = prefs[Keys.quality] ?: DEFAULT_QUALITY
+            downloadQuality = prefs[Keys.downloadQuality] ?: DEFAULT_DOWNLOAD_QUALITY
         }
         _ready.value = true
     }
@@ -160,8 +172,20 @@ class SessionStore(private val context: Context) : ApiSessionSource {
         }
     }
 
+    suspend fun setDownloadQuality(value: String) {
+        val normalized = QUALITY_OPTIONS.firstOrNull { it.first == value }?.first
+            ?: DEFAULT_DOWNLOAD_QUALITY
+        downloadQuality = normalized
+        runCatching {
+            context.sessionDataStore.edit { prefs -> prefs[Keys.downloadQuality] = normalized }
+        }
+    }
+
     companion object {
         const val DEFAULT_QUALITY = "128"
+
+        /** 下载默认标准档（手表上体积优先）。 */
+        const val DEFAULT_DOWNLOAD_QUALITY = "128"
 
         /** (API 参数值, 展示名) */
         val QUALITY_OPTIONS = listOf(
