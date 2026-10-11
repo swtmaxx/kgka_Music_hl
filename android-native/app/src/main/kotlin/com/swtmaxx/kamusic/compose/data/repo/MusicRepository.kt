@@ -5,7 +5,6 @@ import com.swtmaxx.kamusic.compose.data.api.MusicApi
 import com.swtmaxx.kamusic.compose.data.model.AlbumDetail
 import com.swtmaxx.kamusic.compose.data.model.ArtistDetail
 import com.swtmaxx.kamusic.compose.data.model.ClimaxRange
-import com.swtmaxx.kamusic.compose.data.model.Comment
 import com.swtmaxx.kamusic.compose.data.model.LyricLine
 import com.swtmaxx.kamusic.compose.data.model.PlaylistSummary
 import com.swtmaxx.kamusic.compose.data.model.RankDetail
@@ -93,15 +92,7 @@ class MusicRepository(
     suspend fun searchAlbums(keywords: String, page: Int = 1): List<AlbumDetail> =
         api.searchAlbums(keywords, page)
 
-    // ===== 评论 =====
-
-    /** 评论接口要的是 `mixsongid`（= `Song.albumAudioId`），不是 hash。 */
-    suspend fun comments(song: Song, page: Int = 1): List<Comment> =
-        api.comments(song.albumAudioId ?: song.id, page)
-
-    // ===== 云盘 / VIP =====
-
-    suspend fun cloudSongs(page: Int = 1): List<Song> = api.cloudSongs(page)
+    // ===== VIP =====
 
     suspend fun userVipDetail(): VipStatus? = api.userVipDetail()
 

@@ -15,7 +15,6 @@ import com.swtmaxx.kamusic.compose.core.strAny
 import com.swtmaxx.kamusic.compose.data.model.AlbumDetail
 import com.swtmaxx.kamusic.compose.data.model.ArtistDetail
 import com.swtmaxx.kamusic.compose.data.model.ClimaxRange
-import com.swtmaxx.kamusic.compose.data.model.Comment
 import com.swtmaxx.kamusic.compose.data.model.LoginSession
 import com.swtmaxx.kamusic.compose.data.model.PlayUrl
 import com.swtmaxx.kamusic.compose.data.model.PlaylistSummary
@@ -322,52 +321,6 @@ class MusicApi(private val client: ApiClient) {
     }
 
     // ===== 评论 =====
-
-    /**
-     * 歌曲评论（只读）。
-     *
-     * ⚠️ 两个坑：
-     * 1. 必须传 **`mixsongid`**（即 `Song.albumAudioId`），传 hash 会被上游拒绝（502）；
-     * 2. 响应**没有 `data` 包裹**，是扁平的 `{status, err_code, count, list:[...]}`，
-     *    所以这里读的是信封顶层的 `list`。
-     */
-    suspend fun comments(
-        mixSongId: String,
-        page: Int = 1,
-        pageSize: Int = 20,
-    ): List<Comment> {
-        if (mixSongId.isEmpty()) return emptyList()
-        val raw = client.get(
-            "/comment/music",
-            mapOf("mixsongid" to mixSongId, "page" to page, "pagesize" to pageSize),
-        )
-        return raw.asObjOrNull()?.arr("list").objList().map(Comment::parse)
-    }
-
-    // ===== 云盘 =====
-
-    /**
-     * 云盘列表（需登录）。响应解包后是 `{list:[...], used_size, ...}`。
-     * 未登录时上游会返回 5xx，调用方应自行容错。
-     */
-    suspend fun cloudSongs(page: Int = 1, pageSize: Int = 50): List<Song> {
-        val raw = client.get("/user/cloud", mapOf("page" to page, "pagesize" to pageSize))
-        return raw.asObjOrNull()?.arr("list").objList().map(::parseSong)
-    }
-
-    /** 云盘歌曲播放地址（需登录）。 */
-    suspend fun cloudSongUrl(song: Song): PlayUrl {
-        val json = client.get(
-            "/user/cloud/url",
-            mapOf(
-                "hash" to song.hash,
-                "album_id" to song.albumId,
-                "album_audio_id" to song.albumAudioId,
-                "quality" to "128",
-            ),
-        ).asObjOrNull() ?: EMPTY_JSON_OBJECT
-        return PlayUrl.parse(json)
-    }
 
     // ===== VIP =====
 

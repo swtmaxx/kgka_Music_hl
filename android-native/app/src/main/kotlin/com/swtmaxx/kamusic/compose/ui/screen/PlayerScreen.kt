@@ -126,6 +126,8 @@ private object PlayerLayout {
 fun PlayerScreen(
     onBack: () -> Unit,
     onOpenQueue: () -> Unit,
+    onOpenArtist: (id: String, name: String) -> Unit,
+    onOpenAlbum: (id: String, title: String) -> Unit,
 ) {
     val container = LocalAppContainer.current
     val viewModel: PlayerViewModel = viewModel(
@@ -162,6 +164,8 @@ fun PlayerScreen(
                     downloadStates = downloadStates,
                     onBack = onBack,
                     onOpenQueue = onOpenQueue,
+                    onOpenArtist = onOpenArtist,
+                    onOpenAlbum = onOpenAlbum,
                 )
 
                 else -> LyricsPage(
@@ -199,6 +203,8 @@ private fun ControlPage(
     downloadStates: Map<String, DownloadState>,
     onBack: () -> Unit,
     onOpenQueue: () -> Unit,
+    onOpenArtist: (id: String, name: String) -> Unit,
+    onOpenAlbum: (id: String, title: String) -> Unit,
 ) {
     val container = LocalAppContainer.current
     val scope = rememberCoroutineScope()
@@ -347,15 +353,6 @@ private fun ControlPage(
                 iconSize = WatchMetrics.icon,
                 tint = TextSecondary,
                 enabled = song?.albumId != null,
-            )
-            CircleIconButton(
-                icon = painterResource(R.drawable.ic_comment),
-                contentDescription = "评论",
-                onClick = { song?.albumAudioId?.let { onOpenComments(it, song.title) } },
-                size = PlayerLayout.secondaryButtonSize,
-                iconSize = WatchMetrics.icon,
-                tint = TextSecondary,
-                enabled = song?.albumAudioId != null,
             )
 
             // 下载当前曲目：已下载→勾且禁用；下载中→高亮且禁用

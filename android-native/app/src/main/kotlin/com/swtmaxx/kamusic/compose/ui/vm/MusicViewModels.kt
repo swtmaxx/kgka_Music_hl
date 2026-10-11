@@ -6,7 +6,6 @@ import com.swtmaxx.kamusic.compose.core.SessionStore
 import com.swtmaxx.kamusic.compose.data.model.AlbumDetail
 import com.swtmaxx.kamusic.compose.data.model.ArtistDetail
 import com.swtmaxx.kamusic.compose.data.model.ClimaxRange
-import com.swtmaxx.kamusic.compose.data.model.Comment
 import com.swtmaxx.kamusic.compose.data.model.LyricLine
 import com.swtmaxx.kamusic.compose.data.model.VipStatus
 import com.swtmaxx.kamusic.compose.data.model.PlaylistSummary
@@ -476,93 +475,8 @@ class AlbumDetailViewModel(
 }
 
 // ============================================================================
-// 评论（只读）
+// VIP / 播放历史
 // ============================================================================
-
-class CommentViewModel(
-    private val repo: MusicRepository,
-    private val mixSongId: String,
-    private val fallbackTitle: String,
-) : ViewModel() {
-
-    private val _state = MutableStateFlow<UiState<List<Comment>>>(UiState.Loading)
-    val state: StateFlow<UiState<List<Comment>>> = _state.asStateFlow()
-
-    val title: String get() = fallbackTitle
-
-    private var page = 1
-    private var endReached = false
-
-    fun load() {
-        _state.value = UiState.Loading
-        page = 1
-        endReached = false
-        viewModelScope.launch {
-            val result = runCatching { repo.comments(mixSongId, page = 1) }
-            val list = result.getOrNull()
-            if (list == null) {
-                _state.value = UiState.Error(result.exceptionOrNull()?.message ?: "评论加载失败")
-                return@launch
-            }
-            endReached = list.isEmpty()
-            _state.value = UiState.Ready(list)
-        }
-    }
-
-    fun loadMore() {
-        val current = (_state.value as? UiState.Ready)?.data ?: return
-        if (endReached) return
-        viewModelScope.launch {
-            val next = page + 1
-            val more = runCatching { repo.comments(mixSongId, page = next) }
-                .getOrNull().orEmpty()
-            if (more.isEmpty()) endReached = true else page = next
-            _state.value = UiState.Ready(current + more)
-        }
-    }
-}
-
-// ============================================================================
-// 云盘 / VIP / 播放历史
-// ============================================================================
-
-class CloudViewModel(private val repo: MusicRepository) : ViewModel() {
-
-    private val _state = MutableStateFlow<UiState<List<Song>>>(UiState.Loading)
-    val state: StateFlow<UiState<List<Song>>> = _state.asStateFlow()
-
-    private var page = 1
-    private var endReached = false
-
-    fun load() {
-        _state.value = UiState.Loading
-        page = 1
-        endReached = false
-        viewModelScope.launch {
-            val result = runCatching { repo.cloudSongs(page = 1) }
-            val list = result.getOrNull()
-            if (list == null) {
-                _state.value = UiState.Error(
-                    result.exceptionOrNull()?.message ?: "云盘加载失败（需要登录）",
-                )
-                return@launch
-            }
-            endReached = list.isEmpty()
-            _state.value = UiState.Ready(list)
-        }
-    }
-
-    fun loadMore() {
-        val current = (_state.value as? UiState.Ready)?.data ?: return
-        if (endReached) return
-        viewModelScope.launch {
-            val next = page + 1
-            val more = runCatching { repo.cloudSongs(page = next) }.getOrNull().orEmpty()
-            if (more.isEmpty()) endReached = true else page = next
-            _state.value = UiState.Ready(current + more)
-        }
-    }
-}
 
 class VipViewModel(private val repo: MusicRepository) : ViewModel() {
 

@@ -16,8 +16,6 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.swtmaxx.kamusic.compose.ui.screen.AlbumDetailScreen
 import com.swtmaxx.kamusic.compose.ui.screen.ArtistDetailScreen
-import com.swtmaxx.kamusic.compose.ui.screen.CloudScreen
-import com.swtmaxx.kamusic.compose.ui.screen.CommentScreen
 import com.swtmaxx.kamusic.compose.ui.screen.DiscoverScreen
 import com.swtmaxx.kamusic.compose.ui.screen.DownloadScreen
 import com.swtmaxx.kamusic.compose.ui.screen.HistoryScreen
@@ -67,7 +65,6 @@ private fun MainNavHost() {
                 onOpenRank = { id, cid, title ->
                     navController.navigate("rank/$id?cid=$cid&title=${Uri.encode(title)}")
                 },
-                onOpenCloud = { navController.navigate("cloud") },
                 onOpenVip = { navController.navigate("vip") },
                 onOpenHistory = { navController.navigate("history") },
                 onOpenDiscover = { navController.navigate("discover") },
@@ -87,9 +84,6 @@ private fun MainNavHost() {
                 },
                 onOpenAlbum = { id, title ->
                     navController.navigate("album/$id?title=${Uri.encode(title)}")
-                },
-                onOpenComments = { mixId, title ->
-                    navController.navigate("comments/$mixId?title=${Uri.encode(title)}")
                 },
             )
         }
@@ -174,30 +168,6 @@ private fun MainNavHost() {
             AlbumDetailScreen(
                 albumId = entry.arguments?.getString("id").orEmpty(),
                 fallbackTitle = entry.arguments?.getString("title").orEmpty().ifEmpty { "专辑" },
-                onBack = { navController.popBackStack() },
-                onOpenPlayer = { navController.navigate("player") },
-            )
-        }
-
-        composable(
-            route = "comments/{mixId}?title={title}",
-            arguments = listOf(
-                navArgument("mixId") { type = NavType.StringType },
-                navArgument("title") {
-                    type = NavType.StringType
-                    defaultValue = ""
-                },
-            ),
-        ) { entry ->
-            CommentScreen(
-                mixSongId = entry.arguments?.getString("mixId").orEmpty(),
-                fallbackTitle = entry.arguments?.getString("title").orEmpty().ifEmpty { "评论" },
-                onBack = { navController.popBackStack() },
-            )
-        }
-
-        composable("cloud") {
-            CloudScreen(
                 onBack = { navController.popBackStack() },
                 onOpenPlayer = { navController.navigate("player") },
             )

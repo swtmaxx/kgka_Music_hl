@@ -37,7 +37,6 @@ fun WatchShell(
     onOpenPlaylist: (id: String, title: String) -> Unit,
     onOpenRank: (id: String, cid: String, title: String) -> Unit,
     onOpenAlbum: (id: String, title: String) -> Unit,
-    onOpenCloud: () -> Unit,
     onOpenVip: () -> Unit,
     onOpenHistory: () -> Unit,
     onOpenDiscover: () -> Unit,
@@ -70,7 +69,6 @@ fun WatchShell(
                     else -> MineScreen(
                         onOpenPlayer = onOpenPlayer,
                         onOpenPlaylist = onOpenPlaylist,
-                        onOpenCloud = onOpenCloud,
                         onOpenVip = onOpenVip,
                         onOpenHistory = onOpenHistory,
                         onOpenDiscover = onOpenDiscover,

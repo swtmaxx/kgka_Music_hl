@@ -472,36 +472,6 @@ data class AlbumDetail(
 // 评论
 // ============================================================================
 
-/**
- * 歌曲评论（只读）。
- *
- * 注意 `/comment/music` 的响应**没有 `data` 包裹**，是扁平的
- * `{status, err_code, count, list:[...]}`，且必须传 `mixsongid`（不是 hash）。
- */
-data class Comment(
-    val id: String,
-    val userName: String,
-    val avatarUrl: String? = null,
-    val content: String,
-    val time: String? = null,
-    val likeCount: Int? = null,
-    val replyCount: Int? = null,
-) {
-    companion object {
-        fun parse(json: JsonObject): Comment = Comment(
-            id = json.strAny("id", "comment_id").orEmpty(),
-            userName = json.strAny("user_name", "username", "nickname") ?: "匿名",
-            avatarUrl = normalizeImageUrl(
-                json.strAny("user_pic", "user_avatar", "avatar"),
-            ),
-            content = json.strAny("content", "pcontent").orEmpty(),
-            time = json.strAny("addtime", "time"),
-            likeCount = json.intAny("like", "like_count"),
-            replyCount = json.intAny("reply_num", "reply_count"),
-        )
-    }
-}
-
 // ============================================================================
 // VIP
 // ============================================================================

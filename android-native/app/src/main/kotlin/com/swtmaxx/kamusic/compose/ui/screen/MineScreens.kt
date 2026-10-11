@@ -39,95 +39,16 @@ import com.swtmaxx.kamusic.compose.ui.theme.AccentBlue
 import com.swtmaxx.kamusic.compose.ui.theme.TextPrimary
 import com.swtmaxx.kamusic.compose.ui.theme.TextSecondary
 import com.swtmaxx.kamusic.compose.ui.theme.WatchMetrics
-import com.swtmaxx.kamusic.compose.ui.vm.CloudViewModel
 import com.swtmaxx.kamusic.compose.ui.vm.HistoryViewModel
 import com.swtmaxx.kamusic.compose.ui.vm.UiState
 import com.swtmaxx.kamusic.compose.ui.vm.VipViewModel
 
 /**
- * 「我的」下的三个子页：云盘 / VIP / 播放历史。
+ * 「我的」下的两个子页：VIP / 播放历史。
  *
- * 三者都是「列表或信息卡 + 右滑返回」，结构同构，放在同一文件里。
- * 它们都依赖登录态，未登录时上游会返回 5xx，页面会显示 [ErrorBox] 并带重试。
+ * 都是「列表或信息卡 + 右滑返回」，结构同构，放在同一文件里。
+ * 两者都依赖登录态，未登录时上游会返回 5xx，页面会显示 [ErrorBox] 并带重试。
  */
-
-@Composable
-fun CloudScreen(onBack: () -> Unit, onOpenPlayer: () -> Unit) {
-    val container = LocalAppContainer.current
-    val viewModel: CloudViewModel = viewModel(
-        factory = viewModelFactory {
-            initializer { CloudViewModel(container.musicRepository) }
-        },
-    )
-    val state by viewModel.state.collectAsStateWithLifecycle()
-    LaunchedEffect(Unit) { viewModel.load() }
-    val listState = rememberScalingLazyListState()
-
-    Box(
-        modifier = Modifier.fillMaxSize().background(Color.Black).watchSwipeBack(onBack),
-    ) {
-        when (val current = state) {
-            is UiState.Loading -> LoadingBox()
-            is UiState.Error -> ErrorBox(current.message) { viewModel.load() }
-            is UiState.Ready -> {
-                val songs = current.data
-                WatchScreenScaffold(scrollState = listState) { contentPadding ->
-                    ScalingLazyColumn(
-                        scalingParams = watchScalingParams(),
-                        state = listState,
-                        rotaryScrollableBehavior = watchRotary(listState),
-                        contentPadding = contentPadding,
-                        autoCentering = WatchAutoCentering,
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(WatchMetrics.gutterSmall),
-                        modifier = Modifier.fillMaxSize(),
-                    ) {
-                        item {
-                            Text(
-                                text = "云盘 · ${songs.size} 首",
-                                style = MaterialTheme.typography.titleSmall,
-                                color = TextPrimary,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(
-                                        horizontal = WatchMetrics.gutter,
-                                        vertical = WatchMetrics.gutter,
-                                    ),
-                            )
-                        }
-                        itemsIndexed(
-                            songs,
-                            key = { index, song -> "${song.hash}_$index" },
-                        ) { index, song ->
-                            TrackRow(
-                                song = song,
-                                isCurrent = false,
-                                onClick = {
-                                    container.playbackController.playFrom(songs, index)
-                                    onOpenPlayer()
-                                },
-                            )
-                        }
-                        if (songs.isEmpty()) {
-                            item {
-                                Text(
-                                    text = "云盘是空的",
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = TextSecondary,
-                                    modifier = Modifier.padding(WatchMetrics.gutter * 2),
-                                )
-                            }
-                        } else {
-                            item {
-                                LaunchedEffect(songs.size) { viewModel.loadMore() }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
 
 @Composable
 fun VipScreen(onBack: () -> Unit) {
