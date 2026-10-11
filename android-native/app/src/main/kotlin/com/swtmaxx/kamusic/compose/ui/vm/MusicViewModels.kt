@@ -56,7 +56,9 @@ class HomeViewModel(private val repo: MusicRepository) : ViewModel() {
     private val _tab = MutableStateFlow(0)
     val tab: StateFlow<Int> = _tab.asStateFlow()
 
-    private val _state = MutableStateFlow(UiState.Ready(HomeData()))
+    // 必须显式写泛型：否则会被推断成 MutableStateFlow<UiState.Ready<HomeData>>，
+    // 永远装不下 Loading / Error，所有 `is UiState.Ready` 判断恒真（编译器会警告）。
+    private val _state = MutableStateFlow<UiState<HomeData>>(UiState.Ready(HomeData()))
     val state: StateFlow<UiState<HomeData>> = _state.asStateFlow()
 
     private var loaded = false

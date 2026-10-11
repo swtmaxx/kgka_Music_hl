@@ -39,7 +39,16 @@ class DownloaderUtilsTest {
     @Test
     fun `空名字回落为未命名`() {
         assertEquals("未命名", Downloader.safeName("   "))
-        assertEquals("未命名", Downloader.safeName("///"))
+        assertEquals("未命名", Downloader.safeName(""))
+        // 首尾的点会被 trimEnd('.') 去掉，去掉后为空 → 回落
+        assertEquals("未命名", Downloader.safeName("..."))
+    }
+
+    @Test
+    fun `全是非法字符时替换成下划线而不是回落`() {
+        // 替换后 `___` 是合法文件名，所以不回落 —— 只有「清洗后为空」才回落。
+        // 这样 `???` 与 `!!!` 会得到不同文件名，比一律回落成「未命名」更不易撞名。
+        assertEquals("___", Downloader.safeName("///"))
     }
 
     @Test
