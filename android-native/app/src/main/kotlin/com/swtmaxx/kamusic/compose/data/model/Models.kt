@@ -6,6 +6,7 @@ import com.swtmaxx.kamusic.compose.core.asObjOrNull
 import com.swtmaxx.kamusic.compose.core.asStringOrNull
 import com.swtmaxx.kamusic.compose.core.int
 import com.swtmaxx.kamusic.compose.core.intAny
+import com.swtmaxx.kamusic.compose.core.long
 import com.swtmaxx.kamusic.compose.core.obj
 import com.swtmaxx.kamusic.compose.core.objList
 import com.swtmaxx.kamusic.compose.core.str

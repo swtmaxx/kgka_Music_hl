@@ -46,6 +46,7 @@ import com.swtmaxx.kamusic.compose.ui.component.watchSwipeBack
 import com.swtmaxx.kamusic.compose.ui.theme.TextPrimary
 import com.swtmaxx.kamusic.compose.ui.theme.TextSecondary
 import com.swtmaxx.kamusic.compose.ui.theme.WatchMetrics
+import com.swtmaxx.kamusic.compose.ui.vm.AlbumDetailViewModel
 import com.swtmaxx.kamusic.compose.ui.vm.ArtistDetailViewModel
 import com.swtmaxx.kamusic.compose.ui.vm.UiState
 

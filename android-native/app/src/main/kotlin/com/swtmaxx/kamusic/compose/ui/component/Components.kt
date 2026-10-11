@@ -291,8 +291,10 @@ fun ArtworkFill(
         val density = LocalDensity.current
         // 网格单元尺寸由外部（fillMaxWidth + aspectRatio）决定，这里用约束实测；
         // 无界时回落到 240（= 屏宽量级），总比全尺寸解码好。
-        val wPx = if (maxWidth.isFinite) with(density) { maxWidth.roundToPx() } else 240
-        val hPx = if (maxHeight.isFinite) with(density) { maxHeight.roundToPx() } else 240
+        // 用 constraints.hasBoundedWidth 而不是 maxWidth.isFinite：Dp 没有 isFinite，
+        // 且无界时 BoxWithConstraints 给的 maxWidth 是 Int.MAX_VALUE 转成的巨大但有限的 Dp。
+        val wPx = if (constraints.hasBoundedWidth) with(density) { maxWidth.roundToPx() } else 240
+        val hPx = if (constraints.hasBoundedHeight) with(density) { maxHeight.roundToPx() } else 240
         val request = rememberSizedImageRequest(url, wPx, hPx)
 
         if (request == null) {

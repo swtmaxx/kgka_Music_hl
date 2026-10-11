@@ -4,6 +4,8 @@
   A. onXxx 回调：函数体里用到的 onXxx 必须在签名/局部/lambda 参数里
   B. 具名实参：调用点传的 `x =` 必须存在于被调函数签名
   C. 必填参数：调用点必须传齐无默认值的参数
+  D. core 扩展函数：用了 .long(...) 之类必须 import（Kotlin 不会自动跨包解析）
+  E. R 资源类：用了 R.drawable.* 必须 import com.swtmaxx.kamusic.compose.R
 
 设计要点（踩过的坑）：
   * `->` 里的 `>` 会污染 <> 深度计数 → 统一先 replace('->','  ')
@@ -157,6 +159,34 @@ for p,s in files.items():
             if missing:
                 errs.append(f"  ❌ [C] {p}:{line}  {name}(...) 漏传必填参数 {missing}")
 
+# ---- D. core 扩展函数的 import ----
+core_dir = root.parent.parent / 'kotlin' / 'com' / 'swtmaxx' / 'kamusic' / 'compose' / 'core'
+if not core_dir.exists():
+    core_dir = root / 'com' / 'swtmaxx' / 'kamusic' / 'compose' / 'core'
+ext = {}
+if core_dir.exists():
+    for f in core_dir.glob('*.kt'):
+        for m in re.finditer(r'^fun\s+(?:[\w.<>?,\s]+\.)?(\w+)\s*\(', f.read_text(), re.M):
+            ext.setdefault(m.group(1), 'com.swtmaxx.kamusic.compose.core')
+
+for p,s in files.items():
+    pkg = re.search(r'^package\s+(\S+)', s, re.M)
+    pkg = pkg.group(1) if pkg else ''
+    if pkg == 'com.swtmaxx.kamusic.compose.core': continue
+    imports = set(re.findall(r'^import\s+([\w.]+)', s, re.M))
+    for name in sorted(ext):
+        if not re.search(r'\.' + name + r'\s*[(<]', s): continue
+        if re.search(r'^\s*(?:private\s+)?fun\s+[\w.<>?,\s]*\.' + name + r'\b', s, re.M): continue
+        if f'{ext[name]}.{name}' not in imports:
+            errs.append(f"  ❌ [D] {p}:  用了 .{name}(...) 但没 import {ext[name]}.{name}")
+
+# ---- E. R 类的 import ----
+for p,s in files.items():
+    if not re.search(r'(?<![\w.])R\.(drawable|string|mipmap|xml|style|color)\.', s): continue
+    if re.search(r'^package\s+com\.swtmaxx\.kamusic\.compose\s*$', s, re.M): continue
+    if 'com.swtmaxx.kamusic.compose.R' not in set(re.findall(r'^import\s+([\w.]+)', s, re.M)):
+        errs.append(f"  ❌ [E] {p}:  用了 R.drawable/R.string 但没 import com.swtmaxx.kamusic.compose.R")
+
 print('\n'.join(errs)); print()
-print(f"共 {len(errs)} 处" if errs else "✅ A/B/C 三项检查全部通过")
+print(f"共 {len(errs)} 处" if errs else "✅ A/B/C/D/E 五项检查全部通过")
 sys.exit(1 if errs else 0)
